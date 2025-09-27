@@ -1,0 +1,21 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer components {
+    /* Gaya untuk link sidebar */
+    .sidebar-link {
+        @apply transition-colors duration-200 hover:bg-red-800;
+    }
+    .sidebar-link.active {
+        @apply bg-red-800 font-semibold;
+    }
+
+    /* Mengatur visibilitas bagian konten utama */
+    .content-section {
+        display: none;
+    }
+    .content-section.active {
+        display: block;
+    }
+}

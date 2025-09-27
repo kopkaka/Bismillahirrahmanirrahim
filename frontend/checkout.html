@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Checkout Berhasil - KOPKAKA</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="style.css">
+    <link rel="icon" href="logo/logo.png" type="image/png">
+    <link rel="shortcut icon" href="logo/logo.png" type="image/png">
+    <!-- Library untuk generate QR Code -->
+    <script src="https://cdn.jsdelivr.net/npm/qrcodejs@1.0.0/qrcode.min.js"></script>
+    <style>
+        @media print {
+            body * {
+                visibility: hidden;
+            }
+            #print-area, #print-area * {
+                visibility: visible;
+            }
+            #print-area {
+                position: absolute;
+                left: 0;
+                top: 0;
+                width: 100%;
+            }
+            .no-print {
+                display: none;
+            }
+        }
+    </style>
+</head>
+<body class="bg-cream flex flex-col min-h-screen">
+
+    <header class="bg-red-900 shadow-md sticky top-0 z-50 no-print">
+        <nav class="container mx-auto px-6 py-3 flex justify-between items-center">
+            <a href="index.html" class="flex items-center space-x-3">
+                <img src="logo/logo.png" alt="Logo KOPKAKA" class="h-8 w-auto">
+                <span class="text-2xl font-bold text-white">KOPKAKA</span>
+            </a>
+        </nav>
+    </header>
+
+    <main class="py-16 flex-grow">
+        <div class="container mx-auto px-6">
+            <div id="checkout-success" class="hidden">
+                <div class="max-w-2xl mx-auto bg-white p-8 rounded-lg shadow-md" id="print-area">
+                    <div class="text-center border-b pb-4 mb-6">
+                        <h1 class="text-2xl font-bold text-accent">Checkout Berhasil</h1>
+                        <p class="text-gray-600">Terima kasih telah berbelanja. Tunjukkan barcode ini saat pengambilan barang di toko.</p>
+                    </div>
+                    
+                    <!-- QR Code Container -->
+                    <div class="flex justify-center mb-6">
+                        <div id="qrcode-container"></div>
+                    </div>
+
+                    <!-- Order Details -->
+                    <div class="space-y-4 text-sm">
+                        <h2 class="text-lg font-semibold text-gray-800 border-t pt-4">Detail Pesanan</h2>
+                        <div class="grid grid-cols-2 gap-x-4 gap-y-2">
+                            <span class="font-medium text-gray-500">Nomor Pesanan:</span>
+                            <span id="order-id" class="font-semibold text-gray-800"></span>
+                            <span class="font-medium text-gray-500">Tanggal:</span>
+                            <span id="order-date" class="font-semibold text-gray-800"></span>
+                            <span class="font-medium text-gray-500">Nama Anggota:</span>
+                            <span id="order-member-name" class="font-semibold text-gray-800"></span>
+                            <span class="font-medium text-gray-500">No. Koperasi:</span>
+                            <span id="order-coop-number" class="font-semibold text-gray-800"></span>
+                        </div>
+
+                        <h2 class="text-lg font-semibold text-gray-800 border-t pt-4">Rincian Barang</h2>
+                        <div class="overflow-x-auto">
+                            <table class="min-w-full">
+                                <thead class="border-b">
+                                    <tr>
+                                        <th class="text-left py-2 font-medium text-gray-600">Produk</th>
+                                        <th class="text-center py-2 font-medium text-gray-600">Qty</th>
+                                        <th class="text-right py-2 font-medium text-gray-600">Subtotal</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="order-items-table">
+                                    <!-- Items will be injected here -->
+                                </tbody>
+                                <tfoot class="border-t-2 font-bold">
+                                    <tr>
+                                        <td colspan="2" class="text-right py-2">Total</td>
+                                        <td id="order-total" class="text-right py-2"></td>
+                                    </tr>
+                                </tfoot>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="max-w-2xl mx-auto mt-8 flex flex-col sm:flex-row gap-4 no-print">
+                    <button id="print-btn" class="w-full bg-blue-600 text-white py-3 px-4 rounded-lg hover:bg-blue-700 transition font-semibold">
+                        Cetak Bukti
+                    </button>
+                    <a href="toko-sembako.html" id="finish-btn" class="w-full text-center bg-accent text-white py-3 px-4 rounded-lg hover:bg-red-800 transition font-semibold">
+                        Selesai & Belanja Lagi
+                    </a>
+                </div>
+            </div>
+
+            <div id="checkout-fail" class="hidden text-center bg-white p-8 rounded-lg shadow-md max-w-lg mx-auto">
+                <h2 class="text-2xl font-bold text-accent">Gagal Memuat Pesanan</h2>
+                <p class="text-gray-600 mt-2">Tidak ada data pesanan yang ditemukan. Mungkin Anda belum melakukan checkout.</p>
+                <a href="keranjang.html" class="mt-6 inline-block bg-accent text-white py-2 px-6 rounded-lg hover:bg-red-800 transition">Kembali ke Keranjang</a>
+            </div>
+        </div>
+    </main>
+
+    <footer class="bg-gray-800 text-white py-8 mt-16 no-print">
+        <div class="container mx-auto px-6 text-center">
+            <p class="text-sm text-gray-500">&copy; 2025 Koperasi Karya Kagum Abadi. All Rights Reserved.</p>
+        </div>
+    </footer>
+
+    <script type="module" src="checkout.js" defer></script>
+</body>
+</html>

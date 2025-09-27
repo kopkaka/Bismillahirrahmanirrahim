@@ -1,0 +1,294 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Registrasi Anggota - KOPKAKA</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="style.css">
+    <link rel="icon" href="logo/logo.png" type="image/png">
+    <link rel="shortcut icon" href="logo/logo.png" type="image/png">
+</head>
+<body class="bg-cream flex flex-col min-h-screen">
+
+    <header class="bg-red-900 shadow-md sticky top-0 z-50">
+        <nav class="container mx-auto px-6 py-3 flex justify-between items-center">
+            <a href="index.html" class="flex items-center space-x-3">                
+                <img src="logo/logo.png" alt="Logo KOPKAKA" class="h-8 w-auto">
+                <span class="text-2xl font-bold text-white">KOPKAKA</span>
+            </a>
+            <a href="index.html" class="bg-white text-red-900 hover:bg-gray-200 transition-colors px-4 py-2 rounded-lg font-semibold">
+                Kembali ke Beranda
+            </a>
+        </nav>
+    </header>
+
+    <main class="py-16 flex-grow">
+        <div class="container mx-auto px-6">
+            <div class="max-w-2xl mx-auto bg-gray-50 p-8 rounded-lg shadow-md">
+                <h1 class="text-2xl font-bold text-accent mb-2">Formulir Pendaftaran Anggota Baru</h1>
+                <p class="text-gray-600 mb-6">Silakan isi data di bawah ini dengan benar. Data Anda akan diverifikasi oleh admin.</p>
+
+                <form id="registration-form" class="space-y-4">
+                    <div>
+                        <label for="reg-nama" class="block text-sm font-medium text-gray-700">Nama Lengkap</label>
+                        <input type="text" id="reg-nama" required class="mt-1 block w-full rounded-md border-gray-400 shadow-sm focus:border-red-500 focus:ring-red-500 sm:text-sm">
+                    </div>
+                    <div>
+                        <label for="reg-ktp" class="block text-sm font-medium text-gray-700">Nomor KTP</label>
+                        <input type="text" inputmode="numeric" pattern="[0-9]*" id="reg-ktp" required class="mt-1 block w-full rounded-md border-gray-400 shadow-sm focus:border-red-500 focus:ring-red-500 sm:text-sm">
+                    </div>
+                    <div>
+                        <label for="reg-telepon" class="block text-sm font-medium text-gray-700">No. Telepon</label>
+                        <input type="tel" inputmode="numeric" pattern="[0-9+]*" id="reg-telepon" required placeholder="Contoh: 08123456789" class="mt-1 block w-full rounded-md border-gray-400 shadow-sm focus:border-red-500 focus:ring-red-500 sm:text-sm">
+                    </div>
+                    <div class="flex items-center">
+                        <input id="individual-registration" type="checkbox" class="h-4 w-4 text-red-600 focus:ring-red-500 border-gray-300 rounded">
+                        <label for="individual-registration" class="ml-2 block text-sm text-gray-900">Daftar sebagai individual (umum)</label>
+                    </div>
+                    <div id="company-section">
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div>
+                                <label for="reg-perusahaan" class="block text-sm font-medium text-gray-700">Perusahaan</label>
+                                <select id="reg-perusahaan" required class="mt-1 block w-full rounded-md border-gray-400 shadow-sm focus:border-red-500 focus:ring-red-500 sm:text-sm">
+                                    <option value="">Memuat perusahaan...</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label for="reg-jabatan" class="block text-sm font-medium text-gray-700">Jabatan</label>
+                                <select id="reg-jabatan" required class="mt-1 block w-full rounded-md border-gray-400 shadow-sm focus:border-red-500 focus:ring-red-500 sm:text-sm">
+                                    <option value="">Memuat jabatan...</option>
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Alamat Sesuai KTP -->
+                    <div class="pt-4 border-t border-gray-200">
+                        <p class="text-base font-medium text-gray-800 mb-2">Alamat Sesuai KTP</p>
+                        <div class="space-y-4">
+                            <div>
+                                <label for="reg-provinsi" class="block text-sm font-medium text-gray-700">Provinsi</label>
+                                <select id="reg-provinsi" required class="mt-1 block w-full rounded-md border-gray-400 shadow-sm focus:border-red-500 focus:ring-red-500 sm:text-sm">
+                                    <option value="">Memuat provinsi...</option>
+                                </select>
+                            </div>
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <div>
+                                    <label for="reg-kota" class="block text-sm font-medium text-gray-700">Kabupaten/Kota</label>
+                                    <select id="reg-kota" required disabled class="mt-1 block w-full rounded-md border-gray-400 shadow-sm focus:border-red-500 focus:ring-red-500 sm:text-sm bg-gray-50">
+                                        <option value="">Pilih provinsi terlebih dahulu</option>
+                                    </select>
+                                </div>
+                                <div>
+                                    <label for="reg-kecamatan" class="block text-sm font-medium text-gray-700">Kecamatan</label>
+                                    <select id="reg-kecamatan" required disabled class="mt-1 block w-full rounded-md border-gray-400 shadow-sm focus:border-red-500 focus:ring-red-500 sm:text-sm bg-gray-50">
+                                        <option value="">Pilih kabupaten/kota terlebih dahulu</option>
+                                    </select>
+                                </div>
+                            </div>
+                            <div>
+                                <label for="reg-kelurahan" class="block text-sm font-medium text-gray-700">Kelurahan/Desa</label>
+                                <select id="reg-kelurahan" required disabled class="mt-1 block w-full rounded-md border-gray-400 shadow-sm focus:border-red-500 focus:ring-red-500 sm:text-sm bg-gray-50">
+                                    <option value="">Pilih kecamatan terlebih dahulu</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label for="reg-alamat-detail" class="block text-sm font-medium text-gray-700">Alamat Detail (Nama Jalan, No. Rumah, RT/RW)</label>
+                                <textarea id="reg-alamat-detail" rows="3" placeholder="Contoh: Jl. Merdeka No. 17, RT 001/RW 005" required class="mt-1 block w-full rounded-md border-gray-400 shadow-sm focus:border-red-500 focus:ring-red-500 sm:text-sm"></textarea>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Checkbox for Domicile Address -->
+                    <div class="pt-4 border-t border-gray-200">
+                        <div class="flex items-center">
+                            <input id="domicile-same-as-ktp" type="checkbox" checked class="h-4 w-4 text-red-600 focus:ring-red-500 border-gray-300 rounded">
+                            <label for="domicile-same-as-ktp" class="ml-2 block text-sm text-gray-900">Alamat domisili sama dengan alamat KTP</label>
+                        </div>
+                    </div>
+
+                    <!-- Alamat Domisili (hidden by default) -->
+                    <div id="domicile-address-section" class="hidden pt-4 border-t border-gray-200">
+                        <p class="text-base font-medium text-gray-800 mb-2">Alamat Domisili Saat Ini</p>
+                        <div class="space-y-4">
+                            <div>
+                                <label for="reg-domisili-provinsi" class="block text-sm font-medium text-gray-700">Provinsi</label>
+                                <select id="reg-domisili-provinsi" class="mt-1 block w-full rounded-md border-gray-400 shadow-sm focus:border-red-500 focus:ring-red-500 sm:text-sm">
+                                    <option value="">Memuat provinsi...</option>
+                                </select>
+                            </div>
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <div>
+                                    <label for="reg-domisili-kota" class="block text-sm font-medium text-gray-700">Kabupaten/Kota</label>
+                                    <select id="reg-domisili-kota" disabled class="mt-1 block w-full rounded-md border-gray-400 shadow-sm focus:border-red-500 focus:ring-red-500 sm:text-sm bg-gray-50">
+                                        <option value="">Pilih provinsi terlebih dahulu</option>
+                                    </select>
+                                </div>
+                                <div>
+                                    <label for="reg-domisili-kecamatan" class="block text-sm font-medium text-gray-700">Kecamatan</label>
+                                    <select id="reg-domisili-kecamatan" disabled class="mt-1 block w-full rounded-md border-gray-400 shadow-sm focus:border-red-500 focus:ring-red-500 sm:text-sm bg-gray-50">
+                                        <option value="">Pilih kabupaten/kota terlebih dahulu</option>
+                                    </select>
+                                </div>
+                            </div>
+                            <div><label for="reg-domisili-kelurahan" class="block text-sm font-medium text-gray-700">Kelurahan/Desa</label><select id="reg-domisili-kelurahan" disabled class="mt-1 block w-full rounded-md border-gray-400 shadow-sm focus:border-red-500 focus:ring-red-500 sm:text-sm bg-gray-50"><option value="">Pilih kecamatan terlebih dahulu</option></select></div>
+                            <div><label for="reg-domisili-alamat-detail" class="block text-sm font-medium text-gray-700">Alamat Detail (Nama Jalan, No. Rumah, RT/RW)</label><textarea id="reg-domisili-alamat-detail" rows="3" placeholder="Contoh: Jl. Bahagia No. 21, RT 002/RW 003" class="mt-1 block w-full rounded-md border-gray-400 shadow-sm focus:border-red-500 focus:ring-red-500 sm:text-sm"></textarea></div>
+                        </div>
+                    </div>
+
+                    <!-- Data Ahli Waris -->
+                    <div class="pt-4 border-t border-gray-200">
+                        <p class="text-base font-medium text-gray-800 mb-2">Data Ahli Waris</p>
+                        <div class="space-y-4">
+                            <div>
+                                <label for="reg-ahli-waris-nama" class="block text-sm font-medium text-gray-700">Nama Lengkap Ahli Waris</label>
+                                <input type="text" id="reg-ahli-waris-nama" required class="mt-1 block w-full rounded-md border-gray-400 shadow-sm focus:border-red-500 focus:ring-red-500 sm:text-sm">
+                            </div>
+                            <div>
+                                <label for="reg-ahli-waris-kk" class="block text-sm font-medium text-gray-700">Nomor Kartu Keluarga</label>
+                                <input type="text" inputmode="numeric" pattern="[0-9]*" id="reg-ahli-waris-kk" required class="mt-1 block w-full rounded-md border-gray-400 shadow-sm focus:border-red-500 focus:ring-red-500 sm:text-sm">
+                            </div>
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <div>
+                                    <label for="reg-ahli-waris-hubungan" class="block text-sm font-medium text-gray-700">Hubungan Keluarga</label>
+                                    <input type="text" id="reg-ahli-waris-hubungan" placeholder="Contoh: Istri, Anak, Orang Tua" required class="mt-1 block w-full rounded-md border-gray-400 shadow-sm focus:border-red-500 focus:ring-red-500 sm:text-sm">
+                                </div>
+                                <div>
+                                    <label for="reg-ahli-waris-telepon" class="block text-sm font-medium text-gray-700">No. Telepon Ahli Waris</label>
+                                    <input type="tel" inputmode="numeric" pattern="[0-9+]*" id="reg-ahli-waris-telepon" required class="mt-1 block w-full rounded-md border-gray-400 shadow-sm focus:border-red-500 focus:ring-red-500 sm:text-sm">
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Lampiran Dokumen -->
+                    <div class="pt-4 border-t border-gray-200">
+                        <p class="text-base font-medium text-gray-800 mb-2">Lampiran Dokumen</p>
+                        <div class="space-y-4">
+                            <div>
+                                <label for="reg-foto-ktp" class="block text-sm font-medium text-gray-700">Foto KTP</label>
+                                <input type="file" id="reg-foto-ktp" required accept="image/*" capture="environment" class="mt-1 block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-red-50 file:text-red-700 hover:file:bg-red-100">
+                            </div>
+                            <div>
+                                <label for="reg-foto-selfie" class="block text-sm font-medium text-gray-700">Foto Selfie</label>
+                                <input type="file" id="reg-foto-selfie" required accept="image/*" capture="user" class="mt-1 block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-red-50 file:text-red-700 hover:file-bg-red-100">
+                            </div>
+                            <div>
+                                <label for="reg-foto-kk" class="block text-sm font-medium text-gray-700">Foto Kartu Keluarga (KK)</label>
+                                <input type="file" id="reg-foto-kk" required accept="image/*" capture="environment" class="mt-1 block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-red-50 file:text-red-700 hover:file:bg-red-100">
+                            </div>
+                        </div>
+                    </div>
+
+                    <div>
+                        <label for="reg-email" class="block text-sm font-medium text-gray-700">Alamat Email</label>
+                        <input type="email" id="reg-email" required class="mt-1 block w-full rounded-md border-gray-400 shadow-sm focus:border-red-500 focus:ring-red-500 sm:text-sm">
+                    </div>
+                    <div>
+                        <label for="reg-password" class="block text-sm font-medium text-gray-700">Buat Password</label>
+                        <div class="relative mt-1 rounded-md shadow-sm">
+                            <input type="password" id="reg-password" required minlength="8" class="block w-full rounded-md border-gray-400 focus:border-red-500 focus:ring-red-500 sm:text-sm pr-10">
+                            <div class="absolute inset-y-0 right-0 pr-3 flex items-center cursor-pointer password-toggle">
+                                <svg class="h-5 w-5 text-gray-400 eye-open" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
+                                    <path d="M10 12a2 2 0 100-4 2 2 0 000 4z"></path>
+                                    <path fill-rule="evenodd" d="M.458 10C1.732 5.943 5.522 3 10 3s8.268 2.943 9.542 7c-1.274 4.057-5.022 7-9.542 7S1.732 14.057.458 10zM14 10a4 4 0 11-8 0 4 4 0 018 0z" clip-rule="evenodd"></path>
+                                </svg>
+                                <svg class="h-5 w-5 text-gray-400 eye-closed hidden" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
+                                    <path fill-rule="evenodd" d="M3.707 2.293a1 1 0 00-1.414 1.414l14 14a1 1 0 001.414-1.414l-1.473-1.473A10.014 10.014 0 0019.542 10C18.268 5.943 14.478 3 10 3a9.958 9.958 0 00-4.512 1.074l-1.78-1.781zM10 12a2 2 0 100-4 2 2 0 000 4z" clip-rule="evenodd"></path>
+                                    <path d="M2.999 10c1.274 4.057 5.022 7 9.542 7 1.147 0 2.255-.166 3.303-.472l-1.473-1.473A7.963 7.963 0 0110 15a7.963 7.963 0 01-4.242-1.428L2.999 10z"></path>
+                                </svg>
+                            </div>
+                        </div>
+                        <div class="mt-2">
+                            <div class="flex justify-between text-xs text-gray-500">
+                                <span>Kekuatan Password</span>
+                                <span id="password-strength-text"></span>
+                            </div>
+                            <div class="w-full bg-gray-200 rounded-full h-2 mt-1">
+                                <div id="password-strength-bar" class="h-2 rounded-full transition-all duration-300" style="width: 0%;"></div>
+                            </div>
+                        </div>
+                    </div>
+                    <div>
+                        <label for="reg-password-confirm" class="block text-sm font-medium text-gray-700">Konfirmasi Password</label>
+                        <div class="relative mt-1 rounded-md shadow-sm">
+                            <input type="password" id="reg-password-confirm" required class="block w-full rounded-md border-gray-400 shadow-sm focus:border-red-500 focus:ring-red-500 sm:text-sm pr-10">
+                            <div class="absolute inset-y-0 right-0 pr-3 flex items-center cursor-pointer password-toggle">
+                                <svg class="h-5 w-5 text-gray-400 eye-open" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
+                                    <path d="M10 12a2 2 0 100-4 2 2 0 000 4z"></path>
+                                    <path fill-rule="evenodd" d="M.458 10C1.732 5.943 5.522 3 10 3s8.268 2.943 9.542 7c-1.274 4.057-5.022 7-9.542 7S1.732 14.057.458 10zM14 10a4 4 0 11-8 0 4 4 0 018 0z" clip-rule="evenodd"></path>
+                                </svg>
+                                <svg class="h-5 w-5 text-gray-400 eye-closed hidden" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
+                                    <path fill-rule="evenodd" d="M3.707 2.293a1 1 0 00-1.414 1.414l14 14a1 1 0 001.414-1.414l-1.473-1.473A10.014 10.014 0 0019.542 10C18.268 5.943 14.478 3 10 3a9.958 9.958 0 00-4.512 1.074l-1.78-1.781zM10 12a2 2 0 100-4 2 2 0 000 4z" clip-rule="evenodd"></path>
+                                    <path d="M2.999 10c1.274 4.057 5.022 7 9.542 7 1.147 0 2.255-.166 3.303-.472l-1.473-1.473A7.963 7.963 0 0110 15a7.963 7.963 0 01-4.242-1.428L2.999 10z"></path>
+                                </svg>
+                            </div>
+                        </div>
+                    </div>
+                    <div id="password-error" class="text-red-600 text-sm -mt-2 hidden"></div>
+                    <div class="pt-4 flex items-start">
+                        <div class="flex-shrink-0">
+                            <input id="terms" name="terms" type="checkbox" required class="h-4 w-4 text-red-600 focus:ring-red-500 border-gray-300 rounded">
+                        </div>
+                        <div class="ml-3 text-sm">
+                            <label for="terms" class="text-gray-600">
+                                Saya menyatakan bahwa data yang saya isikan adalah benar dan saya menyetujui 
+                                <a href="syarat-ketentuan.html" target="_blank" class="font-medium text-red-600 hover:text-red-500">Syarat & Ketentuan</a> 
+                                serta 
+                                <a href="kebijakan-privasi.html" target="_blank" class="font-medium text-red-600 hover:text-red-500">Kebijakan Privasi</a> 
+                                yang berlaku.
+                            </label>
+                        </div>
+                    </div>
+
+                    <div class="pt-2">
+                        <button type="submit" class="w-full bg-red-600 text-white py-3 px-4 rounded-lg hover:bg-red-700 transition duration-200 font-semibold">Daftar Sekarang</button>
+                    </div>
+                </form>
+
+                <div id="success-message" class="hidden mt-6 p-4 bg-green-100 text-green-800 border border-green-300 rounded-lg text-center">
+                    <h3 class="font-bold">Pendaftaran Berhasil!</h3>
+                    <p class="text-sm">Data Anda telah dikirim dan sedang menunggu persetujuan admin. Anda akan diarahkan kembali ke halaman utama.</p>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <footer class="bg-gray-800 text-white py-8">
+        <div class="container mx-auto px-6 text-center">
+            <div class="mb-4">
+                <a href="syarat-ketentuan.html" class="text-gray-400 hover:text-white px-3 text-sm">Syarat & Ketentuan</a>
+                <span class="text-gray-500">|</span>
+                <a href="kebijakan-privasi.html" class="text-gray-400 hover:text-white px-3 text-sm">Kebijakan Privasi</a>
+                <span class="text-gray-500">|</span>
+                <a href="prosedur-belanja.html" class="text-gray-400 hover:text-white px-3 text-sm">Prosedur Belanja</a>
+            </div>
+            <p class="text-sm text-gray-500">&copy; 2025 Koperasi Karya Kagum Abadi. All Rights Reserved.</p>
+        </div>
+    </footer>
+
+    <script type="module" src="registrasi.js"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', function () {
+            const individualCheckbox = document.getElementById('individual-registration');
+            const companySection = document.getElementById('company-section');
+            const companySelect = document.getElementById('reg-perusahaan');
+            const positionSelect = document.getElementById('reg-jabatan');
+
+            individualCheckbox.addEventListener('change', function () {
+                if (this.checked) {
+                    companySection.classList.add('hidden');
+                    companySelect.required = false;
+                    positionSelect.required = false;
+                } else {
+                    companySection.classList.remove('hidden');
+                    companySelect.required = true;
+                    positionSelect.required = true;
+                }
+            });
+        });
+    </script>
+</body>
+</html>

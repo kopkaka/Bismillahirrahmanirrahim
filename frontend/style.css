@@ -1,0 +1,75 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+    html {
+        scroll-behavior: smooth;
+    }
+    body {
+        font-family: 'Inter', sans-serif;
+    }
+}
+
+/* Mendefinisikan warna kustom yang digunakan di HTML */
+@layer utilities {
+    .bg-cream {
+        background-color: #FEFBF6; /* Warna krem yang lembut */
+    }
+    .text-accent {
+        color: #7f1d1d; /* Merah marun, konsisten dengan header */
+    }
+    .border-accent\/20 {
+        border-color: rgba(127, 29, 29, 0.2);
+    }
+    .bg-accent {
+        background-color: #7f1d1d;
+    }
+}
+
+@layer components {
+    .btn-primary {
+        @apply bg-red-600 text-white hover:bg-red-700 transition-colors;
+    }
+    /* Kustomisasi tampilan slider */
+    .slider-thumb::-webkit-slider-thumb {
+        -webkit-appearance: none;
+        appearance: none;
+        width: 20px;
+        height: 20px;
+        background: #DC2626; /* red-600 */
+        cursor: pointer;
+        border-radius: 50%;
+        margin-top: -6px; /* Penyesuaian posisi vertikal */
+    }
+    .slider-thumb::-moz-range-thumb {
+        width: 20px;
+        height: 20px;
+        background: #DC2626;
+        cursor: pointer;
+        border-radius: 50%;
+    }
+    /* Gaya untuk tombol tenor yang aktif */
+    .tenor-btn.active, .payment-tenor-btn.active {
+        @apply bg-red-600 text-white border-red-600;
+    }
+    /* Styles for active sidebar links and content switching, used in admin.html and anggota.html */
+    .sidebar-link.active {
+        background-color: #991b1b; /* Equivalent to bg-red-800 */
+        color: #ffffff; /* Equivalent to text-white */
+    }
+    .content-section {
+        display: none;
+    }
+    .content-section.active {
+        display: block;
+    }
+    /* Class untuk membuka sidebar */
+    .sidebar-open {
+        @apply translate-x-0;
+    }
+    /* Class untuk menutup sidebar */
+    .sidebar-closed {
+        @apply -translate-x-full;
+    }
+}

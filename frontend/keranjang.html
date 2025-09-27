@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Keranjang Belanja - KOPKAKA</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="style.css">
+    <link rel="icon" href="logo/logo.png" type="image/png">
+    <link rel="shortcut icon" href="logo/logo.png" type="image/png">
+</head>
+<body class="bg-cream flex flex-col min-h-screen">
+
+    <header class="bg-red-900 shadow-md sticky top-0 z-50">
+        <nav class="container mx-auto px-6 py-3 flex justify-between items-center">
+            <a href="index.html" class="flex items-center space-x-3">
+                <img src="logo/logo.png" alt="Logo KOPKAKA" class="h-8 w-auto">
+                <span class="text-2xl font-bold text-white">KOPKAKA</span>
+            </a>
+            <div class="flex items-center space-x-4">
+                <a href="toko-sembako.html" class="bg-white text-red-900 hover:bg-gray-200 transition-colors px-4 py-2 rounded-lg font-semibold">
+                    Lanjut Belanja
+                </a>
+            </div>
+        </nav>
+    </header>
+
+    <main class="py-16 flex-grow">
+        <div class="container mx-auto px-6">
+            <h1 class="text-3xl font-bold text-accent mb-8">Keranjang Belanja Anda</h1>
+            
+            <div class="flex flex-col lg:flex-row gap-8">
+                <!-- Cart Items -->
+                <div class="w-full lg:w-2/3">
+                    <div class="bg-white rounded-lg shadow-md">
+                        <div id="cart-items-container" class="divide-y divide-gray-200">
+                            <!-- Items will be injected here by JS -->
+                            <div id="cart-empty-message" class="p-8 text-center text-gray-500 hidden">
+                                <p>Keranjang Anda masih kosong.</p>
+                                <a href="toko-sembako.html" class="text-red-600 hover:underline mt-2 inline-block">Mulai belanja sekarang</a>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Order Summary -->
+                <div class="w-full lg:w-1/3">
+                    <div class="bg-white rounded-lg shadow-md p-6 sticky top-24">
+                        <h2 class="text-xl font-semibold mb-4">Ringkasan Pesanan</h2>
+                        <div class="space-y-2 mb-4">
+                            <div class="flex justify-between">
+                                <span>Subtotal</span>
+                                <span id="summary-subtotal">Rp 0</span>
+                            </div>
+                        </div>
+                        <div class="border-t pt-4">
+                            <div class="flex justify-between font-bold text-lg">
+                                <span>Total</span>
+                                <span id="summary-total">Rp 0</span>
+                            </div>
+                        </div>
+                        <button id="checkout-btn" class="mt-6 w-full bg-accent text-white py-3 rounded-lg font-semibold hover:bg-red-800 transition-colors disabled:bg-gray-400 disabled:cursor-not-allowed">
+                            Lanjutkan ke Pembayaran
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <footer class="bg-gray-800 text-white py-8 mt-16">
+        <div class="container mx-auto px-6 text-center">
+            <div class="mb-4">
+                <a href="syarat-ketentuan.html" class="text-gray-400 hover:text-white px-3 text-sm">Syarat & Ketentuan</a>
+                <span class="text-gray-500">|</span>
+                <a href="kebijakan-privasi.html" class="text-gray-400 hover:text-white px-3 text-sm">Kebijakan Privasi</a>
+                <span class="text-gray-500">|</span>
+                <a href="prosedur-belanja.html" class="text-gray-400 hover:text-white px-3 text-sm">Prosedur Belanja</a>
+            </div>
+            <p class="text-sm text-gray-500">&copy; 2025 Koperasi Karya Kagum Abadi. All Rights Reserved.</p>
+        </div>
+    </footer>
+
+    <script type="module" src="keranjang.js" defer></script>
+</body>
+</html>

@@ -1,0 +1,473 @@
+<!DOCTYPE html>
+<html lang="id" class="scroll-smooth">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Koperasi Karya Kagum Abadi</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <!-- Pustaka untuk generate PDF -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <!-- Tautan ke file CSS eksternal -->
+    <link rel="icon" href="logo/logo.png" type="image/png">
+    <link rel="shortcut icon" href="logo/logo.png" type="image/png">
+    <link rel="stylesheet" href="style.css">
+    <style>
+        @keyframes infinite-scroll {
+            from { transform: translateX(0); }
+            to { transform: translateX(-100%); }
+        }
+        .animate-infinite-scroll {
+            animation: infinite-scroll 60s linear infinite;
+        }
+    </style>
+</head>
+<body class="bg-cream flex flex-col min-h-screen">
+
+    <header class="bg-red-900 shadow-md sticky top-0 z-50">
+        <nav class="container mx-auto px-6 py-3 flex justify-between items-center">
+            <a href="index.html" class="flex items-center space-x-3">
+                <img src="logo/logo.png" alt="Logo KOPKAKA" class="h-8 w-auto">
+                <span class="text-2xl font-bold text-white">KOPKAKA</span>
+            </a>
+            <!-- Desktop Menu -->
+            <div class="hidden md:flex space-x-8 text-white">
+                <a href="#tentang" class="hover:text-gray-300 transition-colors">Tentang Kami</a>
+                <a href="#manfaat" class="hover:text-gray-300 transition-colors">Manfaat</a>
+                <!-- Dropdown Unit Usaha -->
+                <div class="relative" id="toko-dropdown-container">
+                    <button id="toko-dropdown-button" class="hover:text-gray-300 transition-colors flex items-center">
+                        Unit Usaha
+                        <svg class="w-4 h-4 ml-1" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg>
+                    </button>
+                    <div id="toko-dropdown-menu" class="absolute hidden bg-white text-gray-700 mt-2 py-2 w-48 rounded-lg shadow-xl z-20">
+                        <a href="toko-sembako.html" class="block px-4 py-2 text-sm hover:bg-gray-100">Toko Sembako</a>
+                        <a href="toko-elektronik.html" class="block px-4 py-2 text-sm hover:bg-gray-100">Toko Elektronik</a>
+                        <a href="toko-aplikasi.html" class="block px-4 py-2 text-sm hover:bg-gray-100">Toko Aplikasi</a>
+                    </div>
+                </div>
+                <a href="#pinjaman" class="hover:text-gray-300 transition-colors">Pinjaman</a>
+                <a href="#shu" class="hover:text-gray-300 transition-colors">SHU</a>
+                <a href="#testimonials" class="hover:text-gray-300 transition-colors">Testimoni</a>
+            </div>
+            <!-- Desktop Auth Buttons -->
+            <div class="hidden md:flex items-center space-x-2">
+                <a href="login.html" class="text-white hover:bg-red-800 transition-colors px-4 py-2 rounded-lg font-semibold">
+                    Masuk
+                </a>
+                <a href="registrasi.html" class="bg-white text-red-900 hover:bg-gray-200 transition-colors px-4 py-2 rounded-lg font-semibold">
+                    Gabung Sekarang
+                </a>
+            </div>
+            <!-- Mobile Menu Button -->
+            <div class="md:hidden">
+                <button id="mobile-menu-button" class="text-white focus:outline-none">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16m-7 6h7"></path></svg>
+                </button>
+            </div>
+        </nav>
+    </header>
+
+    <!-- Mobile Sidebar Menu -->
+    <div id="mobile-sidebar" class="fixed inset-y-0 left-0 w-64 bg-red-900 text-white p-4 space-y-6 transform -translate-x-full transition-transform duration-300 ease-in-out z-50 md:hidden">
+        <div class="flex items-center justify-between p-2 border-b border-red-800 pb-4">
+            <h2 class="text-xl font-bold">Menu</h2>
+            <button id="close-sidebar-button" class="text-white focus:outline-none">&times;</button>
+        </div>
+        <nav class="flex flex-col space-y-1">
+            <a href="#tentang" class="mobile-menu-link block px-3 py-2 rounded-md text-base font-medium hover:bg-red-800">Tentang Kami</a>
+            <a href="#manfaat" class="mobile-menu-link block px-3 py-2 rounded-md text-base font-medium hover:bg-red-800">Manfaat</a>
+            <!-- Mobile Dropdown Unit Usaha -->
+            <div>
+                <button id="mobile-toko-dropdown-button" class="w-full flex justify-between items-center px-3 py-2 rounded-md text-base font-medium hover:bg-red-800">
+                    <span>Unit Usaha</span>
+                    <svg class="w-4 h-4 ml-1 transform transition-transform duration-200" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg>
+                </button>
+                <div id="mobile-toko-dropdown-menu" class="hidden mt-1 pl-6 space-y-1">
+                    <a href="toko-sembako.html" class="mobile-menu-link block px-3 py-2 rounded-md text-sm font-medium hover:bg-red-800">Toko Sembako</a>
+                    <a href="toko-elektronik.html" class="mobile-menu-link block px-3 py-2 rounded-md text-sm font-medium hover:bg-red-800">Toko Elektronik</a>
+                    <a href="toko-aplikasi.html" class="mobile-menu-link block px-3 py-2 rounded-md text-sm font-medium hover:bg-red-800">Toko Aplikasi</a>
+                </div>
+            </div>
+            <a href="#pinjaman" class="mobile-menu-link block px-3 py-2 rounded-md text-base font-medium hover:bg-red-800">Pinjaman</a>
+            <a href="#shu" class="mobile-menu-link block px-3 py-2 rounded-md text-base font-medium hover:bg-red-800">SHU</a>
+            <a href="#testimonials" class="mobile-menu-link block px-3 py-2 rounded-md text-base font-medium hover:bg-red-800">Testimoni</a>
+        </nav>
+        <div class="px-2 py-3 border-t border-red-800 space-y-2">
+            <a href="login.html" class="block text-center w-full text-white hover:bg-red-800 transition-colors px-4 py-2 rounded-lg font-semibold border border-white/50">Masuk</a>
+            <a href="registrasi.html" class="block text-center w-full bg-white text-red-900 hover:bg-gray-200 transition-colors px-4 py-2 rounded-lg font-semibold">Gabung Sekarang</a>
+        </div>
+    </div>
+
+    <!-- Overlay for mobile menu -->
+    <div id="sidebar-overlay" class="fixed inset-0 bg-black bg-opacity-50 z-40 hidden md:hidden"></div>
+
+    <main class="flex-grow">
+        <section id="hero" class="relative bg-cover bg-center py-20 md:py-32" style="background-image: url('https://images.unsplash.com/photo-1521791136064-7986c2920216?q=80&w=2070&auto=format&fit=crop');">
+            <!-- Overlay -->
+            <div class="absolute inset-0 bg-red-900/70"></div>
+            
+            <div class="relative container mx-auto px-6 text-center">
+                <h1 class="text-4xl md:text-6xl font-bold text-white leading-tight">Koperasi Karya Kagum Abadi</h1>
+                <h2 class="mt-4 text-xl md:text-2xl text-gray-200">"Dari Kita, Oleh Kita, Untuk Kesejahteraan Bersama"</h2>
+                <p class="mt-8 max-w-2xl mx-auto text-gray-300">
+                    Selamat datang di KOPKAKA (Koperasi Karya Kagum Abadi)! Kami adalah sebuah koperasi, wadah usaha bersama yang dibangun di atas asas kekeluargaan untuk meningkatkan kemandirian ekonomi dan mempererat solidaritas antar sesama.
+                </p>
+            </div>
+        </section>
+
+        <section id="tentang" class="py-16 bg-cream">
+            <div class="container mx-auto px-6">
+                <!-- Logo Cloud Section -->
+                <div class="mb-16 text-center">
+                    <h3 class="text-lg font-semibold text-gray-600">Dipercaya oleh Perusahaan Terkemuka</h3>
+                    <div id="logo-cloud-container" class="mt-8 w-full inline-flex flex-nowrap overflow-hidden [mask-image:_linear_gradient(to_right,transparent_0,_black_128px,_black_calc(100%-200px),transparent_100%)]">
+                        <ul id="partners-list-1" class="flex items-center justify-center md:justify-start [&_li]:mx-16 [&_img]:h-14 [&_img]:max-w-none animate-infinite-scroll"></ul>
+                        <ul id="partners-list-2" class="flex items-center justify-center md:justify-start [&_li]:mx-16 [&_img]:h-14 [&_img]:max-w-none animate-infinite-scroll" aria-hidden="true"></ul>
+                    </div>
+                </div>
+                <div class="text-center mb-12">
+                    <h2 class="text-3xl font-bold text-accent">Visi & Misi Kami</h2>
+                    <p class="mt-2 text-gray-500">Landasan dan tujuan kami dalam melayani anggota.</p>
+                </div>
+                <div class="grid md:grid-cols-2 gap-8 md:gap-12 items-center">
+                    <!-- Video Section -->
+                    <div class="scroll-animate rounded-lg opacity-0 transform translate-y-5 transition-all duration-700 ease-out overflow-hidden shadow-lg">
+                        <div class="relative w-full pt-[56.25%]"> <!-- 16:9 Aspect Ratio -->
+                            <iframe class="absolute top-0 left-0 w-full h-full" src="https://www.youtube.com/embed/evqMo7H6puo" title="YouTube video player" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>
+                        </div>
+                    </div>
+                    <!-- Visi & Misi Section -->
+                    <div class="scroll-animate p-8 md:p-12 opacity-0 transform translate-y-5 transition-all duration-700 ease-out" style="transition-delay: 200ms;">
+                        <h3 class="text-2xl font-semibold mb-4 text-accent">VISI</h3>
+                        <p class="text-lg italic text-gray-600 mb-8 border-b border-accent/20 pb-6">
+                            "Menjadi koperasi yang mandiri, profesional, dan terpercaya dalam meningkatkan kesejahteraan ekonomi dan sosial seluruh anggota."
+                        </p>
+                        <h3 class="text-2xl font-semibold mb-4 text-accent">MISI</h3>
+                        <ul class="space-y-4 list-inside">
+                            <li class="flex items-start"><span class="text-red-500 mr-3 mt-1">&#10004;</span> Menyelenggarakan usaha simpan pinjam yang mudah, aman, dan menguntungkan.</li>
+                            <li class="flex items-start"><span class="text-red-500 mr-3 mt-1">&#10004;</span> Menyediakan barang dan jasa kebutuhan anggota dengan harga yang kompetitif.</li>
+                            <li class="flex items-start"><span class="text-red-500 mr-3 mt-1">&#10004;</span> Meningkatkan pengetahuan anggota dalam bidang keuangan melalui edukasi.</li>
+                            <li class="flex items-start"><span class="text-red-500 mr-3 mt-1">&#10004;</span> Membangun solidaritas dan rasa kekeluargaan di antara anggota.</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <section id="manfaat" class="py-16 bg-cream">
+            <div class="container mx-auto px-6">
+                <div class="text-center mb-12">
+                    <h2 class="text-3xl font-bold text-accent">Manfaat Bergabung Dengan Koperasi</h2>
+                    <p class="mt-2 text-gray-500">Anda bukan hanya nasabah, Anda adalah pemilik.</p>
+                </div>
+                <div class="grid md:grid-cols-2 gap-8">
+                    <div class="scroll-animate bg-white p-8 rounded-lg shadow-md opacity-0 transform translate-y-5 transition-all duration-700 ease-out">
+                        <h3 class="text-2xl font-semibold mb-4 text-accent">Manfaat Ekonomi</h3>
+                        <ul class="space-y-4 text-gray-600">
+                            <li class="flex items-start">
+                                <svg class="w-6 h-6 text-red-500 mr-3 flex-shrink-0" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M2.25 18.75a60.07 60.07 0 0115.797 2.101c.727.198 1.453-.342 1.453-1.096V18.75M3.75 4.5v.75A.75.75 0 013 6h-.75m0 0v-.375c0-.621.504-1.125 1.125-1.125H20.25M2.25 6v9m18-10.5v.75c0 .414.336.75.75.75h.75m-1.5-1.5h.375c.621 0 1.125.504 1.125 1.125v9.75c0 .621-.504 1.125-1.125 1.125h-.375m1.5-1.5H21a.75.75 0 00-.75.75v.75m0 0H3.75m0 0h-.375a1.125 1.125 0 01-1.125-1.125V6.375c0-.621.504-1.125 1.125-1.125h.375m18 0h-4.5m-4.5 0h-4.5m0 0h-4.5m0 0h-4.5m4.5 0h.375a1.125 1.125 0 011.125 1.125v9.75c0 .621-.504 1.125-1.125 1.125h-.375m4.5 0h-4.5" /></svg>
+                                <span><strong>Pendanaan Mudah & Murah:</strong> Akses pinjaman dengan bunga ringan.</span>
+                            </li>
+                            <li class="flex items-start">
+                                <svg class="w-6 h-6 text-red-500 mr-3 flex-shrink-0" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M3.75 3v11.25A2.25 2.25 0 006 16.5h12A2.25 2.25 0 0020.25 14.25V3M3.75 21h16.5M16.5 3.75h.008v.008h-.008V3.75z" /></svg>
+                                <span><strong>Investasi Masa Depan:</strong> Simpanan Anda adalah modal yang terus bertumbuh.</span>
+                            </li>
+                            <li class="flex items-start">
+                                <svg class="w-6 h-6 text-red-500 mr-3 flex-shrink-0" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M21 11.25v8.25a8.25 8.25 0 01-16.5 0v-8.25a8.25 8.25 0 0116.5 0z" /><path stroke-linecap="round" stroke-linejoin="round" d="M12 15.75a3.75 3.75 0 003.75-3.75V4.5a3.75 3.75 0 00-7.5 0v7.5A3.75 3.75 0 0012 15.75z" /></svg>
+                                <span><strong>Bagi Hasil (SHU):</strong> Mendapat bagian keuntungan koperasi setiap tahun.</span>
+                            </li>
+                            <li class="flex items-start">
+                                <svg class="w-6 h-6 text-red-500 mr-3 flex-shrink-0" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M2.25 3h1.386c.51 0 .955.343 1.087.835l.383 1.437M7.5 14.25a3 3 0 00-3 3h15.75m-12.75-3h11.218c.51 0 .962-.343 1.087-.835l.383-1.437M7.5 14.25L5.106 5.162A1.125 1.125 0 016.227 4h11.546a1.125 1.125 0 011.122 1.162L18 14.25M7.5 14.25h10.5M16.5 18a1.5 1.5 0 11-3 0 1.5 1.5 0 013 0zM6.75 18a1.5 1.5 0 11-3 0 1.5 1.5 0 013 0z" /></svg>
+                                <span><strong>Belanja Hemat:</strong> Harga khusus anggota di unit usaha koperasi.</span>
+                            </li>
+                        </ul>
+                    </div>
+                    <div class="scroll-animate bg-white p-8 rounded-lg shadow-md opacity-0 transform translate-y-5 transition-all duration-700 ease-out" style="transition-delay: 200ms;">
+                        <h3 class="text-2xl font-semibold mb-4 text-accent">Manfaat Sosial & Pendidikan</h3>
+                         <ul class="space-y-4 text-gray-600">
+                            <li class="flex items-start">
+                                <svg class="w-6 h-6 text-red-500 mr-3 flex-shrink-0" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M18 18.72a9.094 9.094 0 003.741-.479 3 3 0 00-4.682-2.72m-7.5-2.962c.51.056 1.02.083 1.53.083a12.045 12.045 0 01-3.071 1.817M8.409 15.182A11.965 11.965 0 006 15.182m0 0A11.965 11.965 0 016 15.182m0 0A11.965 11.965 0 016 15.182M12 15.182A11.965 11.965 0 0114.591 15.182m0 0A11.965 11.965 0 0012 15.182m2.591 0A11.965 11.965 0 0112 15.182m-3.071-1.817a12.045 12.045 0 00-3.071 1.817M4.5 12.75a.75.75 0 01.75-.75h13.5a.75.75 0 010 1.5H5.25a.75.75 0 01-.75-.75z" /></svg>
+                                <span><strong>Mempererat Silaturahmi:</strong> Wadah interaksi antar rekan kerja.</span>
+                            </li>
+                            <li class="flex items-start">
+                                <svg class="w-6 h-6 text-red-500 mr-3 flex-shrink-0" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M4.26 10.147a60.436 60.436 0 00-.491 6.347A48.627 48.627 0 0112 20.904a48.627 48.627 0 018.232-4.41 60.46 60.46 0 00-.491-6.347m-15.482 0a50.57 50.57 0 00-2.658-.813A59.905 59.905 0 0112 3.493a59.902 59.902 0 0110.399 5.84c-.896.248-1.783.52-2.658.814m-15.482 0l-3.172 3.172a1.125 1.125 0 001.591 1.591l9.8-9.8a1.125 1.125 0 000-1.591l-3.172-3.172a1.125 1.125 0 00-1.591 1.591l3.172 3.172z" /></svg>
+                                <span><strong>Literasi Keuangan:</strong> Edukasi dan pelatihan pengelolaan keuangan.</span>
+                            </li>
+                            <li class="flex items-start">
+                                <svg class="w-6 h-6 text-red-500 mr-3 flex-shrink-0" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M21 8.25c0-2.485-2.099-4.5-4.688-4.5-1.935 0-3.597 1.126-4.312 2.733-.715-1.607-2.377-2.733-4.313-2.733C5.1 3.75 3 5.765 3 8.25c0 7.22 9 12 9 12s9-4.78 9-12z" /></svg>
+                                <span><strong>Semangat Gotong Royong:</strong> Saling membantu melalui sistem milik bersama.</span>
+                            </li>
+                        </ul>
+                    </div>
+                </div>
+
+            </div>
+        </section>
+
+        <section id="pinjaman" class="py-16 bg-cream">
+            <div class="container mx-auto px-6">
+                 <div class="text-center mb-12">
+                    <h2 class="text-3xl font-bold text-accent">Aturan & Simulasi Pinjaman</h2>
+                    <p class="mt-2 text-gray-500">Tujuan kami adalah membantu, bukan memberatkan.</p>
+                </div>
+                <div class="grid lg:grid-cols-2 gap-12 items-center">
+                    <!-- Gambar Ilustrasi -->
+                    <div class="scroll-animate opacity-0 transform translate-y-5 transition-all duration-700 ease-out rounded-lg shadow-md overflow-hidden">
+                        <img src="https://assets-a1.kompasiana.com/items/album/2016/05/16/keuangan-5739e6acf07e61cc0a631ea1.jpg" alt="Ilustrasi perencanaan keuangan" class="w-full h-full object-cover">
+                    </div>
+
+                    <!-- Kalkulator Simulasi -->
+                    <div class="w-full bg-white p-8 rounded-lg shadow-md scroll-animate opacity-0 transform translate-y-5 transition-all duration-700 ease-out" style="transition-delay: 200ms;">
+                        <h3 class="text-xl font-semibold mb-2 text-accent">Simulasi Pinjaman Interaktif</h3>
+                        <p class="text-sm text-gray-500 mb-6">Geser slider atau isi kolom untuk melihat estimasi plafon dan cicilan. Plafon pinjaman dihitung sebesar <strong>1.5x dari total simpanan</strong> Anda.</p>
+
+                        <!-- HASIL KALKULASI -->
+                        <div class="grid grid-cols-2 gap-4 mb-6 text-center">
+                            <div id="result" class="bg-red-50 p-4 rounded-lg">
+                                <p class="text-sm text-gray-600">Estimasi Plafon</p>
+                                <p id="plafonText" class="text-xl md:text-2xl font-bold text-accent">Rp 0</p>
+                            </div>
+                            <div id="cicilan" class="bg-red-50 p-4 rounded-lg">
+                                <p class="text-sm text-gray-600">Estimasi Cicilan</p>
+                                <p id="cicilanText" class="text-xl md:text-2xl font-bold text-accent">Rp 0</p>
+                            </div>
+                        </div>
+
+                        <!-- INPUT FORM -->
+                        <div class="space-y-6">
+                            <div>
+                                <label for="savingsInput" class="block text-sm font-medium text-gray-700">Total Simpanan Anda (Rp)</label>
+                                <input type="range" id="savingsSlider" min="600000" max="50000000" step="100000" value="600000" class="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer slider-thumb">
+                                <input type="text" inputmode="numeric" id="savingsInput" value="600.000" class="mt-2 block w-full px-3 py-2 bg-white border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-red-500 focus:border-red-500 text-center font-semibold">
+                            </div>
+                            <div>
+                                <label for="tenor" class="block text-sm font-medium text-gray-700">Tenor Pinjaman (Bulan)</label>
+                                <div id="tenor-options" class="grid grid-cols-6 gap-2 mt-2">
+                                    <button data-tenor="1" class="tenor-btn border border-gray-300 py-2 rounded-md text-sm">1</button>
+                                    <button data-tenor="2" class="tenor-btn border border-gray-300 py-2 rounded-md text-sm">2</button>
+                                    <button data-tenor="3" class="tenor-btn border border-gray-300 py-2 rounded-md text-sm">3</button>
+                                    <button data-tenor="4" class="tenor-btn border border-gray-300 py-2 rounded-md text-sm">4</button>
+                                    <button data-tenor="5" class="tenor-btn border border-gray-300 py-2 rounded-md text-sm">5</button>
+                                    <button data-tenor="6" class="tenor-btn border border-gray-300 py-2 rounded-md text-sm active">6</button>
+                                </div>
+                                <input type="hidden" id="tenor" value="6">
+                            </div>
+                            <div>
+                                <label for="interest-rate" class="block text-sm font-medium text-gray-700">Suku Bunga Tahunan (%)</label>
+                                <input type="number" id="interest-rate" class="mt-1 block w-full px-3 py-2 bg-white border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-red-500 focus:border-red-500 text-center font-semibold" value="24" step="0.1" min="0">
+                            </div>
+                        </div>
+                        <p class="text-xs text-gray-400 mt-6 text-center">*) Hasil ini adalah estimasi berdasarkan aturan umum dan dapat berbeda dari persetujuan akhir.</p>
+                    </div>
+                </div>
+                <!-- New section for Amortization Table -->
+                <div id="amortization-section" class="mt-8 bg-white p-8 rounded-lg shadow-md hidden">
+                    <div class="flex justify-between items-center mb-4">
+                        <h3 class="text-xl font-semibold text-accent">Estimasi Rincian Cicilan</h3>
+                        <button id="download-amortization-pdf-btn" class="bg-green-600 text-white text-sm px-3 py-2 rounded-md hover:bg-green-700">Unduh PDF</button>
+                    </div>
+                    <div class="overflow-x-auto">
+                        <table class="min-w-full divide-y divide-gray-200">
+                            <thead class="bg-gray-50">
+                                <tr>
+                                    <th scope="col" class="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">Bulan</th>
+                                    <th scope="col" class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Cicilan Pokok</th>
+                                    <th scope="col" class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Bunga</th>
+                                    <th scope="col" class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Total Cicilan</th>
+                                    <th scope="col" class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Sisa Pinjaman</th>
+                                </tr>
+                            </thead>
+                            <tbody id="amortization-table-body" class="bg-white divide-y divide-gray-200">
+                                <!-- Table rows will be inserted here by JavaScript -->
+                            </tbody>
+                            <tfoot id="amortization-table-footer" class="bg-gray-50 font-bold">
+                                <!-- Total row will be inserted here by JavaScript -->
+                            </tfoot>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <section id="shu" class="py-16 bg-white">
+            <div class="container mx-auto px-6">
+                <div class="text-center mb-12">
+                    <h2 class="text-3xl font-bold text-accent">Sisa Hasil Usaha (SHU)</h2>
+                    <p class="mt-2 text-gray-500">Pahami bagaimana keuntungan koperasi dibagikan kembali kepada Anda sebagai anggota.</p>
+                </div>
+                <div class="grid md:grid-cols-2 gap-12 items-start">
+                    <!-- Penjelasan SHU -->
+                    <div>
+                        <h3 class="text-xl font-semibold mb-4 text-accent">Apa itu SHU?</h3>
+                        <p class="text-gray-600 mb-4">
+                            Sisa Hasil Usaha (SHU) adalah pendapatan koperasi yang diperoleh dalam satu tahun buku dikurangi dengan biaya, penyusutan, dan kewajiban lainnya termasuk pajak. Sederhananya, ini adalah "laba bersih" koperasi yang akan dibagikan kembali kepada anggota.
+                        </p>
+                        <h3 class="text-xl font-semibold mb-4 text-accent">Bagaimana SHU Dibagikan?</h3>
+                        <p class="text-gray-600 mb-4">
+                            SHU yang diterima setiap anggota bersumber dari dua kegiatan ekonomi yang dilakukan anggota sendiri:
+                        </p>
+                        <ul class="space-y-4 text-gray-600">
+                            <li class="flex items-start">
+                                <svg class="w-6 h-6 text-green-500 mr-3 flex-shrink-0" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                                <span><strong>SHU atas Jasa Usaha:</strong> Bagian ini diterima berdasarkan kontribusi transaksi Anda terhadap koperasi. Semakin sering Anda bertransaksi (misalnya, meminjam), semakin besar SHU jasa yang Anda dapatkan.</span>
+                            </li>
+                            <li class="flex items-start">
+                                <svg class="w-6 h-6 text-green-500 mr-3 flex-shrink-0" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                                <span><strong>SHU atas Jasa Modal:</strong> Bagian ini diterima berdasarkan jumlah simpanan (Simpanan Pokok dan Wajib) yang Anda miliki. Ini adalah imbal hasil dari modal yang Anda tanamkan di koperasi.</span>
+                            </li>
+                        </ul>
+                        <p class="mt-4 text-sm italic text-gray-500">
+                            Pembagian ini mencerminkan asas keadilan, di mana anggota yang aktif bertransaksi dan memiliki modal lebih besar akan mendapatkan porsi SHU yang lebih besar pula.
+                        </p>
+                        <p class="mt-4 text-xs text-gray-500">
+                            Dasar aturan pembagian SHU ini mengacu pada <a href="https://www.kemhan.go.id/itjen/wp-content/uploads/2022/09/UU-Nomor-17-Tahun-2012_ttg-Koperasi.pdf" target="_blank" rel="noopener noreferrer" class="text-red-600 hover:underline">Menurut Undang-Undang Nomor 17 Tahun 2012</a>.
+                        </p>
+                        <!-- Gambar Tambahan SHU -->
+                        <div class="mt-8 scroll-animate opacity-0 transform translate-y-5 transition-all duration-700 ease-out" style="transition-delay: 200ms;">
+                            <img src="https://images.unsplash.com/photo-1554224155-8d04cb21cd6c?q=80&w=2070&auto=format&fit=crop" alt="Ilustrasi pembagian hasil usaha" class="rounded-lg shadow-lg w-full h-auto max-h-[250px] object-cover">
+                        </div>
+                    </div>
+                    <!-- Simulasi SHU -->
+                    <div class="w-full bg-gray-50 p-8 rounded-lg shadow-md">
+                        <h3 class="text-xl font-semibold mb-2 text-accent">Simulasi Perhitungan SHU</h3>
+                        <p class="text-sm text-gray-500 mb-6">Masukkan data di bawah untuk melihat estimasi SHU yang akan Anda terima di akhir tahun. Angka di bawah adalah contoh.</p>
+
+                        <!-- HASIL KALKULASI -->
+                        <div class="bg-green-100 border border-green-200 p-4 rounded-lg mb-6">
+                            <p class="text-sm text-center text-green-800 mb-2">Estimasi SHU yang Anda Terima</p>
+                            <p id="shuTotalText" class="text-3xl font-bold text-green-700 text-center">Rp 0</p>
+                            <div class="grid grid-cols-2 gap-2 mt-2 text-center text-xs">
+                                <div class="bg-white/50 p-2 rounded">
+                                    <p class="text-gray-600">Dari Jasa</p>
+                                    <p id="shuJasaText" class="font-semibold text-green-800">Rp 0</p>
+                                </div>
+                                <div class="bg-white/50 p-2 rounded">
+                                    <p class="text-gray-600">Dari Modal</p>
+                                    <p id="shuModalText" class="font-semibold text-green-800">Rp 0</p>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- INPUT FORM -->
+                        <div class="space-y-4 text-sm">
+                            <div>
+                                <label for="shuTotalKoperasi" class="block font-medium text-gray-700">Total SHU Koperasi Tahun Ini (Rp)</label>
+                                <input type="text" inputmode="numeric" id="shuTotalKoperasi" value="50000000" class="shu-input mt-1 block w-full px-3 py-2 bg-white border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-red-500 focus:border-red-500">
+                            </div>
+                            <div class="grid grid-cols-2 gap-4">
+                                <div>
+                                    <label for="shuPersenJasa" class="block font-medium text-gray-700">% SHU untuk Jasa</label>
+                                    <input type="number" id="shuPersenJasa" value="40" class="shu-input mt-1 block w-full px-3 py-2 bg-white border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-red-500 focus:border-red-500">
+                                </div>
+                                <div>
+                                    <label for="shuPersenModal" class="block font-medium text-gray-700">% SHU untuk Modal</label>
+                                    <input type="number" id="shuPersenModal" value="20" class="shu-input mt-1 block w-full px-3 py-2 bg-white border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-red-500 focus:border-red-500">
+                                </div>
+                            </div>
+                            <div class="pt-2 border-t">
+                                <label for="shuTotalTransaksi" class="block font-medium text-gray-700">Total Transaksi Seluruh Anggota (Rp)</label>
+                                <input type="text" inputmode="numeric" id="shuTotalTransaksi" value="500000000" class="shu-input mt-1 block w-full px-3 py-2 bg-white border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-red-500 focus:border-red-500">
+                            </div>
+                            <div>
+                                <label for="shuTotalSimpanan" class="block font-medium text-gray-700">Total Simpanan Seluruh Anggota (Rp)</label>
+                                <input type="text" inputmode="numeric" id="shuTotalSimpanan" value="1000000000" class="shu-input mt-1 block w-full px-3 py-2 bg-white border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-red-500 focus:border-red-500">
+                            </div>
+                            <div class="pt-2 border-t">
+                                <label for="shuTransaksiAnda" class="block font-medium text-gray-700">Total Transaksi Anda (Rp)</label>
+                                <input type="text" inputmode="numeric" id="shuTransaksiAnda" value="5000000" class="shu-input mt-1 block w-full px-3 py-2 bg-white border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-red-500 focus:border-red-500">
+                            </div>
+                            <div>
+                                <label for="shuSimpananAnda" class="block font-medium text-gray-700">Total Simpanan Anda (Rp)</label>
+                                <input type="text" inputmode="numeric" id="shuSimpananAnda" value="2500000" class="shu-input mt-1 block w-full px-3 py-2 bg-white border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-red-500 focus:border-red-500">
+                            </div>
+                        </div>
+                        <p class="text-xs text-gray-400 mt-6 text-center">*) Hasil ini adalah estimasi. Persentase dan total SHU ditetapkan dalam Rapat Anggota Tahunan (RAT).</p>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <section id="bergabung" class="py-16 bg-accent text-white">
+            <div class="container mx-auto px-6 text-center">
+                <h2 class="text-3xl font-bold">Mari Bergabung & Tumbuh Bersama!</h2>
+                <p class="mt-4 max-w-2xl mx-auto">Jadilah bagian dari keluarga besar KOPKAKA dan nikmati manfaatnya.</p>
+                <div class="mt-8 grid md:grid-cols-3 gap-8 max-w-4xl mx-auto">
+                    <div class="bg-white/20 p-6 rounded-lg">
+                        <p class="text-5xl">1</p>
+                        <h3 class="font-semibold mt-2">Isi Formulir</h3>
+                        <p class="text-sm opacity-80">Dapatkan dan isi formulir pendaftaran yang tersedia di sekretariat.</p>
+                    </div>
+                    <div class="bg-white/20 p-6 rounded-lg">
+                         <p class="text-5xl">2</p>
+                        <h3 class="font-semibold mt-2">Lengkapi Dokumen</h3>
+                        <p class="text-sm opacity-80">Lampirkan fotokopi KTP & KK Anda.</p>
+                    </div>
+                    <div class="bg-white/20 p-6 rounded-lg">
+                        <p class="text-5xl">3</p>
+                        <h3 class="font-semibold mt-2">Bayar Simpanan Pokok</h3>
+                        <p class="text-sm opacity-80">Selesaikan pembayaran simpanan pokok untuk mengaktifkan keanggotaan.</p>
+                    </div>
+                </div>
+
+                <div class="mt-12">
+                    <h3 class="text-xl font-semibold">Hubungi Kami</h3>
+                    <p class="mt-2 opacity-80">Sekretariat Koperasi: Hotel Zodiak Kebon Kawung - Jl Kebon Kawung No. 54</p>
+                    <p class="opacity-80">Email: admin@kopkaka.com</p>
+                </div>
+            </div>
+        </section>
+
+        <section id="testimonials" class="py-16 bg-white">
+            <div class="container mx-auto px-6">
+                <div class="text-center mb-12">
+                    <h2 class="text-3xl font-bold text-accent">Apa Kata Anggota Kami?</h2>
+                    <p class="mt-2 text-gray-500">Pengalaman nyata dari keluarga besar KOPKAKA.</p>
+                </div>
+                <div id="testimonials-container" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+                    <!-- Testimonials will be loaded here by JavaScript -->
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <footer class="bg-gray-800 text-white py-8">
+        <div class="container mx-auto px-6 text-center">
+            <div class="mb-4">
+                <a href="syarat-ketentuan.html" class="text-gray-400 hover:text-white px-3 text-sm">Syarat & Ketentuan</a>
+                <span class="text-gray-500">|</span>
+                <a href="kebijakan-privasi.html" class="text-gray-400 hover:text-white px-3 text-sm">Kebijakan Privasi</a>
+                <span class="text-gray-500">|</span>
+                <a href="prosedur-belanja.html" class="text-gray-400 hover:text-white px-3 text-sm">Prosedur Belanja</a>
+            </div>
+            <p class="text-sm text-gray-500">&copy; 2025 Koperasi Karya Kagum Abadi. All Rights Reserved.</p>
+        </div>
+    </footer>
+
+    <!-- Tautan ke file JavaScript eksternal -->
+    <script type="module" src="script.js" defer></script>
+
+    <!-- Floating WhatsApp Icon -->
+    <a href="https://wa.me/6285121003580" target="_blank" rel="noopener noreferrer" class="fixed bottom-5 right-5 bg-green-500 text-white p-2.5 rounded-full shadow-lg hover:bg-green-600 transition-transform transform hover:scale-110 z-50">
+        <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" viewBox="0 0 24 24" fill="currentColor">
+            <path d="M.057 24l1.687-6.163c-1.041-1.804-1.588-3.849-1.587-5.946.003-6.556 5.338-11.891 11.893-11.891 3.181.001 6.167 1.24 8.413 3.488 2.245 2.248 3.487 5.235 3.487 8.413 0 6.557-5.338 11.892-11.893 11.892-1.99-.001-3.951-.5-5.688-1.448l-6.305 1.654zm6.597-3.807c1.676.995 3.276 1.591 5.392 1.592 5.448 0 9.886-4.434 9.889-9.885.002-5.462-4.415-9.89-9.881-9.892-5.452 0-9.887 4.434-9.889 9.886-.001 2.269.655 4.357 1.849 6.067l-1.254 4.587 4.68-1.231zm9.35-6.413c-.273-.136-1.612-.795-1.862-.885-.25-.09-.433-.136-.617.137-.182.272-.703.885-.861 1.063-.159.177-.319.197-.599.06-.28-.136-1.187-.44-2.259-1.385-.835-.734-1.395-1.646-1.554-1.915-.16-.272-.017-.42.119-.557.121-.121.273-.318.41-.478.137-.16.182-.272.273-.455.09-.182.045-.341-.045-.477-.09-.137-.617-1.479-.841-2.015-.224-.536-.448-.463-.617-.472-.15-.01-.318-.01-.477-.01-.16 0-.42.06-.644.318-.224.252-.861.84-.861 2.015s.885 2.338 1.004 2.515c.12.177 1.739 2.66 4.225 3.725 2.487 1.065 2.487.71 2.921.684.433-.026 1.365-.557 1.554-1.096.19-.54.19-.995.136-1.096-.054-.101-.199-.16-.433-.295z"/>
+        </svg>
+    </a>
+    <!-- Floating TikTok Icon -->
+    <a href="https://www.tiktok.com/@kopkaka.com" target="_blank" rel="noopener noreferrer" class="fixed bottom-[4.75rem] right-5 bg-black text-white p-2.5 rounded-full shadow-lg hover:bg-gray-800 transition-transform transform hover:scale-110 z-50">
+        <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" viewBox="0 0 24 24" fill="currentColor">
+            <path d="M12.525.02c1.31-.02 2.61-.01 3.91-.02.08 1.53.63 3.09 1.75 4.17 1.12 1.11 2.7 1.62 4.24 1.79v4.03c-1.44-.05-2.89-.35-4.2-.97-.57-.26-1.1-.59-1.62-.93-.01 2.92.01 5.84-.02 8.75-.08 1.4-.54 2.79-1.35 3.94-1.31 1.92-3.58 3.17-5.91 3.21-1.43.08-2.86-.31-4.08-1.03-2.02-1.19-3.44-3.37-3.65-5.71-.02-.5-.03-1-.01-1.49.18-1.9 1.12-3.72 2.58-4.96 1.66-1.44 3.98-2.13 6.15-1.72.02 1.48-.04 2.96-.04 4.44-.99-.32-2.15-.23-3.02.37-.63.41-1.11 1.04-1.36 1.73-.21.52-.35 1.08-.46 1.63.2-.01.4-.01.6-.02.6-.02 1.19-.01 1.79-.01 1.25 0 2.49-.01 3.74-.02.01-1.49.01-2.99.01-4.48z"/>
+        </svg>
+    </a>
+    <!-- Floating Instagram Icon -->
+    <a href="https://www.instagram.com/koperasi_karya_kagum_abadi/" target="_blank" rel="noopener noreferrer" class="fixed bottom-[8.5rem] right-5 bg-gradient-to-br from-purple-400 via-pink-500 to-red-500 text-white p-2.5 rounded-full shadow-lg hover:from-purple-500 hover:to-red-600 transition-transform transform hover:scale-110 z-50">
+        <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" viewBox="0 0 24 24" fill="currentColor">
+            <path d="M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.07 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069zm0-2.163c-3.259 0-3.667.014-4.947.072-4.358.2-6.78 2.618-6.98 6.98-.059 1.281-.073 1.689-.073 4.948 0 3.259.014 3.668.072 4.948.2 4.358 2.618 6.78 6.98 6.98 1.281.058 1.689.072 4.948.072 3.259 0 3.668-.014 4.948-.072 4.354-.2 6.782-2.618 6.979-6.98.059-1.28.073-1.689.073-4.948 0-3.259-.014-3.667-.072-4.947-.196-4.354-2.617-6.78-6.979-6.98-1.281-.059-1.69-.073-4.949-.073zm0 5.838c-3.403 0-6.162 2.759-6.162 6.162s2.759 6.162 6.162 6.162 6.162-2.759 6.162-6.162-2.759-6.162-6.162-6.162zm0 10.162c-2.209 0-4-1.79-4-4s1.791-4 4-4 4 1.79 4 4-1.791 4-4 4zm6.406-11.845c-.796 0-1.441.645-1.441 1.44s.645 1.44 1.441 1.44c.795 0 1.439-.645 1.439-1.44s-.644-1.44-1.439-1.44z"/>
+        </svg>
+    </a>
+</body>
+</html>

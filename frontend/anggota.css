@@ -1,0 +1,25 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+    html {
+        scroll-behavior: smooth;
+    }
+    body {
+        font-family: 'Inter', sans-serif;
+    }
+}
+
+@layer components {
+    .sidebar-link.active {
+        background-color: #991b1b; /* Equivalent to bg-red-800 */
+        color: #ffffff; /* Equivalent to text-white */
+    }
+    .content-section {
+        display: none;
+    }
+    .content-section.active {
+        display: block;
+    }
+}
