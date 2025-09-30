@@ -845,85 +845,260 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     };
 
-    const setupLoanApplicationForm = () => {
+    const generateAmortizationForModal = (plafon, tenor, annualInterestRate) => {
+        const monthlyInterestRate = (annualInterestRate / 100) / 12;
+        const pokokPerBulan = plafon / tenor;
+        let sisaPinjaman = plafon;
+        let totalCicilan = 0;
+        let tableHtml = `<table class="min-w-full text-xs">
+            <thead class="bg-gray-50 sticky top-0"><tr class="text-left">
+                <th class="p-2">Bln</th><th class="p-2 text-right">Pokok</th><th class="p-2 text-right">Bunga</th><th class="p-2 text-right">Total</th>
+            </tr></thead><tbody class="divide-y">`;
+
+        for (let i = 1; i <= tenor; i++) {
+            const bungaBulanIni = sisaPinjaman * monthlyInterestRate;
+            const cicilanBulanIni = pokokPerBulan + bungaBulanIni;
+            sisaPinjaman -= pokokPerBulan;
+            totalCicilan += cicilanBulanIni;
+            tableHtml += `<tr>
+                <td class="p-2">${i}</td>
+                <td class="p-2 text-right">${formatCurrency(pokokPerBulan)}</td>
+                <td class="p-2 text-right">${formatCurrency(bungaBulanIni)}</td>
+                <td class="p-2 text-right font-semibold">${formatCurrency(cicilanBulanIni)}</td>
+            </tr>`;
+        }
+        tableHtml += `</tbody></table>`;
+        return {
+            tableHtml,
+            totalRepayment: totalCicilan
+        };
+    };
+
+    const generateAndPrintCommitmentPDF = async (loanData, signatureDataUrl) => {
+        const { jsPDF } = window.jspdf;
+        const doc = new jsPDF();
+
+        const { summary, installments } = loanData;
+
+        // --- Header ---
+        const logoImg = new Image();
+        logoImg.src = 'logo/logo.png';
+        await new Promise(resolve => logoImg.onload = resolve);
+        doc.addImage(logoImg, 'PNG', 15, 15, 20, 20);
+
+        doc.setFont('helvetica', 'bold');
+        doc.setFontSize(14);
+        doc.text('Surat Pernyataan & Komitmen Pinjaman', 40, 22);
+        doc.setFontSize(10);
+        doc.setFont('helvetica', 'normal');
+        doc.text('Koperasi Karya Kagum Abadi', 40, 28);
+        doc.setLineWidth(0.5);
+        doc.line(15, 35, 195, 35);
+
+        // --- Member Details ---
+        let yPos = 45;
+        doc.setFontSize(11);
+        doc.text('Saya yang bertanda tangan di bawah ini:', 15, yPos);
+        yPos += 7;
+        doc.text('Nama', 15, yPos);
+        doc.text(`: ${summary.memberName}`, 55, yPos);
+        yPos += 7;
+        doc.text('No. Anggota', 15, yPos);
+        doc.text(`: ${summary.cooperativeNumber || 'N/A'}`, 55, yPos);
+
+        // --- Loan Details ---
+        yPos += 10;
+        doc.text('Dengan ini menyatakan bahwa saya mengajukan pinjaman kepada KOPKAKA dengan rincian sebagai berikut:', 15, yPos);
+        yPos += 7;
+        doc.setFont('helvetica', 'bold');
+        doc.text('Jumlah Pinjaman', 15, yPos);
+        doc.text(`: ${formatCurrency(summary.amount)}`, 55, yPos);
+        yPos += 7;
+        doc.setFont('helvetica', 'normal');
+        doc.text('Produk Pinjaman', 15, yPos);
+        doc.text(`: ${summary.loanTypeName} - ${summary.tenor} bulan`, 55, yPos);
+        yPos += 7;
+        doc.setFont('helvetica', 'bold');
+        doc.text('Total Pengembalian', 15, yPos);
+        const totalRepayment = installments.reduce((sum, inst) => sum + parseFloat(inst.amount), 0);
+        doc.text(`: ${formatCurrency(totalRepayment)}`, 55, yPos);
+
+        // --- Amortization Table ---
+        yPos += 10;
+        doc.setFont('helvetica', 'bold');
+        doc.text('Estimasi Jadwal Angsuran:', 15, yPos);
+        yPos += 2;
+
+        const tableBody = installments.map(inst => [
+            inst.installmentNumber,
+            formatCurrency(inst.principal),
+            formatCurrency(inst.interest),
+            formatCurrency(inst.amount)
+        ]);
+
+        doc.autoTable({
+            startY: yPos,
+            head: [['Bulan', 'Pokok', 'Bunga', 'Total']],
+            body: tableBody,
+            theme: 'grid',
+            headStyles: { fillColor: [127, 29, 29] }, // KOPKAKA Red
+            styles: { fontSize: 9 },
+            columnStyles: { 1: { halign: 'right' }, 2: { halign: 'right' }, 3: { halign: 'right' } }
+        });
+
+        yPos = doc.lastAutoTable.finalY + 10;
+
+        // --- Closing Statements & Signature ---
+        doc.setFontSize(10);
+        doc.text('Saya telah membaca, memahami, dan setuju untuk mematuhi semua syarat dan ketentuan pinjaman yang berlaku di KOPKAKA. Saya bersedia untuk melunasi pinjaman sesuai dengan jadwal angsuran yang telah ditetapkan.', 15, yPos, { maxWidth: 180 });
+        yPos += 15;
+        doc.text('Surat pernyataan ini saya buat dengan sadar dan tanpa ada paksaan dari pihak manapun.', 15, yPos);
+        yPos += 15;
+        doc.text(`Bandung, ${formatDate(summary.startDate)}`, 140, yPos);
+        yPos += 7;
+        doc.text('Hormat saya,', 140, yPos);
+        yPos += 5;
+        doc.addImage(signatureDataUrl, 'PNG', 140, yPos, 50, 25);
+        yPos += 30;
+        doc.setLineWidth(0.2);
+        doc.line(140, yPos, 190, yPos);
+        doc.text(summary.memberName, 140, yPos + 5);
+
+        // --- Save the PDF ---
+        doc.save(`Surat_Komitmen_Pinjaman_${summary.memberName}.pdf`);
+    };
+
+    // --- FUNGSI UNTUK MODAL SURAT KOMITMEN PINJAMAN ---
+    const setupLoanCommitmentModal = () => {
+        const modal = document.getElementById('loan-commitment-modal');
         const form = document.getElementById('loan-application-form');
-        if (!form) return;
-    
-        // Prevent adding listener multiple times
-        if (form.dataset.listenerAttached) return;
-        form.dataset.listenerAttached = 'true';
-    
+        if (!modal || !form) return;
+
+        const signaturePadEl = document.getElementById('member-signature-pad');
+        const signaturePad = new SignaturePad(signaturePadEl, { backgroundColor: 'rgb(249, 250, 251)' });
+
+        document.getElementById('clear-member-signature-btn')?.addEventListener('click', () => signaturePad.clear());
+        document.getElementById('cancel-commitment-btn')?.addEventListener('click', () => modal.classList.add('hidden'));
+
         form.addEventListener('submit', async (e) => {
-            e.preventDefault();
-            const submitBtn = form.querySelector('button[type="submit"]');
-    
+            e.preventDefault(); // Mencegah submit form standar
+
+            // Ambil data dari form dan validasi
             const loan_term_id = document.getElementById('loan-term-id').value;
             const amount = document.getElementById('loan-amount').value;
             const bank_name = document.getElementById('bank-name').value;
             const bank_account_number = document.getElementById('bank-account-number').value;
+            const selectedOption = document.getElementById('loan-term-id').options[document.getElementById('loan-term-id').selectedIndex];
+
             const maxLoanAmountText = document.getElementById('max-loan-info').textContent;
-            // Safely parse currency string like "Rp 7.500.000" to a number
             const maxLoanAmount = parseFloat(maxLoanAmountText.replace(/[^0-9,]+/g, "").replace(",", "."));
-    
+
             if (!loan_term_id || !amount || parseFloat(amount) <= 0 || !bank_name.trim() || !bank_account_number.trim()) {
                 alert('Harap lengkapi semua field: Produk Pinjaman, Jumlah, Nama Bank, dan Nomor Rekening.');
                 return;
             }
-    
             if (parseFloat(amount) > maxLoanAmount) {
                 alert(`Jumlah pinjaman melebihi plafon maksimal Anda (${formatCurrency(maxLoanAmount)}).`);
                 return;
             }
 
-            // Menambahkan elemen untuk menampilkan pesan error
-            const errorDisplay = form.querySelector('.form-error-message');
-            if (!errorDisplay) { // Buat elemen jika belum ada
-                form.insertAdjacentHTML('beforeend', '<p class="form-error-message text-red-600 text-sm mt-2 hidden"></p>');
-            }
-    
-            submitBtn.disabled = true;
-            submitBtn.textContent = 'Mengajukan...';
-    
+            // Generate amortization table and total repayment
+            const tenor = parseInt(selectedOption.dataset.tenor, 10);
+            const interestRate = parseFloat(selectedOption.dataset.interest);
+            const { tableHtml, totalRepayment } = generateAmortizationForModal(parseFloat(amount), tenor, interestRate);
+
+            // Isi data ke dalam modal surat komitmen
             try {
-                await apiFetch(`${MEMBER_API_URL}/loans`, {
-                    method: 'POST',
-                    body: JSON.stringify({ loan_term_id, amount, bank_name, bank_account_number }),
-                });
-    
-                alert('Pengajuan pinjaman berhasil dikirim dan sedang menunggu persetujuan.');
-                
-                form.reset();
-                loadPendingApplications(); // Reload the pending applications list
-                document.getElementById('amortization-preview-section').classList.add('hidden');
-                // Setelah berhasil, muat ulang bagian ini untuk menampilkan pesan status pending.
-                loadLoanPaymentSection();
-    
+                // Ambil data profil terbaru untuk memastikan nama dan no. anggota akurat
+                const profile = await apiFetch(`${MEMBER_API_URL}/profile`);
+                document.getElementById('commitment-member-name-text').textContent = `: ${profile.name}`;
+                document.getElementById('commitment-coop-number-text').textContent = `: ${profile.cooperative_number || 'N/A'}`;
+                document.getElementById('commitment-signature-name-text').textContent = profile.name;
             } catch (error) {
-                // PERBAIKAN: Tampilkan pesan error yang lebih spesifik dari backend di dalam form.
-                // Buat elemen error jika belum ada.
-                let errorEl = form.querySelector('.form-error-message');
-                if (!errorEl) {
-                    form.insertAdjacentHTML('beforeend', '<p class="form-error-message text-red-600 text-sm mt-2 hidden"></p>');
-                    errorEl = form.querySelector('.form-error-message');
-                }
-                errorEl.textContent = error.message; // Tampilkan pesan dari backend
-                errorEl.classList.remove('hidden'); // Tampilkan elemen error
-                setTimeout(() => errorEl.classList.add('hidden'), 5000); // Sembunyikan setelah 5 detik
+                console.error("Gagal memuat profil untuk surat komitmen:", error);
+                alert("Gagal memuat data anggota untuk surat komitmen. Silakan coba lagi.");
+            }
+            document.getElementById('commitment-loan-amount-text').textContent = formatCurrency(amount);
+            document.getElementById('commitment-loan-term-text').textContent = selectedOption.text;
+            document.getElementById('commitment-total-repayment-text').textContent = formatCurrency(totalRepayment);
+
+            // Sisipkan tabel angsuran ke dalam modal
+            const amortizationContainer = document.getElementById('commitment-amortization-table-container');
+            amortizationContainer.innerHTML = tableHtml;
+
+            document.getElementById('commitment-current-date').textContent = new Date().toLocaleDateString('id-ID', { day: '2-digit', month: 'long', year: 'numeric' });
+
+            // Tampilkan modal
+            signaturePad.clear();
+            modal.classList.remove('hidden');
+        });
+
+        document.getElementById('confirm-commitment-and-submit-btn')?.addEventListener('click', async () => {
+            if (signaturePad.isEmpty()) {
+                alert('Tanda tangan tidak boleh kosong.');
+                return;
+            }
+
+            const submitBtn = document.getElementById('confirm-commitment-and-submit-btn');
+            submitBtn.disabled = true;
+            submitBtn.textContent = 'Mengirim...';
+
+            const formData = new FormData();
+            formData.append('loan_term_id', document.getElementById('loan-term-id').value);
+            formData.append('amount', document.getElementById('loan-amount').value);
+            formData.append('bank_name', document.getElementById('bank-name').value);
+            formData.append('bank_account_number', document.getElementById('bank-account-number').value);
+
+            // Konversi tanda tangan ke file Blob dan tambahkan ke FormData
+            const signatureDataURL = signaturePad.toDataURL('image/png');
+            const blob = await (await fetch(signatureDataURL)).blob();
+            formData.append('commitment_signature', blob, 'signature.png');
+
+            try {
+                const newLoan = await apiFetch(`${MEMBER_API_URL}/loans`, { method: 'POST', body: formData });
+                
+                alert('Pengajuan pinjaman berhasil dikirim. Bukti pengajuan dalam format PDF akan diunduh.');
+                
+                // Generate and download the PDF instead of printing the window
+                const loanDetailsForPDF = await apiFetch(`${MEMBER_API_URL}/loans/${newLoan.id}/details`);
+                await generateAndPrintCommitmentPDF(loanDetailsForPDF, signatureDataURL);
+
+                modal.classList.add('hidden');
+                form.reset();
+                loadPendingApplications();
+                loadLoanPaymentSection();
+
+            } catch (error) {
+                alert(`Terjadi kesalahan: ${error.message}`);
             } finally {
                 submitBtn.disabled = false;
-                submitBtn.textContent = 'Ajukan Pinjaman';
+                submitBtn.textContent = 'Setuju & Ajukan Pinjaman';
             }
         });
+    };
+
+    const setupLoanApplicationForm = () => {
+        const form = document.getElementById('loan-application-form');
+        if (!form) return;
+    
+        // Logika submit form sekarang ditangani oleh setupLoanCommitmentModal
+        // Kita hanya perlu memastikan listener tidak ditambahkan berulang kali.
+        if (form.dataset.commitmentListenerAttached) return;
+        form.dataset.commitmentListenerAttached = 'true';
+
+        // Panggil fungsi setup modal komitmen
+        setupLoanCommitmentModal();
     };
 
     const loadLoanPaymentSection = async () => {
         const appContainer = document.getElementById('loan-application-container');
         const paymentContainer = document.getElementById('loan-payment-container');
         const loanSummaryEl = document.getElementById('active-loan-summary');
+        const loanTabContent = document.getElementById('application-loan-tab');
     
-        if (!appContainer || !paymentContainer || !loanSummaryEl) return;
+        if (!appContainer || !paymentContainer || !loanSummaryEl || !loanTabContent) return;
     
-        // Show loading state
+        // Reset and show loading state
         appContainer.classList.add('hidden');
         paymentContainer.classList.add('hidden');
         loanSummaryEl.innerHTML = '<p class="text-gray-500">Memeriksa pinjaman aktif...</p>';
@@ -932,11 +1107,17 @@ document.addEventListener('DOMContentLoaded', () => {
             // Endpoint ini perlu dibuat di backend
             const activeLoan = await apiFetch(`${MEMBER_API_URL}/active-loan-for-payment`);
 
-            if (activeLoan && activeLoan.loanId) {
+            // Hapus pesan status sebelumnya jika ada
+            const existingStatusMessage = loanTabContent.querySelector('.status-message-container');
+            if (existingStatusMessage) {
+                existingStatusMessage.remove();
+            }
+    
+            if (activeLoan && activeLoan.status === 'Approved') {
                 // Member memiliki pinjaman aktif, tampilkan form pembayaran
                 paymentContainer.classList.remove('hidden');
                 appContainer.classList.add('hidden');
-    
+                
                 // Isi ringkasan pinjaman
                 loanSummaryEl.innerHTML = `
                     <p class="text-sm text-blue-700">Sisa Pokok Pinjaman Anda</p>
@@ -944,35 +1125,21 @@ document.addEventListener('DOMContentLoaded', () => {
                     <p class="text-sm text-blue-700 mt-2">Angsuran Berikutnya (ke-${activeLoan.nextInstallment.number})</p>
                     <p class="text-xl font-semibold text-blue-800">${formatCurrency(activeLoan.nextInstallment.amount)}</p>
                 `;
-    
+                
                 // Isi field form
                 document.getElementById('payment-loan-id').value = activeLoan.loanId;
                 document.getElementById('payment-installment-number').value = activeLoan.nextInstallment.number;
                 document.getElementById('payment-amount').value = formatCurrency(activeLoan.nextInstallment.amount);
                 document.getElementById('payment-date').valueAsDate = new Date();
-    
+            } else if (activeLoan && (activeLoan.status === 'Pending' || activeLoan.status === 'Approved by Accounting')) {
+                // Jika ada pinjaman yang sedang diproses, sembunyikan kedua form dan tampilkan pesan status
+                appContainer.classList.add('hidden');
+                paymentContainer.classList.add('hidden');
+                loanTabContent.insertAdjacentHTML('afterbegin', `<div class="status-message-container bg-yellow-50 border-l-4 border-yellow-400 p-4 rounded-lg text-center"><p class="text-yellow-800">Anda memiliki pengajuan pinjaman yang sedang diproses dengan status <strong>${activeLoan.status}</strong>.</p><p class="text-sm text-yellow-700 mt-1">Anda dapat mengajukan pinjaman baru setelah pengajuan saat ini selesai diproses.</p></div>`);
             } else {
-                // Jika tidak ada pinjaman aktif yang perlu dibayar, periksa apakah ada pinjaman yang sedang diproses
-                const pendingApplications = await apiFetch(`${MEMBER_API_URL}/applications`);
-                const pendingLoan = pendingApplications.find(app => app.type === 'Pinjaman');
-
-                if (pendingLoan) {
-                    // Jika ada pinjaman yang sedang diproses, sembunyikan kedua form dan tampilkan pesan status
-                    appContainer.classList.add('hidden');
-                    paymentContainer.classList.add('hidden');
-                    // Tampilkan pesan status di tempat yang sesuai, misalnya di dalam loan-application-container
-                    const appContainerParent = document.getElementById('application-loan-tab');
-                    appContainerParent.innerHTML = `
-                        <div class="bg-yellow-50 border-l-4 border-yellow-400 p-4 rounded-lg text-center">
-                            <p class="text-yellow-800">Anda memiliki pengajuan pinjaman yang sedang diproses dengan status <strong>${pendingLoan.status}</strong>.</p>
-                            <p class="text-sm text-yellow-700 mt-1">Anda dapat mengajukan pinjaman baru setelah pengajuan saat ini selesai diproses.</p>
-                        </div>
-                    `;
-                } else {
-                    // Tidak ada pinjaman aktif atau pending, tampilkan form pengajuan
-                    appContainer.classList.remove('hidden');
-                    paymentContainer.classList.add('hidden');
-                }
+                // Tidak ada pinjaman aktif atau pending, tampilkan form pengajuan
+                appContainer.classList.remove('hidden');
+                paymentContainer.classList.add('hidden');
             }
     
         } catch (error) {
@@ -1142,29 +1309,147 @@ document.addEventListener('DOMContentLoaded', () => {
     const loadPendingApplications = async () => {
         const tableBody = document.getElementById('applications-table-body');
         if (!tableBody) return;
+        const colspan = 5; // Updated colspan
         try {
             const applications = await apiFetch(`${MEMBER_API_URL}/applications`);
-            if (applications.length === 0) { tableBody.innerHTML = `<tr><td colspan="4" class="text-center py-4 text-gray-500">Tidak ada pengajuan yang sedang diproses.</td></tr>`; return; }
+            if (applications.length === 0) {
+                tableBody.innerHTML = `<tr><td colspan="${colspan}" class="text-center py-4 text-gray-500">Tidak ada pengajuan yang sedang diproses.</td></tr>`;
+                return;
+            }
             tableBody.innerHTML = '';
             applications.forEach(app => {
                 const statusClasses = {
                     'Pending': 'bg-yellow-100 text-yellow-800',
                     'Approved by Accounting': 'bg-cyan-100 text-cyan-800',
-                    'Rejected': 'bg-red-100 text-red-800'
+                    'Rejected': 'bg-red-100 text-red-800',
                 };
                 const statusClass = statusClasses[app.status] || 'bg-gray-100 text-gray-800';
 
-                // Tambahkan tombol "Batalkan" hanya untuk pengajuan pinjaman yang statusnya 'Pending'
-                let actionButton = '-';
-                if (app.type === 'Pinjaman' && app.status === 'Pending') {
-                    actionButton = `<button class="cancel-loan-application-btn text-red-600 hover:underline text-xs" data-id="${app.id}">Batalkan</button>`;
+                let actionButtons = '-';
+                if (app.type === 'Pinjaman') {
+                    actionButtons = `<button class="view-pending-loan-details-btn text-blue-600 hover:underline text-xs" data-id="${app.id}">Lihat Detail</button>`;
+                    if (app.status === 'Pending') {
+                        actionButtons += `<button class="cancel-loan-application-btn text-red-600 hover:underline text-xs ml-2" data-id="${app.id}">Batalkan</button>`;
+                    }
                 }
 
                 const row = tableBody.insertRow();
-                // Tambahkan kolom baru untuk Aksi
-                row.innerHTML = `<tr><td class="px-6 py-4 text-sm text-gray-500">${formatDate(app.date)}</td><td class="px-6 py-4 text-sm text-gray-900">${app.type}</td><td class="px-6 py-4 text-sm text-gray-500 text-right">${formatCurrency(app.amount)}</td><td class="px-6 py-4 text-sm"><span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${statusClass}">${app.status}</span></td><td class="px-6 py-4 text-sm text-center">${actionButton}</td></tr>`;
+                row.innerHTML = `
+                    <td class="px-6 py-4 text-sm text-gray-500">${formatDate(app.date)}</td>
+                    <td class="px-6 py-4 text-sm text-gray-900">${app.type}</td>
+                    <td class="px-6 py-4 text-sm text-gray-500 text-right">${formatCurrency(app.amount)}</td>
+                    <td class="px-6 py-4 text-sm"><span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${statusClass}">${app.status}</span></td>
+                    <td class="px-6 py-4 text-sm text-center">${actionButtons}</td>
+                `;
             });
-        } catch (error) { console.error(error); tableBody.innerHTML = `<tr><td colspan="4" class="text-center py-4 text-red-500">${error.message}</td></tr>`; }
+        } catch (error) {
+            console.error(error);
+            tableBody.innerHTML = `<tr><td colspan="${colspan}" class="text-center py-4 text-red-500">${error.message}</td></tr>`;
+        }
+    };
+
+    const showPendingLoanDetails = async (loanId) => {
+        const modal = document.getElementById('loan-commitment-modal');
+        if (!modal) return;
+
+        // Reset dan tampilkan modal dengan status loading
+        modal.classList.remove('hidden');
+        const printableArea = document.getElementById('printable-commitment-area');
+        printableArea.style.opacity = 0.5;
+
+        // Sembunyikan tombol aksi utama dan canvas tanda tangan
+        document.getElementById('confirm-commitment-and-submit-btn').classList.add('hidden');
+        document.getElementById('cancel-commitment-btn').textContent = 'Tutup'; // Ubah tombol batal menjadi tutup
+        document.getElementById('member-signature-pad').parentElement.classList.add('hidden');
+        document.getElementById('clear-member-signature-btn').classList.add('hidden');
+
+        try {
+            // Endpoint baru untuk mengambil detail pinjaman pending
+            const loan = await apiFetch(`${MEMBER_API_URL}/loans/${loanId}/details`);
+            const { summary, installments } = loan;
+
+            // Isi data ke dalam modal
+            document.getElementById('commitment-member-name-text').textContent = `: ${summary.memberName}`;
+            document.getElementById('commitment-coop-number-text').textContent = `: ${summary.cooperativeNumber || 'N/A'}`;
+            document.getElementById('commitment-loan-amount-text').textContent = formatCurrency(summary.amount);
+            document.getElementById('commitment-loan-term-text').textContent = `${summary.loanTypeName} - ${summary.tenor} bulan`;
+            
+            const totalRepayment = installments.reduce((sum, inst) => sum + parseFloat(inst.amount), 0);
+            document.getElementById('commitment-total-repayment-text').textContent = formatCurrency(totalRepayment);
+
+            const amortizationContainer = document.getElementById('commitment-amortization-table-container');
+            amortizationContainer.innerHTML = generateAmortizationForModal(parseFloat(summary.amount), summary.tenor, summary.interestRate).tableHtml;
+
+            document.getElementById('commitment-current-date').textContent = formatDate(summary.startDate);
+            document.getElementById('commitment-signature-name-text').textContent = summary.memberName;
+
+            // Tampilkan gambar tanda tangan yang sudah ada
+            const signatureImageContainer = document.getElementById('member-signature-pad').parentElement;
+            signatureImageContainer.classList.remove('hidden');
+            signatureImageContainer.innerHTML = `<img src="${API_URL.replace('/api', '')}/${summary.commitment_signature_path.replace(/\\/g, '/')}" alt="Tanda Tangan" class="w-full h-40 object-contain bg-gray-50 rounded-md">`;
+
+            // Tampilkan tombol cetak
+            document.getElementById('confirm-commitment-and-submit-btn').textContent = 'Cetak PDF';
+            document.getElementById('confirm-commitment-and-submit-btn').classList.remove('hidden');
+            document.getElementById('confirm-commitment-and-submit-btn').onclick = () => window.print();
+
+            printableArea.style.opacity = 1;
+
+        } catch (error) {
+            console.error("Gagal memuat detail pengajuan:", error);
+            alert("Gagal memuat detail pengajuan. Silakan coba lagi.");
+            modal.classList.add('hidden');
+        }
+    };
+
+    const showAdminLoanCommitment = async (loanId) => {
+        const modal = document.getElementById('loan-commitment-modal');
+        if (!modal) return;
+
+        // Reset and show modal with loading state
+        modal.classList.remove('hidden');
+        const content = document.getElementById('commitment-letter-content');
+        content.style.opacity = '0.5';
+
+        // Hide signature pad and related buttons, show admin controls
+        document.getElementById('admin-signature-controls').classList.remove('hidden');
+
+        try {
+            // Fetch loan details using the specific endpoint
+            const { summary, installments } = await apiFetch(`${API_URL}/admin/loans/${loanId}/details`);
+
+            // Populate modal with fetched data
+            document.getElementById('commitment-member-name-text').textContent = `: ${summary.memberName}`;
+            document.getElementById('commitment-coop-number-text').textContent = `: ${summary.cooperativeNumber || 'N/A'}`;
+            document.getElementById('commitment-loan-amount-text').textContent = `: ${formatCurrency(summary.amount)}`;
+            
+            // Correctly display the loan product name and tenor
+            document.getElementById('commitment-loan-term-text').textContent = `: ${summary.loanTypeName} - ${summary.tenor} bulan`;
+
+            const totalRepayment = installments.reduce((sum, inst) => sum + parseFloat(inst.amount), 0);
+            document.getElementById('commitment-total-repayment-text').textContent = `: ${formatCurrency(totalRepayment)}`;
+
+            // Generate and display amortization table
+            const amortizationContainer = document.getElementById('admin-commitment-amortization-container');
+            amortizationContainer.innerHTML = generateAmortizationForModal(parseFloat(summary.amount), summary.tenor, summary.interestRate).tableHtml;
+
+            document.getElementById('commitment-current-date').textContent = formatDate(summary.startDate);
+            document.getElementById('commitment-signature-name-text').textContent = summary.memberName;
+
+            // Display the member's signature image
+            const signatureContainer = document.getElementById('member-signature-container');
+            if (summary.commitment_signature_path) {
+                const signatureUrl = `${API_URL.replace('/api', '')}/${summary.commitment_signature_path.replace(/\\/g, '/')}`;
+                signatureContainer.innerHTML = `<img src="${signatureUrl}" alt="Tanda Tangan Anggota" class="w-full h-40 object-contain bg-gray-50 rounded-md">`;
+            } else {
+                signatureContainer.innerHTML = `<p class="text-gray-500 text-center">Tanda tangan tidak tersedia.</p>`;
+            }
+
+            content.style.opacity = '1';
+        } catch (error) {
+            alert(`Gagal memuat detail komitmen: ${error.message}`);
+            modal.classList.add('hidden');
+        }
     };
 
     const generateAmortization = (plafon, tenor, annualInterestRate) => {
@@ -1239,16 +1524,18 @@ document.addEventListener('DOMContentLoaded', () => {
     // --- PAGE-SPECIFIC LOADERS ---
     const loadSavingsData = async () => {
         const tableBody = document.getElementById('savings-table-body');
+        const tableFooter = document.getElementById('savings-table-footer'); // Tambahkan ini
         const totalSummaryEl = document.getElementById('savings-total-summary');
 
-        if (!tableBody || !totalSummaryEl) return;
+        if (!tableBody || !totalSummaryEl || !tableFooter) return; // Tambahkan tableFooter ke pengecekan
 
         tableBody.innerHTML = `<tr><td colspan="5" class="text-center py-4 text-gray-500">Memuat riwayat simpanan...</td></tr>`;
+        tableFooter.innerHTML = ''; // Kosongkan footer saat memuat
         totalSummaryEl.textContent = 'Memuat...';
 
         try {
             const savings = await apiFetch(`${MEMBER_API_URL}/savings`);
-
+            
             if (savings.length === 0) {
                 tableBody.innerHTML = `<tr><td colspan="5" class="text-center py-4 text-gray-500">Anda belum memiliki riwayat simpanan.</td></tr>`;
                 totalSummaryEl.textContent = formatCurrency(0);
@@ -1259,8 +1546,13 @@ document.addEventListener('DOMContentLoaded', () => {
             let totalApprovedSavings = 0;
 
             savings.forEach(saving => {
+                const isWithdrawal = saving.savingTypeName === 'Penarikan Simpanan Sukarela';
+                const displayAmount = isWithdrawal ? -saving.amount : saving.amount;
+                const amountClass = isWithdrawal ? 'text-red-600' : 'text-gray-500';
+
                 if (saving.status === 'Approved') {
-                    totalApprovedSavings += parseFloat(saving.amount);
+                    // Kurangi total jika ini adalah penarikan, tambahkan jika setoran
+                    totalApprovedSavings += parseFloat(displayAmount);
                 }
 
                 const statusClasses = { 'Approved': 'bg-green-100 text-green-800', 'Pending': 'bg-yellow-100 text-yellow-800', 'Rejected': 'bg-red-100 text-red-800' };
@@ -1270,12 +1562,20 @@ document.addEventListener('DOMContentLoaded', () => {
                 row.innerHTML = `
                     <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">${formatDate(saving.date)}</td>
                     <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">${saving.savingTypeName}</td>
-                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500 text-right">${formatCurrency(saving.amount)}</td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm ${amountClass} text-right">${formatCurrency(displayAmount)}</td>
                     <td class="px-6 py-4 whitespace-nowrap text-sm"><span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${statusClass}">${saving.status}</span></td>
                     <td class="px-6 py-4 text-sm text-gray-500">${saving.description || '-'}</td>
                 `;
             });
 
+            // Tambahkan baris total di footer tabel
+            tableFooter.innerHTML = `
+                <tr class="bg-gray-50 font-bold">
+                    <td class="px-6 py-3 text-left text-sm text-gray-800" colspan="2">Total Akumulasi Simpanan (Approved)</td>
+                    <td class="px-6 py-3 text-right text-sm text-gray-800">${formatCurrency(totalApprovedSavings)}</td>
+                    <td colspan="2"></td>
+                </tr>
+            `;
             totalSummaryEl.textContent = formatCurrency(totalApprovedSavings);
 
         } catch (error) {
@@ -1459,6 +1759,10 @@ document.addEventListener('DOMContentLoaded', () => {
             if(headerProfileIcon) headerProfileIcon.src = photoUrl; // Update header icon
     
             photoSection.innerHTML = `
+                <div class="relative">
+                    <!-- Badge untuk status keanggotaan -->
+                    <span class="absolute -top-2 -right-2 px-2 py-1 text-xs font-semibold rounded-full bg-green-500 text-white shadow-md">${profile.status}</span>
+                </div>
                 <img id="profile-page-photo" src="${photoUrl}" alt="Foto Profil" class="w-32 h-32 rounded-full object-cover border-4 border-gray-200">
                 <div>
                     <h4 class="text-lg font-semibold text-gray-700">Foto Profil</h4>
@@ -1505,6 +1809,13 @@ document.addEventListener('DOMContentLoaded', () => {
                 </dl>
             `;
     
+            // Tampilkan FAB Simpanan Wajib hanya untuk anggota individual (company_id null)
+            const mandatorySavingFab = document.getElementById('mandatory-saving-fab');
+            if (mandatorySavingFab) {
+                // Asumsi anggota individual memiliki company_id null
+                mandatorySavingFab.classList.toggle('hidden', profile.company_id !== null);
+            }
+
             // --- Render Resignation Section ---
             if (profile.status === 'Active') {
                 resignationContainer.innerHTML = `
@@ -1646,6 +1957,118 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     };
 
+    const setupVoluntarySavingModalForm = () => {
+        const modal = document.getElementById('voluntary-saving-modal');
+        const form = document.getElementById('voluntary-saving-modal-form');
+        if (!modal || !form) return;
+
+        // Prevent adding listener multiple times
+        if (form.dataset.listenerAttached) return;
+        form.dataset.listenerAttached = 'true';
+
+        form.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const submitBtn = form.querySelector('button[type="submit"]');
+            const formData = new FormData(form);
+
+            const amount = formData.get('amount');
+            const description = formData.get('description');
+
+            if (!amount || parseFloat(amount) <= 0 || !description.trim()) {
+                alert('Harap isi jumlah setoran dan keterangan dengan benar.');
+                return;
+            }
+
+            submitBtn.disabled = true;
+            submitBtn.textContent = 'Mengirim...';
+
+            try {
+                await apiFetch(`${MEMBER_API_URL}/savings`, {
+                    method: 'POST',
+                    body: formData,
+                });
+
+                alert('Pengajuan simpanan sukarela berhasil dikirim dan sedang menunggu persetujuan.');
+                
+                form.reset();
+                modal.classList.add('hidden');
+                loadPendingApplications(); // Reload the pending applications list
+                switchContent('savings'); // Pindah ke halaman riwayat simpanan
+
+            } catch (error) {
+                alert(`Terjadi kesalahan: ${error.message}`);
+            } finally {
+                submitBtn.disabled = false;
+                submitBtn.textContent = 'Ajukan Setoran';
+            }
+        });
+    };
+
+    const setupMandatorySavingModal = async () => {
+        const fabButton = document.getElementById('mandatory-saving-fab');
+        const modal = document.getElementById('mandatory-saving-modal');
+        const closeBtn = document.getElementById('close-mandatory-saving-modal');
+        const cancelBtn = document.getElementById('cancel-mandatory-saving-modal');
+        const amountDisplay = document.getElementById('mandatory-saving-amount-display');
+        const amountInput = document.getElementById('mandatory-saving-amount-input');
+        const form = document.getElementById('mandatory-saving-form');
+
+        if (!fabButton || !modal || !form) return;
+
+        // Fetch mandatory saving amount (e.g., Rp 100.000)
+        // This value should ideally come from a settings endpoint or a fixed value in the backend
+        const mandatoryAmount = 100000; // Contoh: Rp 100.000
+        amountDisplay.textContent = formatCurrency(mandatoryAmount);
+        amountInput.value = mandatoryAmount;
+
+        fabButton.addEventListener('click', () => {
+            form.reset();
+            modal.classList.remove('hidden');
+        });
+
+        closeBtn.addEventListener('click', () => modal.classList.add('hidden'));
+        cancelBtn.addEventListener('click', () => modal.classList.add('hidden'));
+
+        if (form.dataset.listenerAttached) return;
+        form.dataset.listenerAttached = 'true';
+
+        form.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const submitBtn = form.querySelector('button[type="submit"]');
+            const formData = new FormData(form);
+
+            const amount = formData.get('amount');
+            const description = formData.get('description');
+
+            if (!amount || parseFloat(amount) <= 0) {
+                alert('Jumlah setoran wajib tidak boleh kosong atau nol.');
+                return;
+            }
+
+            submitBtn.disabled = true;
+            submitBtn.textContent = 'Mengirim...';
+
+            try {
+                await apiFetch(`${MEMBER_API_URL}/mandatory-saving`, {
+                    method: 'POST',
+                    body: formData,
+                });
+
+                alert('Pengajuan simpanan wajib berhasil dikirim dan sedang menunggu persetujuan.');
+                form.reset();
+                modal.classList.add('hidden');
+                loadPendingApplications(); // Muat ulang daftar pengajuan
+                switchContent('savings'); // Pindah ke halaman riwayat simpanan
+
+            } catch (error) {
+                alert(`Terjadi kesalahan: ${error.message}`);
+            } finally {
+                submitBtn.disabled = false;
+                submitBtn.textContent = 'Ajukan Simpanan';
+            }
+        });
+    };
+
     // --- NAVIGATION ---
     const switchContent = (targetId) => {
         // Hentikan interval pembaruan otomatis dasbor setiap kali berpindah halaman
@@ -1683,9 +2106,12 @@ document.addEventListener('DOMContentLoaded', () => {
                 break;
             case 'application':
                 loadApplicationData();
-                setupLoanApplicationForm(); // <-- TAMBAHKAN BARIS INI
+                setupLoanApplicationForm();
+                setupVoluntarySavingForm(); // Pastikan form simpanan di tab juga di-setup
+                setupWithdrawalForm(); // Pastikan form penarikan di tab juga di-setup
                 loadLoanPaymentSection(); // Tentukan form mana yang akan ditampilkan
                 loadAvailableVoluntarySavings(); // Muat saldo untuk penarikan
+        setupMandatorySavingModal(); // Setup modal simpanan wajib
                 loadPendingApplications();
                 break;
             case 'transactions':
@@ -2203,6 +2629,8 @@ document.addEventListener('DOMContentLoaded', () => {
         setupLoanPaymentForm();
         setupChangePasswordModal();
         setupQuickAccessButtons();
+        setupMandatorySavingModal(); // Panggil setup untuk modal simpanan wajib
+        setupVoluntarySavingModalForm(); // Tambahkan setup untuk form modal
         setupApplicationTabs();
         
         const setupTransactionPageListeners = () => {
@@ -2239,18 +2667,23 @@ document.addEventListener('DOMContentLoaded', () => {
         const applicationsTableBody = document.getElementById('applications-table-body');
         if (applicationsTableBody) {
             applicationsTableBody.addEventListener('click', async (e) => {
-                if (e.target.matches('.cancel-loan-application-btn')) {
-                    const loanId = e.target.dataset.id;
+                const target = e.target;
+                if (target.matches('.cancel-loan-application-btn')) {
+                    const loanId = target.dataset.id;
                     if (confirm('Anda yakin ingin membatalkan pengajuan pinjaman ini?')) {
                         try {
-                            // FIX: Mengubah endpoint agar sesuai dengan standar RESTful untuk menghapus aplikasi.
-                            // Endpoint ini harus cocok dengan yang ada di backend (misal: DELETE /api/member/applications/:id)
-                            await apiFetch(`${MEMBER_API_URL}/applications/${loanId}`, { method: 'DELETE' });
+                            // FIX: Corrected the endpoint to match the backend route for cancellation. The backend uses /applications/:id/cancel
+                            await apiFetch(`${MEMBER_API_URL}/applications/${loanId}/cancel`, { method: 'DELETE' });
                             alert('Pengajuan pinjaman berhasil dibatalkan.');
-                            loadPendingApplications(); // Muat ulang daftar
+                            loadPendingApplications(); // Reload the list
                         } catch (error) {
                             alert(`Gagal membatalkan: ${error.message}`);
                         }
+                    }
+                } else if (target.matches('.view-pending-loan-details-btn')) {
+                    const loanId = target.dataset.id;
+                    if (loanId) {
+                        showPendingLoanDetails(loanId);
                     }
                 }
             });

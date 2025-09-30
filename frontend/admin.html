@@ -8,6 +8,7 @@
     <!-- Pustaka untuk generate PDF -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/signature_pad@4.0.0/dist/signature_pad.umd.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js"></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <link rel="icon" href="logo/logo.png" type="image/png">
@@ -227,32 +228,52 @@
                             <!-- Card Pendaftaran Anggota -->
                             <div data-target="approval-members-tab" class="approval-card-link bg-white p-6 rounded-lg shadow-md hover:shadow-lg transition-shadow cursor-pointer flex flex-col">
                                 <div class="w-12 h-12 rounded-full bg-blue-100 flex items-center justify-center mb-4"><svg class="w-6 h-6 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z"></path></svg></div>
-                                <h3 class="font-semibold text-lg text-gray-800">Pendaftaran Anggota <span id="pending-members-card-count" class="ml-2 text-base font-bold text-red-600"></span></h3><p class="text-sm text-gray-500 mt-1 flex-grow">Verifikasi dan setujui anggota baru.</p>
+                                <div class="flex items-center">
+                                    <h3 class="font-semibold text-lg text-gray-800">Pendaftaran Anggota</h3>
+                                    <span id="pending-members-card-count" class="ml-2 text-base font-bold text-red-600"></span>
+                                </div>
+                                <p class="text-sm text-gray-500 mt-1 flex-grow">Verifikasi dan setujui anggota baru.</p>
                             </div>
                             <!-- Card Pengajuan Simpanan -->
                             <div data-target="approval-savings-tab" class="approval-card-link bg-white p-6 rounded-lg shadow-md hover:shadow-lg transition-shadow cursor-pointer flex flex-col">
                                 <div class="w-12 h-12 rounded-full bg-green-100 flex items-center justify-center mb-4"><svg class="w-6 h-6 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z"></path></svg></div>
-                                <h3 class="font-semibold text-lg text-gray-800">Setoran Simpanan <span id="pending-savings-card-count" class="ml-2 text-base font-bold text-red-600"></span></h3><p class="text-sm text-gray-500 mt-1 flex-grow">Verifikasi bukti transfer setoran sukarela.</p>
+                                <div class="flex items-center">
+                                    <h3 class="font-semibold text-lg text-gray-800">Setoran Simpanan</h3>
+                                    <span id="pending-savings-card-count" class="ml-2 text-base font-bold text-red-600"></span>
+                                </div>
+                                <p class="text-sm text-gray-500 mt-1 flex-grow">Verifikasi bukti transfer setoran (wajib & sukarela).</p>
                             </div>
                             <!-- Card Penarikan Simpanan -->
                             <div data-target="approval-withdrawals-tab" class="approval-card-link bg-white p-6 rounded-lg shadow-md hover:shadow-lg transition-shadow cursor-pointer flex flex-col">
                                 <div class="w-12 h-12 rounded-full bg-yellow-100 flex items-center justify-center mb-4"><svg class="w-6 h-6 text-yellow-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 17h8m0 0V9m0 8l-8-8-4 4-6-6"></path></svg></div>
-                                <h3 class="font-semibold text-lg text-gray-800">Penarikan Simpanan <span id="pending-withdrawals-card-count" class="ml-2 text-base font-bold text-red-600"></span></h3><p class="text-sm text-gray-500 mt-1 flex-grow">Proses permintaan penarikan simpanan sukarela.</p>
+                                <div class="flex items-center">
+                                    <h3 class="font-semibold text-lg text-gray-800">Penarikan Simpanan</h3>
+                                    <span id="pending-withdrawals-card-count" class="ml-2 text-base font-bold text-red-600"></span>
+                                </div>
+                                <p class="text-sm text-gray-500 mt-1 flex-grow">Proses permintaan penarikan simpanan sukarela.</p>
                             </div>
                             <!-- Card Pengajuan Pinjaman -->
                             <div data-target="approval-loans-tab" class="approval-card-link bg-white p-6 rounded-lg shadow-md hover:shadow-lg transition-shadow cursor-pointer flex flex-col">
                                 <div class="w-12 h-12 rounded-full bg-red-100 flex items-center justify-center mb-4"><svg class="w-6 h-6 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v.01M12 6v-1m0-1V4m0 2.01M12 14v4m0 0v1m0-1.01M12 16.01V14m0 6a9 9 0 110-18 9 9 0 010 18z"></path></svg></div>
-                                <h3 class="font-semibold text-lg text-gray-800">Pengajuan Pinjaman <span id="pending-loans-card-count" class="ml-2 text-base font-bold text-red-600"></span></h3><p class="text-sm text-gray-500 mt-1 flex-grow">Tinjau dan setujui pengajuan pinjaman baru.</p>
+                                <div class="flex items-center">
+                                    <h3 class="font-semibold text-lg text-gray-800">Pengajuan Pinjaman</h3>
+                                    <span id="pending-loans-card-count" class="ml-2 text-base font-bold text-red-600"></span>
+                                </div>
+                                <p class="text-sm text-gray-500 mt-1 flex-grow">Tinjau dan setujui pengajuan pinjaman baru.</p>
                             </div>
                             <!-- Card Pembayaran Angsuran -->
-                            <div data-target="approval-loan-payments-tab" class="approval-card-link bg-white p-6 rounded-lg shadow-md hover:shadow-lg transition-shadow cursor-pointer flex flex-col">
-                                <div class="w-12 h-12 rounded-full bg-indigo-100 flex items-center justify-center mb-4"><svg class="w-6 h-6 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 8h6m-5 4h.01M18 12h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg></div>
-                                <h3 class="font-semibold text-lg text-gray-800">Pembayaran Angsuran <span id="pending-loan-payments-card-count" class="ml-2 text-base font-bold text-red-600"></span></h3><p class="text-sm text-gray-500 mt-1 flex-grow">Verifikasi bukti pembayaran angsuran dari anggota.</p>
+                            <div data-target="approval-loan-payments-tab" class="approval-card-link bg-white p-6 rounded-lg shadow-md hover:shadow-lg transition-shadow cursor-pointer flex flex-col"><div class="w-12 h-12 rounded-full bg-indigo-100 flex items-center justify-center mb-4"><svg class="w-6 h-6 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 8h6m-5 4h.01M18 12h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg></div>
+                                <h3 class="font-semibold text-lg text-gray-800">Pembayaran Angsuran <span id="pending-loan-payments-card-count" class="ml-2 text-base font-bold text-red-600"></span></h3>
+                                <p class="text-sm text-gray-500 mt-1 flex-grow">Verifikasi bukti pembayaran angsuran dari anggota.</p>
                             </div>
                             <!-- Card Pengunduran Diri -->
                             <div data-target="approval-resignations-tab" class="approval-card-link bg-white p-6 rounded-lg shadow-md hover:shadow-lg transition-shadow cursor-pointer flex flex-col">
                                 <div class="w-12 h-12 rounded-full bg-gray-100 flex items-center justify-center mb-4"><svg class="w-6 h-6 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7a4 4 0 11-8 0 4 4 0 018 0zM9 14a6 6 0 00-6 6v1h12v-1a6 6 0 00-6-6z"></path></svg></div>
-                                <h3 class="font-semibold text-lg text-gray-800">Pengunduran Diri <span id="pending-resignations-card-count" class="ml-2 text-base font-bold text-red-600"></span></h3><p class="text-sm text-gray-500 mt-1 flex-grow">Proses permintaan pengunduran diri anggota.</p>
+                                <div class="flex items-center">
+                                    <h3 class="font-semibold text-lg text-gray-800">Pengunduran Diri</h3>
+                                    <span id="pending-resignations-card-count" class="ml-2 text-base font-bold text-red-600"></span>
+                                </div>
+                                <p class="text-sm text-gray-500 mt-1 flex-grow">Proses permintaan pengunduran diri anggota.</p>
                             </div>
                         </div>
                     </div>
@@ -284,12 +305,13 @@
                     <!-- Pending Savings Tab -->
                     <div id="approval-savings-tab" class="approval-tab-content mt-6 hidden">
                         <div class="bg-white shadow overflow-hidden sm:rounded-lg">
-                            <div class="px-4 py-5 sm:px-6 flex justify-between items-center"><h3 class="text-lg leading-6 font-medium text-gray-900">Pengajuan Simpanan Sukarela</h3><button class="back-to-approvals-btn text-sm text-red-600 hover:underline">&larr; Kembali</button></div>
+                            <div class="px-4 py-5 sm:px-6 flex justify-between items-center"><h3 class="text-lg leading-6 font-medium text-gray-900">Persetujuan Setoran Simpanan</h3><button class="back-to-approvals-btn text-sm text-red-600 hover:underline">&larr; Kembali</button></div>
                             <div class="border-t border-gray-200 overflow-x-auto">
                                 <table class="min-w-full divide-y divide-gray-200">
                                     <thead class="bg-gray-50">
                                         <tr>
                                             <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Nama Anggota</th>
+                                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Tipe Setoran</th>
                                             <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">No. Koperasi</th>
                                             <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Jumlah</th>
                                             <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Tanggal Pengajuan</th>
@@ -338,6 +360,7 @@
                                             <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Tipe Pinjaman</th>
                                             <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase">Jumlah</th>
                                             <th class="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase">Tenor</th>
+                                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Rekening Tujuan</th>
                                             <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Tanggal Pengajuan</th>
                                             <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Status Saat Ini</th>
                                             <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Aksi</th>
@@ -346,7 +369,7 @@
                                     <tbody id="pending-loans-table-body" class="bg-white divide-y divide-gray-200"></tbody>
                                 </table>
                             </div>
-                        </div>
+                        </div> 
                     </div>
 
                     <!-- Pending Loan Payments Tab -->
@@ -513,7 +536,10 @@
                                         <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Aksi</th>
                                     </tr>
                                 </thead>
-                                <tbody id="savings-table-body" class="bg-white divide-y divide-gray-200"></tbody>
+                                <tbody id="savings-table-body" class="bg-white divide-y divide-gray-200">
+                                    <!-- Data simpanan akan dimuat di sini -->
+                                </tbody>
+                                <tfoot id="savings-table-footer"></tfoot>
                             </table>
                         </div>
                         <!-- Pagination Controls for Savings -->
@@ -711,35 +737,35 @@
 
                     <!-- Direct Cashier Tab -->
                     <div id="sembako-direct-cashier-tab" class="sembako-tab-content mt-6 hidden">
-                        <h3 class="text-xl font-semibold text-gray-800 mb-4">Kasir Penjualan Langsung (Non-Anggota)</h3>
-                        <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
-                            <!-- Left side: Add product -->
-                            <div class="lg:col-span-1">
-                                <div class="bg-white p-6 rounded-lg shadow-md">
-                                    <h4 class="font-semibold mb-4">Tambah Barang</h4>
-                                    <form id="direct-cashier-add-item-form" class="space-y-4">
-                                        <div>
-                                            <label for="direct-cashier-product-select" class="block text-sm font-medium text-gray-700">Produk</label>
-                                            <select id="direct-cashier-product-select" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-red-500 focus:ring-red-500"></select>
-                                        </div>
-                                        <div>
-                                            <label for="direct-cashier-quantity-input" class="block text-sm font-medium text-gray-700">Jumlah</label>
-                                            <input type="number" id="direct-cashier-quantity-input" value="1" min="1" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-red-500 focus:ring-red-500">
-                                        </div>
-                                        <button type="submit" class="w-full bg-blue-600 text-white py-2 rounded-md hover:bg-blue-700">Tambah ke Keranjang</button>
-                                    </form>
+                        <div class="flex flex-col lg:flex-row gap-6 h-[calc(100vh-15rem)]">
+                            <!-- Product Grid (Left Side) -->
+                            <div class="flex-grow bg-white p-4 rounded-lg shadow-md flex flex-col">
+                                <div class="mb-4">
+                                    <input type="text" id="direct-cashier-search" placeholder="Cari produk..." class="w-full px-4 py-2 border rounded-lg focus:ring-red-500 focus:border-red-500">
+                                </div>
+                                <div id="direct-cashier-product-grid" class="flex-grow overflow-y-auto grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-3 xl:grid-cols-5 gap-4 p-2">
+                                    <!-- Product cards will be injected here -->
                                 </div>
                             </div>
-                            <!-- Right side: Cart -->
-                            <div class="lg:col-span-2">
-                                <div class="bg-white p-6 rounded-lg shadow-md">
-                                    <h4 class="font-semibold mb-4">Keranjang Belanja</h4>
-                                    <div class="overflow-x-auto max-h-96">
-                                        <table class="min-w-full"><thead class="border-b"><tr><th class="text-left py-2 font-medium text-gray-600">Produk</th><th class="text-center py-2 font-medium text-gray-600">Qty</th><th class="text-right py-2 font-medium text-gray-600">Subtotal</th><th class="py-2"></th></tr></thead><tbody id="direct-cashier-items-body"><tr><td colspan="4" class="text-center py-4 text-gray-500">Keranjang kosong</td></tr></tbody></table>
+
+                            <!-- Cart (Right Side) -->
+                            <div class="w-full lg:w-1/3 xl:w-1/4 bg-white p-4 rounded-lg shadow-md flex flex-col">
+                                <h4 class="text-lg font-semibold mb-4 border-b pb-2">Keranjang</h4>
+                                <div id="direct-cashier-items-body" class="flex-grow overflow-y-auto space-y-2">
+                                    <!-- Cart items will be injected here -->
+                                    <div class="text-center py-10 text-gray-500">
+                                        <svg class="mx-auto h-12 w-12 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z" />
+                                        </svg>
+                                        <p class="mt-2 text-sm">Keranjang kosong</p>
                                     </div>
-                                    <div class="border-t-2 mt-4 pt-4"><div class="flex justify-between font-bold text-xl"><span>Total</span><span id="direct-cashier-total">Rp 0</span></div>
-                                        <button id="direct-cashier-complete-btn" class="mt-6 w-full bg-accent text-white py-3 rounded-lg font-semibold hover:bg-red-800 disabled:bg-gray-400" disabled>Selesaikan Penjualan</button>
+                                </div>
+                                <div class="border-t-2 mt-4 pt-4">
+                                    <div class="flex justify-between font-bold text-xl">
+                                        <span>Total</span>
+                                        <span id="direct-cashier-total">Rp 0</span>
                                     </div>
+                                    <button id="direct-cashier-complete-btn" class="mt-6 w-full bg-accent text-white py-3 rounded-lg font-semibold hover:bg-red-800 disabled:bg-gray-400" disabled>Selesaikan Penjualan</button>
                                 </div>
                             </div>
                         </div>
@@ -1004,6 +1030,16 @@
                             <h3 class="font-semibold text-lg text-gray-800">Status Tutup Buku</h3>
                             <p class="text-sm text-gray-500 mt-1 flex-grow">Lihat status tutup buku bulanan dalam satu tahun.</p>
                         </div>
+                        <!-- Card Laporan Jasa Pinjaman -->
+                        <div data-target="report-loan-interest" class="report-card-link bg-white p-6 rounded-lg shadow-md hover:shadow-lg transition-shadow cursor-pointer flex flex-col">
+                            <div class="w-12 h-12 rounded-full bg-rose-100 flex items-center justify-center mb-4">
+                                <svg class="w-6 h-6 text-rose-600" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 17h8m0 0V9m0 8l-8-8-4 4-6-6"></path>
+                                </svg>
+                            </div>
+                            <h3 class="font-semibold text-lg text-gray-800">Laporan Jasa Pinjaman</h3>
+                            <p class="text-sm text-gray-500 mt-1 flex-grow">Lihat rincian pendapatan bunga dari pinjaman anggota.</p>
+                        </div>
                     </div>
                 </div>
 
@@ -1264,6 +1300,32 @@
                         </div>
                         <div id="mcs-report-preview" class="overflow-x-auto">
                             <!-- Report table will be rendered here -->
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Laporan Jasa Pinjaman Section -->
+                <div id="report-loan-interest-content" class="content-section">
+                    <div class="flex justify-between items-center mb-6">
+                        <h2 class="text-2xl font-semibold text-gray-800">Laporan Pendapatan Jasa Pinjaman</h2>
+                        <button class="back-to-reports-btn text-sm text-red-600 hover:underline">&larr; Kembali ke Laporan</button>
+                    </div>
+                    <div class="bg-white p-6 rounded-lg shadow-md">
+                        <!-- Filter Form -->
+                        <div class="flex items-end space-x-4 mb-6 pb-6 border-b">
+                            <div>
+                                <label for="li-start-date" class="block text-sm font-medium text-gray-700">Dari Tanggal</label>
+                                <input type="date" id="li-start-date" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-red-500 focus:ring-red-500">
+                            </div>
+                            <div>
+                                <label for="li-end-date" class="block text-sm font-medium text-gray-700">Sampai Tanggal</label>
+                                <input type="date" id="li-end-date" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-red-500 focus:ring-red-500">
+                            </div>
+                            <button id="generate-li-report-btn" class="bg-red-600 text-white py-2 px-4 rounded-md hover:bg-red-700">Tampilkan Laporan</button>
+                            <button id="download-li-pdf-btn" class="bg-green-600 text-white py-2 px-4 rounded-md hover:bg-green-700 hidden">Unduh PDF</button>
+                        </div>
+                        <div id="li-report-preview" class="prose max-w-none">
+                            <!-- Preview will be rendered here -->
                         </div>
                     </div>
                 </div>
@@ -2154,6 +2216,69 @@
                         <tbody id="admin-loan-installments-table-body" class="bg-white divide-y divide-gray-200"></tbody>
                     </table>
                 </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Loan Commitment Letter Modal -->
+    <div id="loan-commitment-modal" class="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full hidden z-50 p-4">
+        <div class="relative top-10 mx-auto p-5 border w-full max-w-3xl shadow-lg rounded-md bg-white">
+            <div id="printable-commitment-area" class="text-left">
+                <div class="flex justify-between items-center gap-4 mb-6 border-b pb-4">
+                    <div class="flex items-center gap-4">
+                        <img src="logo/logo.png" alt="Logo KOPKAKA" class="h-16 w-auto">
+                        <div>
+                            <h3 class="text-xl font-bold text-gray-900">Surat Pernyataan & Komitmen Pinjaman</h3>
+                            <p class="text-sm text-gray-600">Koperasi Karya Kagum Abadi</p>
+                        </div>
+                    </div>
+                    <button id="close-commitment-modal" class="text-gray-400 hover:text-gray-600 no-print text-2xl font-bold">&times;</button>
+                </div>
+                <div class="px-2 py-3 max-h-[60vh] overflow-y-auto">
+                    <p class="text-sm text-gray-600">Saya yang bertanda tangan di bawah ini:</p>
+                    <dl class="mt-2 text-sm space-y-1 prose prose-sm max-w-none">
+                        <div class="flex"><dt class="font-semibold w-32 flex-shrink-0">Nama</dt><dd id="commitment-member-name-text">: Memuat...</dd></div>
+                        <div class="flex"><dt class="font-semibold w-32 flex-shrink-0">No. Anggota</dt><dd id="commitment-coop-number-text">: Memuat...</dd></div>
+                    </dl>
+                    <p class="text-sm text-gray-600 mt-4">Dengan ini menyatakan bahwa saya mengajukan pinjaman kepada KOPKAKA dengan rincian sebagai berikut:</p>
+                    <dl class="mt-2 text-sm space-y-1 prose prose-sm max-w-none">
+                        <div class="flex"><dt class="font-semibold w-32 flex-shrink-0">Jumlah Pinjaman</dt><dd id="commitment-loan-amount-text" class="font-bold">: Memuat...</dd></div>
+                        <div class="flex"><dt class="font-semibold w-32 flex-shrink-0">Produk Pinjaman</dt><dd id="commitment-loan-term-text">: Memuat...</dd></div>
+                        <div class="flex"><dt class="font-semibold w-32 flex-shrink-0">Total Pengembalian</dt><dd id="commitment-total-repayment-text" class="font-bold">: Memuat...</dd></div>
+                    </dl>
+                    <div class="mt-4">
+                        <p class="text-sm text-gray-600 font-semibold">Estimasi Jadwal Angsuran:</p>
+                        <div id="commitment-amortization-table-container" class="mt-2 max-h-40 overflow-y-auto border rounded-md">
+                            <!-- Tabel angsuran akan disisipkan di sini oleh JavaScript -->
+                        </div>
+                    </div>
+                    <p class="text-sm text-gray-600 mt-4">Saya telah membaca, memahami, dan setuju untuk mematuhi semua syarat dan ketentuan pinjaman yang berlaku di KOPKAKA. Saya bersedia untuk melunasi pinjaman sesuai dengan jadwal angsuran yang telah ditetapkan.</p>
+                    <p class="text-sm text-gray-600 mt-2">Surat pernyataan ini saya buat dengan sadar dan tanpa ada paksaan dari pihak manapun.</p>
+                    <div class="mt-6 flex justify-end no-print">
+                        <div class="text-center">
+                            <p class="text-sm text-gray-600">Bandung, <span id="commitment-current-date"></span></p>
+                            <p class="text-sm text-gray-600 mt-1">Hormat saya,</p>
+                            <div class="mt-2 border bg-gray-50 rounded-md p-2 min-h-[10rem] flex items-center justify-center">
+                                <div id="member-signature-container" class="w-full h-40"></div>
+                            </div>
+                            <p class="mt-4 font-semibold text-sm border-t pt-1" id="commitment-signature-name-text">Memuat...</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="items-center px-4 py-3 mt-4 border-t no-print">
+                <button type="button" id="print-commitment-btn" class="px-4 py-2 bg-blue-600 text-white text-base font-medium rounded-md w-full shadow-sm hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-300">Cetak PDF</button>
+                <button type="button" id="cancel-commitment-modal" class="mt-2 px-4 py-2 bg-gray-200 text-gray-800 text-base font-medium rounded-md w-full shadow-sm hover:bg-gray-300">Tutup</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Loan Edit Modal -->
+    <div id="loan-edit-modal" class="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full hidden z-50">
+        <div class="relative top-10 mx-auto p-5 border w-full max-w-lg shadow-lg rounded-md bg-white">
+            <div class="flex justify-between items-center pb-3 border-b">
+                <h3 class="text-lg font-semibold text-gray-900">Surat Pernyataan & Komitmen Pinjaman</h3>
+                <h3 id="loan-edit-modal-title" class="text-lg font-semibold text-gray-900">Ubah Pengajuan Pinjaman</h3><button id="close-loan-edit-modal" class="text-gray-400 hover:text-gray-600">&times;</button>
             </div>
         </div>
     </div>

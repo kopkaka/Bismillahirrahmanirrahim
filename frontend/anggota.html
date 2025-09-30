@@ -7,6 +7,7 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/qrcode/build/qrcode.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/signature_pad@4.0.0/dist/signature_pad.umd.min.js"></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <link rel="icon" href="logo/logo.png" type="image/png">
     <link rel="shortcut icon" href="logo/logo.png" type="image/png">
@@ -234,16 +235,14 @@
                         </h2>
                         <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
                             <!-- Card untuk Grafik Arus Kas dengan Filter -->
-                            <div class="bg-white p-6 rounded-lg shadow-md">
-                                <div class="flex justify-between items-start mb-4">
-                                    <div>
-                                        <h3 id="cashflow-chart-title" class="text-lg font-medium text-gray-600">Arus Kas (30 Hari Terakhir)</h3>
-                                    </div>
-                                    <div class="flex items-center space-x-2 text-sm">
-                                        <input type="date" id="cf-chart-start-date" class="border-gray-300 rounded-md shadow-sm text-sm p-1 w-32">
-                                        <span class="text-gray-500">-</span>
-                                        <input type="date" id="cf-chart-end-date" class="border-gray-300 rounded-md shadow-sm text-sm p-1 w-32">
-                                        <button id="apply-cf-chart-filter" class="bg-red-600 text-white px-3 py-1 rounded-md hover:bg-red-700 text-xs">Terapkan</button>
+                            <div class="bg-white p-6 rounded-lg shadow-md flex flex-col">
+                                <div class="flex flex-col sm:flex-row sm:justify-between sm:items-start mb-4">
+                                    <h3 id="cashflow-chart-title" class="text-lg font-medium text-gray-600 mb-2 sm:mb-0">Arus Kas (30 Hari Terakhir)</h3>
+                                    <div class="flex flex-col sm:flex-row sm:items-center gap-2 text-sm w-full sm:w-auto">
+                                        <input type="date" id="cf-chart-start-date" class="border-gray-300 rounded-md shadow-sm text-sm p-1 w-full sm:w-32">
+                                        <span class="text-gray-500 text-center hidden sm:block">-</span>
+                                        <input type="date" id="cf-chart-end-date" class="border-gray-300 rounded-md shadow-sm text-sm p-1 w-full sm:w-32">
+                                        <button id="apply-cf-chart-filter" class="bg-red-600 text-white px-3 py-2 sm:py-1 rounded-md hover:bg-red-700 text-sm sm:text-xs w-full sm:w-auto">Terapkan</button>
                                     </div>
                                 </div>
                                 <div class="h-60 relative">
@@ -413,6 +412,9 @@
                                 <tbody id="savings-table-body" class="bg-white divide-y divide-gray-200">
                                     <tr><td colspan="5" class="text-center py-4 text-gray-500">Memuat riwayat simpanan...</td></tr>
                                 </tbody>
+                                <tfoot id="savings-table-footer">
+                                    <!-- Total row will be rendered here by JS -->
+                                </tfoot>
                             </table>
                         </div>
                     </div>
@@ -579,10 +581,11 @@
                                         <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Tipe Pengajuan</th>
                                         <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Jumlah</th>
                                         <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
+                                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Aksi</th>
                                     </tr>
                                 </thead>
                                 <tbody id="applications-table-body" class="bg-white divide-y divide-gray-200">
-                                    <tr><td colspan="4" class="text-center py-4 text-gray-500">Tidak ada pengajuan yang sedang diproses.</td></tr>
+                                    <tr><td colspan="5" class="text-center py-4 text-gray-500">Tidak ada pengajuan yang sedang diproses.</td></tr>
                                 </tbody>
                             </table>
                         </div>
@@ -593,6 +596,117 @@
         </div>
     </div>
 
+    <!-- Floating Action Button for Mandatory Saving -->
+    <button id="mandatory-saving-fab" class="fixed bottom-5 right-5 bg-red-600 text-white p-4 rounded-full shadow-lg hover:bg-red-700 transition-transform transform hover:scale-110 z-40 hidden">
+        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path>
+        </svg>
+        <span class="sr-only">Ajukan Simpanan Wajib</span>
+    </button>
+
+    <!-- Mandatory Saving Modal -->
+    <div id="mandatory-saving-modal" class="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full hidden z-50">
+        <div class="relative top-20 mx-auto p-5 border w-full max-w-lg shadow-lg rounded-md bg-white">
+            <div class="flex justify-between items-center pb-3 border-b">
+                <h3 class="text-lg font-medium text-gray-900">Pengajuan Simpanan Wajib</h3>
+                <button id="close-mandatory-saving-modal" class="text-gray-400 hover:text-gray-600 text-2xl font-bold">&times;</button>
+            </div>
+            <div class="mt-5">
+                <form id="mandatory-saving-form" class="space-y-4">
+                    <div class="bg-blue-50 border-l-4 border-blue-400 p-3 rounded-md">
+                        <p class="text-sm text-blue-800">Jumlah simpanan wajib Anda adalah <strong id="mandatory-saving-amount-display">Rp 0</strong> per bulan.</p>
+                        <input type="hidden" id="mandatory-saving-amount-input" name="amount" value="0">
+                    </div>
+                    <div>
+                        <label for="mandatory-saving-description" class="block text-sm font-medium text-gray-700">Keterangan (Opsional)</label>
+                        <textarea id="mandatory-saving-description" name="description" rows="2" placeholder="Contoh: Transfer via BCA tgl 25/12/2025" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-red-500 focus:ring-red-500 sm:text-sm"></textarea>
+                    </div>
+                    <div>
+                        <label for="mandatory-saving-proof" class="block text-sm font-medium text-gray-700">Lampiran Bukti Transfer (Opsional)</label>
+                        <input type="file" id="mandatory-saving-proof" name="proof" accept="image/*" class="mt-1 block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-red-50 file:text-red-700 hover:file:bg-red-100">
+                    </div>
+                    <div class="pt-4 flex justify-end space-x-2">
+                        <button type="button" id="cancel-mandatory-saving-modal" class="px-4 py-2 bg-gray-200 text-gray-800 rounded-md hover:bg-gray-300">Batal</button>
+                        <button type="submit" class="px-4 py-2 bg-red-600 text-white rounded-md hover:bg-red-700">Ajukan Simpanan</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Toast Notification Container -->
+    <div id="toast-container" class="fixed bottom-5 right-5 z-50 space-y-2"></div>
+
+    <!-- Modal Surat Komitmen Pinjaman (Anggota) -->
+    <div id="loan-commitment-modal" class="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50 hidden">
+        <div class="relative top-10 mx-auto p-5 border w-full max-w-3xl shadow-lg rounded-md bg-white">
+            <div id="printable-commitment-area" class="text-left">
+                <div class="flex justify-between items-center gap-4 mb-6 border-b pb-4">
+                    <div class="flex items-center gap-4">
+                        <img src="logo/logo.png" alt="Logo KOPKAKA" class="h-16 w-auto">
+                        <div>
+                            <h3 class="text-xl font-bold text-gray-900">Surat Pernyataan & Komitmen Pinjaman</h3>
+                            <p class="text-sm text-gray-600">Koperasi Karya Kagum Abadi</p>
+                        </div>
+                    </div>
+                    <button id="close-commitment-modal-btn" class="text-gray-400 hover:text-gray-600 no-print">&times;</button>
+                </div>
+                <div class="px-2 py-3 max-h-[60vh] overflow-y-auto">
+                    <p class="text-sm text-gray-600">Saya yang bertanda tangan di bawah ini:</p>                    
+                    <dl class="mt-2 text-sm space-y-1 prose prose-sm max-w-none">
+                        <div class="flex">
+                            <dt class="font-semibold w-32 flex-shrink-0">Nama</dt>
+                            <dd id="commitment-member-name-text" class="break-all">: [Nama Anggota]</dd>
+                        </div>
+                        <div class="flex">
+                            <dt class="font-semibold w-32 flex-shrink-0">No. Anggota</dt>
+                            <dd id="commitment-coop-number-text" class="break-all">: [No. Anggota]</dd>
+                        </div>
+                    </dl>
+                    <p class="text-sm text-gray-600 mt-4">Dengan ini menyatakan bahwa saya mengajukan pinjaman kepada KOPKAKA dengan rincian sebagai berikut:</p>
+                    <dl class="mt-2 text-sm space-y-1 prose prose-sm max-w-none">
+                        <div class="flex"><dt class="font-semibold w-32 flex-shrink-0">Jumlah Pinjaman</dt><dd id="commitment-loan-amount-text" class="font-bold">: [Jumlah]</dd></div>
+                        <div class="flex"><dt class="font-semibold w-32 flex-shrink-0">Produk Pinjaman</dt><dd id="commitment-loan-term-text">: [Produk]</dd></div>
+                        <div class="flex"><dt class="font-semibold w-32 flex-shrink-0">Total Pengembalian</dt><dd id="commitment-total-repayment-text" class="font-bold">: [Total]</dd></div>
+                    </dl>
+                    <div class="mt-4">
+                        <p class="text-sm text-gray-600 font-semibold">Estimasi Jadwal Angsuran:</p>
+                        <div id="commitment-amortization-table-container" class="mt-2 max-h-40 overflow-y-auto border rounded-md">
+                            <!-- Tabel angsuran akan disisipkan di sini oleh JavaScript -->
+                        </div>
+                    </div>
+                    <p class="text-sm text-gray-600 mt-4">Saya telah membaca, memahami, dan setuju untuk mematuhi semua syarat dan ketentuan pinjaman yang berlaku di KOPKAKA. Saya bersedia untuk melunasi pinjaman sesuai dengan jadwal angsuran yang telah ditetapkan.</p>
+                    <p class="text-sm text-gray-600 mt-2">Surat pernyataan ini saya buat dengan sadar dan tanpa ada paksaan dari pihak manapun.</p>
+                    
+                    <div class="mt-6">
+                        <div class="flex justify-end">
+                            <div class="text-center">
+                                <p class="text-sm text-gray-600">Bandung, <span id="commitment-current-date"></span></p>
+                                <p class="text-sm text-gray-600 mt-1">Hormat saya,</p>
+                                <div class="mt-2 border bg-gray-50 rounded-md">
+                                    <canvas id="member-signature-pad" class="w-full h-40"></canvas>
+                                </div>
+                                <button id="clear-member-signature-btn" class="text-xs text-blue-600 hover:underline mt-1 no-print">Hapus Tanda Tangan</button>
+                                <p class="mt-4 font-semibold text-sm border-t pt-1" id="commitment-signature-name-text">[Nama Anggota]</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="items-center px-4 py-3 mt-4 border-t no-print">
+                    <button id="confirm-commitment-and-submit-btn" class="px-4 py-2 bg-green-600 text-white text-base font-medium rounded-md w-full shadow-sm hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-300">
+                        Setuju & Ajukan Pinjaman
+                    </button>
+                    <button id="cancel-commitment-btn" class="mt-2 px-4 py-2 bg-gray-200 text-gray-800 text-base font-medium rounded-md w-full shadow-sm hover:bg-gray-300">
+                        Batal
+                    </button>
+                </div>
+        </div>
+    </div>
+
+    <script type="module" src="anggota.js"></script>
+</body>
+</html>
     <!-- Loan Details Modal -->
     <div id="loan-details-modal" class="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full hidden z-50">
         <div class="relative top-10 mx-auto p-5 border w-full max-w-4xl shadow-lg rounded-md bg-white">

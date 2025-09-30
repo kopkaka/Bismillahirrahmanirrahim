@@ -7,10 +7,9 @@ require('dotenv').config();
 const registerMember = async (req, res) => {
     const {
         name, ktp_number, phone, company_id, position_id, email, password,
-        address_province, address_city, address_district, address_village, address_detail,
-        // New domicile address fields
-        domicile_address_province, domicile_address_city, domicile_address_district, domicile_address_village, domicile_address_detail,
-        heir_name, heir_kk_number, heir_relationship, heir_phone
+        address_province, address_city, address_district, address_village, address_detail, // These are text fields from FormData
+        domicile_address_province, domicile_address_city, domicile_address_district, domicile_address_village, domicile_address_detail, // These are also text fields
+        heir_name, heir_kk_number, heir_relationship, heir_phone // And these too
     } = req.body;
 
     // --- Input Validation ---
@@ -57,14 +56,14 @@ const registerMember = async (req, res) => {
                 name, ktp_number, phone, 
                 company_id, position_id, email, password,
                 address_province, address_city, address_district, 
-                address_village, address_detail,
-            domicile_address_province, domicile_address_city, domicile_address_district, 
-            domicile_address_village, domicile_address_detail,
+                address_village, address_detail, 
+                domicile_address_province, domicile_address_city, domicile_address_district,
+                domicile_address_village, domicile_address_detail,
                 heir_name, heir_kk_number, heir_relationship, 
                 heir_phone,
                 ktp_photo_path, selfie_photo_path, kk_photo_path, 
                 status, role, registration_date 
-        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24, 'Pending', 'member', NOW())
+        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24, $25, 'Pending', 'member', NOW())
             RETURNING id, name, email, role;
         `;
         const values = [
@@ -72,7 +71,7 @@ const registerMember = async (req, res) => {
             address_province || null, address_city || null, address_district || null, address_village || null, address_detail || null,
             domicile_address_province || null, domicile_address_city || null, domicile_address_district || null, domicile_address_village || null, domicile_address_detail || null,
             heir_name || null, heir_kk_number || null, heir_relationship || null, heir_phone || null,
-            ktp_photo_path, selfie_photo_path, kk_photo_path,
+            ktp_photo_path, selfie_photo_path, kk_photo_path
         ];
 
         const newUserResult = await client.query(query, values);
@@ -81,12 +80,21 @@ const registerMember = async (req, res) => {
 
         const newUser = newUserResult.rows[0];
 
-        // Send notification email asynchronously. Don't wait for it to complete.
-        // This ensures the user gets a fast response, and email failure doesn't break registration.
-        sendRegistrationEmail(newUser.email, newUser.name).catch(err => {
-            // Log email sending failure for debugging, but don't send error to client.
-            console.error("Asynchronous email sending to user failed:", err);
-        });
+        // --- Notifikasi Asinkron ---
+        // Kirim email ke pendaftar
+        sendRegistrationEmail(newUser.email, newUser.name)
+            .catch(err => console.error(`Failed to send registration email to ${newUser.email}:`, err));
+
+        // Kirim notifikasi lonceng ke semua admin/akunting
+        const approverRoles = ['admin', 'akunting'];
+        const approversRes = await client.query('SELECT id FROM members WHERE role = ANY($1::varchar[]) AND status = \'Active\'', [approverRoles]);
+        const notificationMessage = `Pendaftaran anggota baru dari ${newUser.name} menunggu persetujuan.`;
+        const notificationLink = 'approvals';
+
+        for (const approver of approversRes.rows) {
+            createNotification(approver.id, notificationMessage, notificationLink)
+                .catch(err => console.error(`Failed to create new member notification for user ${approver.id}:`, err));
+        }
 
         // --- Code Clarity: Simplified Asynchronous Admin Notification ---
         // Send notification to admins without waiting for it to complete.

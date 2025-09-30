@@ -8,27 +8,28 @@ const pool = require('../../db');
  */
 const getCashFlowSummary = async (startDate, endDate) => {
     const cashAccountId = 3; // Asumsi ID Akun Kas adalah 3
+    const queryParams = [cashAccountId];
     let queryText = `
         SELECT
-            COALESCE(SUM(CASE WHEN je.account_id = $1 THEN je.debit ELSE 0 END), 0) as total_inflow,
-            COALESCE(SUM(CASE WHEN je.account_id = $1 THEN je.credit ELSE 0 END), 0) as total_outflow
+            COALESCE(SUM(CASE WHEN je.account_id = $1 THEN je.debit ELSE 0 END), 0) as "total_inflow",
+            COALESCE(SUM(CASE WHEN je.account_id = $1 THEN je.credit ELSE 0 END), 0) as "total_outflow"
         FROM journal_entries je
         JOIN general_journal gj ON je.journal_id = gj.id
     `;
-    const queryParams = [cashAccountId];
-    let paramIndex = 2;
 
     if (startDate && endDate) {
-        queryText += ` WHERE gj.entry_date BETWEEN $${paramIndex++} AND $${paramIndex++}`;
+        // Parameter index dimulai dari $2 karena $1 adalah cashAccountId
+        queryText += ` WHERE gj.entry_date BETWEEN $2 AND $3`;
         queryParams.push(startDate, endDate);
     } else {
+        // Jika tidak ada filter, ambil data 30 hari terakhir
         queryText += ` WHERE gj.entry_date >= NOW() - INTERVAL '30 days'`;
     }
 
     const result = await pool.query(queryText, queryParams);
     return {
-        inflow: parseFloat(result.rows[0].total_inflow),
-        outflow: parseFloat(result.rows[0].total_outflow),
+        inflow: parseFloat(result.rows[0].total_inflow || 0),
+        outflow: parseFloat(result.rows[0].total_outflow || 0),
     };
 };
 

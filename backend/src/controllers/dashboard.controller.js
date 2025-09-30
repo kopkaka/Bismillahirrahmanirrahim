@@ -5,9 +5,13 @@ const getDashboardStats = async (req, res) => {
         // Performance: Combine multiple queries into a single database round-trip using subqueries.
         const statsQuery = `
             SELECT
-                (SELECT COUNT(*) FROM members WHERE status = 'Active') AS total_members,
-                (SELECT COALESCE(SUM(amount), 0) FROM savings WHERE status = 'Approved') AS total_savings,
-                (SELECT COALESCE(SUM(amount), 0) FROM loans WHERE status = 'Approved') AS total_active_loans,
+                (SELECT COUNT(*) FROM members WHERE status = 'Active' AND role = 'member') AS total_members,
+                (SELECT COALESCE(SUM(CASE 
+                                        WHEN st.name = 'Penarikan Simpanan Sukarela' THEN -s.amount 
+                                        ELSE s.amount 
+                                    END), 0) 
+                 FROM savings s JOIN saving_types st ON s.saving_type_id = st.id WHERE s.status = 'Approved') AS total_savings,
+                (SELECT COALESCE(SUM(remaining_principal), 0) FROM loans WHERE status = 'Approved') AS total_active_loans,
                 (SELECT COUNT(*) FROM members WHERE status = 'Pending') AS pending_members
         `;
         const result = await pool.query(statsQuery);

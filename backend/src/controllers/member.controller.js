@@ -17,9 +17,13 @@ const getMemberStats = async (req, res) => {
         const statsQuery = `
             SELECT
                 (
-                    SELECT COALESCE(SUM(amount), 0)
-                    FROM savings
-                    WHERE member_id = $1 AND status = 'Approved'
+                    SELECT COALESCE(SUM(CASE 
+                                        WHEN st.name = 'Penarikan Simpanan Sukarela' THEN -s.amount 
+                                        ELSE s.amount 
+                                      END), 0)
+                    FROM savings s
+                    JOIN saving_types st ON s.saving_type_id = st.id
+                    WHERE s.member_id = $1 AND s.status = 'Approved'
                 ) AS total_savings,
                 (
                     SELECT COALESCE(SUM(remaining_principal), 0)
@@ -215,10 +219,15 @@ const getMemberApplications = async (req, res) => {
  */
 const createLoanApplication = async (req, res) => {
     const memberId = req.user.id;
-    const { loan_term_id, amount, bank_name, bank_account_number } = req.body;
+    // Data sekarang datang dari FormData
+    const { loan_term_id, amount, bank_name, bank_account_number } = req.body; 
+    const signatureFile = req.file;
 
     if (!loan_term_id || !amount || parseFloat(amount) <= 0 || !bank_name || !bank_account_number) {
         return res.status(400).json({ error: 'Produk pinjaman, jumlah, dan informasi rekening bank harus diisi dengan benar.' });
+    }
+    if (!signatureFile) {
+        return res.status(400).json({ error: 'Tanda tangan pada surat komitmen wajib diisi.' });
     }
 
     const client = await pool.connect();
@@ -259,12 +268,14 @@ const createLoanApplication = async (req, res) => {
         const loan_type_id = termResult.rows[0].loan_type_id;
 
         // 4. Insert new loan application.
+        const signaturePath = signatureFile.path.replace(/\\/g, '/');
+
         const insertQuery = `
-            INSERT INTO loans (member_id, loan_type_id, loan_term_id, amount, date, status, remaining_principal, bank_name, bank_account_number)
-            VALUES ($1, $2, $3, $4, NOW(), 'Pending', $5, $6, $7)
+            INSERT INTO loans (member_id, loan_type_id, loan_term_id, amount, date, status, remaining_principal, bank_name, bank_account_number, commitment_signature_path)
+            VALUES ($1, $2, $3, $4, NOW(), 'Pending', $5, $6, $7, $8)
             RETURNING *
         `;
-        const newLoanResult = await client.query(insertQuery, [memberId, loan_type_id, loan_term_id, amount, amount, bank_name, bank_account_number]);
+        const newLoanResult = await client.query(insertQuery, [memberId, loan_type_id, loan_term_id, amount, amount, bank_name, bank_account_number, signaturePath]);
         const newLoan = newLoanResult.rows[0];
 
         // 5. Notify admins and accountants about the new application.
@@ -358,8 +369,8 @@ const getVoluntarySavingsBalance = async (req, res) => {
         // yang statusnya sudah 'Approved'.
         const query = `
             SELECT 
-                COALESCE(SUM(CASE WHEN st.name = 'Simpanan Sukarela' THEN s.amount ELSE 0 END), 0) - 
-                COALESCE(SUM(CASE WHEN st.name = 'Penarikan Simpanan Sukarela' THEN s.amount ELSE 0 END), 0) as "availableBalance"
+                COALESCE(SUM(CASE WHEN st.name = 'Simpanan Sukarela' THEN s.amount 
+                                  WHEN st.name = 'Penarikan Simpanan Sukarela' THEN -s.amount ELSE 0 END), 0) as "availableBalance"
             FROM savings s
             JOIN saving_types st ON s.saving_type_id = st.id
             WHERE s.member_id = $1 AND s.status = 'Approved'
@@ -403,7 +414,18 @@ const createWithdrawalApplication = async (req, res) => {
         const insertQuery = `INSERT INTO savings (member_id, saving_type_id, amount, description, status) VALUES ($1, $2, $3, $4, 'Pending') RETURNING *`;
         const newWithdrawal = await client.query(insertQuery, [memberId, withdrawalTypeId, amount, description]);
 
-        // 4. Notify admins (logic can be added here if needed)
+        // 4. Notify admins and accountants
+        const memberName = (await client.query('SELECT name FROM members WHERE id = $1', [memberId])).rows[0].name;
+        const approverRoles = ['admin', 'akunting'];
+        const approversRes = await client.query('SELECT id FROM members WHERE role = ANY($1::varchar[]) AND status = \'Active\'', [approverRoles]);
+        
+        const notificationMessage = `Pengajuan penarikan dari ${memberName} sebesar ${new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR' }).format(amount)} menunggu persetujuan.`;
+        const notificationLink = 'approvals';
+
+        for (const approver of approversRes.rows) {
+            createNotification(approver.id, notificationMessage, notificationLink)
+                .catch(err => console.error(`Failed to create withdrawal notification for user ${approver.id}:`, err));
+        }
 
         await client.query('COMMIT');
         res.status(201).json(newWithdrawal.rows[0]);
@@ -436,23 +458,20 @@ const _getInstallmentDetails = (loan, installmentNumber) => {
 const getActiveLoanForPayment = async (req, res) => {
     const memberId = req.user.id;
     try {
-        const loanRes = await pool.query( // Periksa semua pinjaman yang belum lunas
-            `SELECT l.id, l.amount, l.remaining_principal, lt.tenor_months, lt.interest_rate
+        // Periksa pinjaman yang statusnya 'Approved' (aktif berjalan)
+        const loanRes = await pool.query(
+            `SELECT l.id, l.amount, l.status, l.remaining_principal, lt.tenor_months, lt.interest_rate
              FROM loans l
              JOIN loan_terms lt ON l.loan_term_id = lt.id
-             WHERE l.member_id = $1 AND l.status != 'Lunas' AND l.status != 'Rejected'`,
+             WHERE l.member_id = $1 AND l.status = 'Approved'`,
             [memberId]
         );
 
+        // Jika tidak ada pinjaman sama sekali (bahkan yang pending), kembalikan null.
         if (loanRes.rows.length === 0) {
             return res.json(null); // Kembalikan null jika tidak ada pinjaman aktif
         }
         const loan = loanRes.rows[0];
-
-        // Jika statusnya belum 'Approved', berarti masih pending. Kembalikan null agar frontend tahu.
-        if (loan.status !== 'Approved') {
-            return res.json(null);
-        }
 
         // Cari angsuran berikutnya yang harus dibayar
         const lastPaymentRes = await pool.query(
@@ -470,6 +489,7 @@ const getActiveLoanForPayment = async (req, res) => {
 
         res.json({
             loanId: loan.id,
+            status: loan.status, // 'Approved'
             remainingPrincipal: loan.remaining_principal,
             nextInstallment: {
                 number: nextInstallmentNumber,
@@ -506,6 +526,21 @@ const submitLoanPayment = async (req, res) => {
         const proofPath = proofFile.path.replace(/\\/g, '/');
 
         await client.query(`INSERT INTO loan_payments (loan_id, payment_date, amount_paid, installment_number, status, proof_path, payment_method) VALUES ($1, NOW(), $2, $3, 'Pending', $4, 'Transfer')`, [loanId, amountToPay, installmentNumber, proofPath]);
+
+        // --- Kirim Notifikasi ke Admin & Akunting ---
+        const memberNameRes = await client.query('SELECT name FROM members WHERE id = $1', [memberId]);
+        const memberName = memberNameRes.rows[0].name;
+
+        const approverRoles = ['admin', 'akunting'];
+        const approversRes = await client.query('SELECT id FROM members WHERE role = ANY($1::varchar[]) AND status = \'Active\'', [approverRoles]);
+
+        const notificationMessage = `Pembayaran angsuran ke-${installmentNumber} dari ${memberName} (Pinjaman ID: ${loanId}) menunggu verifikasi.`;
+        const notificationLink = 'approvals'; // Arahkan ke halaman persetujuan utama
+
+        for (const approver of approversRes.rows) {
+            createNotification(approver.id, notificationMessage, notificationLink)
+                .catch(err => console.error(`Gagal membuat notifikasi pembayaran angsuran untuk user ${approver.id}:`, err));
+        }
 
         await client.query('COMMIT');
         res.status(201).json({ message: 'Bukti pembayaran berhasil dikirim.' });
@@ -585,6 +620,69 @@ const createSavingApplication = async (req, res) => {
 };
 
 /**
+ * @desc    Membuat pengajuan simpanan wajib baru untuk anggota yang sedang login.
+ * @route   POST /api/member/mandatory-saving
+ * @access  Private
+ */
+const createMandatorySavingApplication = async (req, res) => {
+    const memberId = req.user.id;
+    const { amount, description } = req.body;
+    const proofPhoto = req.file;
+
+    if (!amount || parseFloat(amount) <= 0) {
+        return res.status(400).json({ error: 'Jumlah setoran wajib tidak boleh kosong atau nol.' });
+    }
+
+    const proofPath = proofPhoto ? proofPhoto.path.replace(/\\/g, '/') : null;
+
+    const client = await pool.connect();
+    try {
+        await client.query('BEGIN');
+
+        // 1. Dapatkan ID tipe simpanan 'Simpanan Wajib'
+        const MANDATORY_SAVING_TYPE_NAME = 'Simpanan Wajib';
+        const savingTypeResult = await client.query("SELECT id FROM saving_types WHERE name = $1 LIMIT 1", [MANDATORY_SAVING_TYPE_NAME]);
+        if (savingTypeResult.rows.length === 0) {
+            throw new Error(`Konfigurasi sistem: Tipe simpanan "${MANDATORY_SAVING_TYPE_NAME}" tidak ditemukan.`);
+        }
+        const savingTypeId = savingTypeResult.rows[0].id;
+
+        // 2. Periksa apakah anggota sudah mengajukan simpanan wajib untuk bulan ini
+        const existingMandatorySaving = await client.query(
+            `SELECT id FROM savings WHERE member_id = $1 AND saving_type_id = $2 AND date_trunc('month', date) = date_trunc('month', NOW()) AND status IN ('Pending', 'Approved')`,
+            [memberId, savingTypeId]
+        );
+        if (existingMandatorySaving.rows.length > 0) {
+            throw new Error('Anda sudah mengajukan atau membayar simpanan wajib untuk bulan ini.');
+        }
+
+        // 3. Masukkan pengajuan simpanan wajib ke tabel savings dengan status 'Pending'
+        const insertQuery = `
+            INSERT INTO savings (member_id, saving_type_id, amount, date, status, description, proof_path)
+            VALUES ($1, $2, $3, NOW(), 'Pending', $4, $5)
+            RETURNING *
+        `;
+        const newSavingResult = await client.query(insertQuery, [memberId, savingTypeId, amount, description || 'Pengajuan Simpanan Wajib', proofPath]);
+        const newSaving = newSavingResult.rows[0];
+
+        // 4. Notifikasi admin dan akunting
+        const memberName = (await client.query('SELECT name FROM members WHERE id = $1', [memberId])).rows[0].name;
+        const approverRoles = ['admin', 'akunting'];
+        const approversRes = await client.query('SELECT id FROM members WHERE role = ANY($1::varchar[]) AND status = \'Active\'', [approverRoles]);
+        const notificationMessage = `Pengajuan simpanan wajib dari ${memberName} sebesar ${new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR' }).format(amount)} menunggu persetujuan.`;
+        const notificationLink = 'approvals';
+        for (const approver of approversRes.rows) { createNotification(approver.id, notificationMessage, notificationLink).catch(err => console.error(`Failed to create notification for user ${approver.id}:`, err)); }
+
+        await client.query('COMMIT');
+        res.status(201).json(newSaving);
+    } catch (err) {
+        await client.query('ROLLBACK');
+        console.error('Error creating mandatory saving application:', err.message);
+        res.status(400).json({ error: err.message || 'Gagal membuat pengajuan simpanan wajib.' });
+    } finally { client.release(); }
+};
+
+/**
  * @desc    Mendapatkan detail pinjaman beserta jadwal angsuran.
  * @route   GET /api/member/loans/:id/details
  * @access  Private
@@ -598,13 +696,19 @@ const getLoanDetails = async (req, res) => {
         const loanQuery = `
             SELECT 
                 l.id,
-                l.amount,
+                l.amount, l.commitment_signature_path,
                 l.date AS start_date,
-                l.status,
+                l.status, l.loan_term_id,
+                ltp.name as "loanTypeName",
+                m.name as "memberName",
+                m.cooperative_number as "cooperativeNumber",
                 lt.tenor_months,
                 lt.interest_rate
             FROM loans l
             JOIN loan_terms lt ON l.loan_term_id = lt.id
+            -- Join untuk mendapatkan nama tipe pinjaman dan nama anggota
+            JOIN loan_types ltp ON l.loan_type_id = ltp.id
+            JOIN members m ON l.member_id = m.id
             WHERE l.id = $1 AND l.member_id = $2
         `;
         const loanResult = await pool.query(loanQuery, [loanId, memberId]);
@@ -615,8 +719,6 @@ const getLoanDetails = async (req, res) => {
         }
         const loan = loanResult.rows[0];
         const principal = parseFloat(loan.amount);
-        const tenor = parseInt(loan.tenor_months);
-        const monthlyInterestRate = parseFloat(loan.interest_rate) / 100;
 
         // 2. Ambil data pembayaran yang sudah dilakukan untuk pinjaman ini
         const paymentsQuery = 'SELECT installment_number, payment_date, amount_paid FROM loan_payments WHERE loan_id = $1';
@@ -625,6 +727,8 @@ const getLoanDetails = async (req, res) => {
 
         // 3. Buat jadwal angsuran (amortisasi)
         const installments = [];
+        const tenor = parseInt(loan.tenor_months);
+        const monthlyInterestRate = parseFloat(loan.interest_rate) / 1200; // Langsung bagi 1200
         let remainingPrincipal = principal;
         const principalPerMonth = principal / tenor;
 
@@ -651,13 +755,18 @@ const getLoanDetails = async (req, res) => {
         const totalPaid = Array.from(paymentsMap.values()).reduce((sum, p) => sum + parseFloat(p.amount_paid), 0);
         const monthlyInstallmentFirst = principalPerMonth + (principal * monthlyInterestRate);
 
+        // Memastikan semua field yang dibutuhkan frontend ada di sini
         res.json({
             summary: {
                 id: loan.id,
                 amount: principal,
                 tenor: tenor,
-                interestRate: loan.interest_rate,
+                interestRate: parseFloat(loan.interest_rate),
+                loanTypeName: loan.loanTypeName,
                 startDate: loan.start_date,
+                memberName: loan.memberName,
+                cooperativeNumber: loan.cooperativeNumber,
+                commitment_signature_path: loan.commitment_signature_path,
                 status: loan.status,
                 monthlyInstallment: monthlyInstallmentFirst, // Cicilan bulan pertama
                 totalPaid: totalPaid
@@ -1254,4 +1363,5 @@ module.exports = {
     getActiveLoanForPayment,
     submitLoanPayment,
     cancelSaleOrder,
+    createMandatorySavingApplication,
 };

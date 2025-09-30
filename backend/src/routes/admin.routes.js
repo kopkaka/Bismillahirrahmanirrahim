@@ -19,6 +19,7 @@ const savingController = require('../controllers/saving.controller');
 const loanController = require('../controllers/loan.controller');
 const journalController = require('../controllers/journal.controller.js');
 
+const { getApprovalCounts } = require('../controllers/approval.controller');
 // --- Sub-routers for specific admin resources ---
 const announcementRoutes = require('./announcement.routes.js');
 const employerRoutes = require('./employer.routes.js');
@@ -37,6 +38,7 @@ router.get('/income-statement-summary', protect, authorize(['viewDashboard']), a
 // Approvals
 router.get('/pending-loans', protect, authorize(['viewApprovals']), adminController.getPendingLoans);
 router.get('/pending-loan-payments', protect, authorize(['approveLoanAccounting']), adminController.getPendingLoanPayments);
+router.get('/approval-counts', protect, authorize(['viewApprovals']), getApprovalCounts);
 // This route can be accessed by accounting (for first approval) or manager (for final approval)
 router.put('/loans/:id/status', protect, authorize(['approveLoanAccounting', 'approveLoanManager']), adminController.updateLoanStatus);
 
@@ -61,6 +63,8 @@ router.get('/loans/:id/details', protect, authorize(['viewLoans']), adminControl
 router.post('/loans/payment', protect, authorize(['approveLoanAccounting']), adminController.recordLoanPayment);
 router.get('/loans/:id', protect, authorize(['manageUsers']), adminController.getLoanById);
 router.put('/loan-payments/:id/status', protect, authorize(['approveLoanAccounting']), adminController.updateLoanPaymentStatus);
+router.delete('/loan-payments/:id', protect, authorize(['admin']), adminController.cancelLoanPayment); // Rute baru untuk pembatalan
+router.post('/loans/:id/commitment', protect, authorize(['approveLoanAccounting']), upload.single('signature'), adminController.saveLoanCommitment);
 router.put('/loans/:id', protect, authorize(['manageUsers']), adminController.updateLoan);
 router.delete('/loans/:id', protect, authorize(['deleteData']), adminController.deleteLoan);
 router.get('/members/:id/loans', protect, authorize(['viewLoans']), adminController.getMemberLoanHistory);
@@ -148,6 +152,8 @@ router.get('/reports/income-statement', protect, authorize(['viewReports']), adm
 router.get('/reports/balance-sheet', protect, authorize(['viewReports']), adminController.getBalanceSheet);
 router.get('/reports/general-ledger', protect, authorize(['viewReports']), adminController.getGeneralLedger);
 router.get('/reports/cash-flow', protect, authorize(['viewReports']), adminController.getCashFlowStatement);
+router.get('/sales-report', protect, authorize(['viewReports']), adminController.getSalesReport);
+router.get('/reports/loan-interest', protect, authorize(['viewReports']), adminController.getLoanInterestReport);
 router.get('/reports/monthly-closing-status', protect, authorize(['viewReports']), adminController.getMonthlyClosingStatus);
 
 // SHU Rules Management

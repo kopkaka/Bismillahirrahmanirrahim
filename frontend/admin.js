@@ -645,14 +645,14 @@ const renderCashFlowChart = (data) => {
     const loadDashboardData = async () => {
         try {
             // 1. Ambil statistik umum (simpanan, pinjaman, pendaftar baru)
-            const stats = await apiFetch(`${ADMIN_API_URL}/stats`);
+            const stats = await apiFetch(`${ADMIN_API_URL}/stats`); // Pastikan endpoint ini benar
 
             document.getElementById('total-savings').textContent = formatCurrency(stats.totalSavings);
             document.getElementById('total-loans').textContent = formatCurrency(stats.totalActiveLoans);
             document.getElementById('pending-members-count').textContent = stats.pendingMembers || 0;
             document.getElementById('total-members').textContent = stats.totalMembers || 0;
 
-            // Muat data untuk grafik arus kas
+            // Muat data untuk grafik arus kas (default 30 hari terakhir)
             const cashFlowData = await apiFetch(`${ADMIN_API_URL}/cashflow-summary`);
             renderCashFlowChart(cashFlowData);
 
@@ -760,24 +760,37 @@ const renderCashFlowChart = (data) => {
     let currentSavingsFilters = {};
     const loadSavings = async (page = 1) => {
         const tableBody = document.getElementById('savings-table-body');
+        const tableFooter = tableBody.nextElementSibling; // Asumsikan <tfoot> adalah sibling setelah <tbody>
         if (!tableBody) return;
         tableBody.innerHTML = `<tr><td colspan="7" class="text-center py-4 text-gray-500">Memuat data simpanan...</td></tr>`;
         try {
             const filters = { ...currentSavingsFilters, page, limit: 10 };
             const queryParams = new URLSearchParams(filters).toString();
-            const { data: savings, pagination } = await apiFetch(`${API_URL}/savings?${queryParams}`);
+            const { data: savings, pagination } = await apiFetch(`${ADMIN_API_URL}/savings?${queryParams}`);
 
             tableBody.innerHTML = '';
             if (savings.length === 0) {
                 tableBody.innerHTML = `<tr><td colspan="7" class="text-center py-4 text-gray-500">Tidak ada data simpanan ditemukan.</td></tr>`;
+                if(tableFooter) tableFooter.innerHTML = '';
                 renderPagination('savings-pagination-controls', { totalItems: 0 }, loadSavings);
                 return;
             }
             
+            let totalAmountOnPage = 0;
+            let approvedTotal = 0;
+
             savings.forEach(saving => {
                 const row = tableBody.insertRow();
+                const isWithdrawal = saving.savingTypeName === 'Penarikan Simpanan Sukarela';
+                const displayAmount = isWithdrawal ? -saving.amount : saving.amount;
+                const amountClass = isWithdrawal ? 'text-red-600' : 'text-gray-500';
                 const statusClass = saving.status === 'Approved' ? 'bg-green-100 text-green-800' : (saving.status === 'Rejected' ? 'bg-red-100 text-red-800' : 'bg-yellow-100 text-yellow-800');
                 
+                totalAmountOnPage += parseFloat(displayAmount);
+                if (saving.status === 'Approved') {
+                    approvedTotal += parseFloat(displayAmount);
+                }
+
                 let adminActions = '';
                 if (userRole === 'admin') {
                     if (saving.status === 'Pending') adminActions += `<button class="edit-saving-btn text-indigo-600 hover:text-indigo-900" data-id="${saving.id}">Ubah</button>`;
@@ -787,7 +800,7 @@ const renderCashFlowChart = (data) => {
                 row.innerHTML = `
                     <td class="px-6 py-4 text-sm text-gray-900">${saving.memberName}</td>
                     <td class="px-6 py-4 text-sm text-gray-500">${saving.savingTypeName}</td>
-                    <td class="px-6 py-4 text-sm text-gray-500 text-right">${formatCurrency(saving.amount)}</td>
+                    <td class="px-6 py-4 text-sm ${amountClass} text-right">${formatCurrency(displayAmount)}</td>
                     <td class="px-6 py-4 text-sm text-gray-500">${formatDate(saving.date)}</td>
                     <td class="px-6 py-4 text-sm text-gray-500">${saving.description || '-'}</td>
                     <td class="px-6 py-4 text-sm"><span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${statusClass}">${saving.status}</span></td>
@@ -795,6 +808,16 @@ const renderCashFlowChart = (data) => {
                 `;
             });
             
+            if (tableFooter) {
+                tableFooter.innerHTML = `
+                    <tr class="bg-gray-100 font-bold">
+                        <td class="px-6 py-3 text-left text-sm text-gray-800" colspan="2">Total di Halaman Ini</td>
+                        <td class="px-6 py-3 text-right text-sm text-gray-800">${formatCurrency(totalAmountOnPage)}</td>
+                        <td colspan="4"></td>
+                    </tr>
+                `;
+            }
+
             renderPagination('savings-pagination-controls', pagination, loadSavings);
 
         } catch (error) {
@@ -812,7 +835,7 @@ const renderCashFlowChart = (data) => {
                 const savingId = button.dataset.id;
                 if (confirm('Anda yakin ingin menghapus data simpanan ini? Tindakan ini tidak dapat dibatalkan.')) {
                     try {
-                        await apiFetch(`${API_URL}/savings/${savingId}`, { method: 'DELETE' });
+                        await apiFetch(`${ADMIN_API_URL}/savings/${savingId}`, { method: 'DELETE' });
                         alert('Data simpanan berhasil dihapus.');
                         loadSavings(1); // Muat ulang daftar simpanan dari halaman pertama
                     } catch (error) {
@@ -1095,6 +1118,28 @@ const renderCashFlowChart = (data) => {
                 button.textContent = 'Bayar';
             }
         });
+
+        // Event listener untuk tombol Batalkan Pembayaran
+        adminLoanDetailsModal.addEventListener('click', async (e) => {
+            if (!e.target.matches('.cancel-installment-btn')) return;
+
+            const button = e.target;
+            const { paymentId, loanId } = button.dataset;
+
+            if (!confirm('Anda yakin ingin membatalkan pembayaran ini? Stok akan dikembalikan dan jurnal akan dihapus.')) {
+                return;
+            }
+
+            button.disabled = true;
+            button.textContent = 'Membatalkan...';
+
+            try {
+                await apiFetch(`${ADMIN_API_URL}/loan-payments/${paymentId}`, { method: 'DELETE' });
+                alert('Pembayaran berhasil dibatalkan.');
+                showAdminLoanDetailsModal(loanId); // Refresh modal
+                loadLoans(); // Refresh daftar pinjaman utama
+            } catch (error) { alert(`Gagal membatalkan: ${error.message}`); button.disabled = false; button.textContent = 'Batalkan'; }
+        });
     }
 
     const showAdminLoanDetailsModal = async (loanId) => {
@@ -1136,10 +1181,14 @@ const renderCashFlowChart = (data) => {
                 const statusClass = inst.status === 'Lunas' ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800';
 
                 let actionButton = '';
-                if (inst.status !== 'Lunas' && isLoanPayable && ['admin', 'akunting'].includes(userRole)) {
+                if (inst.status === 'Lunas' && userRole === 'admin') {
+                    // Tombol Batalkan untuk admin jika sudah lunas
+                    actionButton = `<button class="cancel-installment-btn text-sm bg-red-600 text-white py-1 px-3 rounded-md hover:bg-red-700" data-payment-id="${inst.paymentId}" data-loan-id="${summary.id}">Batalkan</button>`;
+                } else if (inst.status !== 'Lunas' && isLoanPayable && ['admin', 'akunting'].includes(userRole)) {
+                    // Tombol Bayar jika belum lunas
                     actionButton = `<button class="pay-installment-btn text-sm bg-green-600 text-white py-1 px-3 rounded-md hover:bg-green-700" data-loan-id="${summary.id}" data-installment-number="${inst.installmentNumber}">Bayar</button>`;
                 } else if (inst.status !== 'Lunas') {
-                    actionButton = `<span class="text-xs text-gray-400">-</span>`;
+                    actionButton = `-`;
                 }
 
                 const row = installmentsTableBody.insertRow();
@@ -1511,14 +1560,14 @@ const renderCashFlowChart = (data) => {
     const loadPendingDeposits = async () => {
         const tableBody = document.getElementById('pending-savings-table-body');
         if (!tableBody) return;
-        const colspan = 6;
+        const colspan = 7; // Increased colspan due to new column
         tableBody.innerHTML = `<tr><td colspan="${colspan}" class="text-center py-4 text-gray-500">Memuat pengajuan setoran...</td></tr>`;
 
         try {
             const responseData = await apiFetch(`${ADMIN_API_URL}/savings?status=Pending`);
             const allItems = responseData.data || responseData;
-            // Filter for items that are NOT withdrawals
-            const items = allItems.filter(item => item.savingTypeName !== 'Penarikan Simpanan Sukarela');
+            // Filter for items that are deposits (Wajib or Sukarela)
+            const items = allItems.filter(item => ['Simpanan Wajib', 'Simpanan Sukarela'].includes(item.savingTypeName));
 
             tableBody.innerHTML = '';
             if (items.length === 0) {
@@ -1547,6 +1596,7 @@ const renderCashFlowChart = (data) => {
 
                 row.innerHTML = `
                     <td class="px-6 py-4 text-sm text-gray-900">${item.memberName || 'N/A'}</td>
+                    <td class="px-6 py-4 text-sm text-gray-500">${item.savingTypeName}</td>
                     <td class="px-6 py-4 text-sm text-gray-500">${item.cooperativeNumber || '-'}</td>
                     <td class="px-6 py-4 text-sm text-gray-500 text-right">${formatCurrency(item.amount)}</td>
                     <td class="px-6 py-4 text-sm text-gray-500">${formatDate(item.date)}</td>
@@ -1625,11 +1675,11 @@ const renderCashFlowChart = (data) => {
                 let actionButtons = `<span class="text-xs text-gray-400">Tidak ada aksi</span>`;
 
                 if (isLoan) { // Logic for Loans
-                    // Tombol Detail selalu ada
-                    actionButtons = `<button class="details-member-btn text-blue-600 hover:text-blue-900" data-id="${item.member_id}">Detail</button>`;
+                    // Tombol Detail diubah menjadi tombol Surat Komitmen
+                    actionButtons = `<button class="commitment-letter-btn text-blue-600 hover:text-blue-900" data-loan-id="${item.id}">Lihat Komitmen</button>`;
 
                     if (item.status === 'Pending' && ['admin', 'akunting'].includes(userRole)) {
-                        actionButtons += `<button class="approve-btn text-green-600" data-id="${item.id}" data-type="loans" data-new-status="Approved by Accounting">Setujui (Akunting)</button>
+                        actionButtons += `<button class="approve-btn text-green-600 ml-2" data-id="${item.id}" data-type="loans" data-new-status="Approved by Accounting">Setujui (Akunting)</button>
                                           <button class="reject-btn text-red-600" data-id="${item.id}" data-type="loans" data-new-status="Rejected">Tolak</button>`;
                     } else if (item.status === 'Approved by Accounting' && ['admin', 'manager'].includes(userRole)) {
                         actionButtons += `<button class="approve-btn text-green-600" data-id="${item.id}" data-type="loans" data-new-status="Approved">Finalisasi (Manager)</button>
@@ -1641,13 +1691,13 @@ const renderCashFlowChart = (data) => {
                         <td class="px-6 py-4 text-sm text-gray-500">${item.loanTypeName}</td>
                         <td class="px-6 py-4 text-sm text-gray-500 text-right">${formatCurrency(item.amount)}</td>
                         <td class="px-6 py-4 text-sm text-gray-500 text-center">${item.tenorMonths} bln</td>
-                        <td class="px-6 py-4 text-sm text-gray-500">
+                        <td class="px-6 py-4 text-sm text-gray-500 whitespace-nowrap">
                             <div>${item.bank_name || '-'}</div>
                             <div class="font-mono text-xs">${item.bank_account_number || '-'}</div>
                         </td>
                         <td class="px-6 py-4 text-sm text-gray-500">${formatDate(item.date)}</td>
                         <td class="px-6 py-4 text-sm text-gray-500">${item.status}</td>
-                        <td class="px-6 py-4 text-sm font-medium space-x-2">${actionButtons}</td>
+                        <td class="px-6 py-4 text-sm font-medium space-x-2 whitespace-nowrap">${actionButtons}</td>
                     `;
                 }
             });
@@ -1697,11 +1747,190 @@ const renderCashFlowChart = (data) => {
         }
     };
 
+    const generateAdminCommitmentPDF = async (loanId) => {
+        const { jsPDF } = window.jspdf;
+        const doc = new jsPDF();
+        const printBtn = document.getElementById('print-commitment-btn');
+    
+        printBtn.disabled = true;
+        printBtn.textContent = 'Mencetak...';
+    
+        try {
+            const { summary, installments } = await apiFetch(`${ADMIN_API_URL}/loans/${loanId}/details`);
+    
+            // --- Header ---
+            const logoImg = new Image();
+            logoImg.src = 'logo/logo.png';
+            await new Promise(resolve => logoImg.onload = resolve);
+            doc.addImage(logoImg, 'PNG', 15, 15, 20, 20);
+    
+            doc.setFont('helvetica', 'bold');
+            doc.setFontSize(14);
+            doc.text('Surat Pernyataan & Komitmen Pinjaman', 40, 22);
+            doc.setFontSize(10);
+            doc.setFont('helvetica', 'normal');
+            doc.text('Koperasi Karya Kagum Abadi', 40, 28);
+            doc.setLineWidth(0.5);
+            doc.line(15, 35, 195, 35);
+    
+            // --- Member & Loan Details ---
+            let yPos = 45;
+            doc.setFontSize(11);
+            doc.text(`Nama: ${summary.memberName}`, 15, yPos);
+            yPos += 7;
+            doc.text(`No. Anggota: ${summary.cooperativeNumber || 'N/A'}`, 15, yPos);
+            yPos += 10;
+            doc.text(`Jumlah Pinjaman: ${formatCurrency(summary.amount)}`, 15, yPos);
+            yPos += 7;
+            doc.text(`Produk Pinjaman: ${summary.loan_type_name} - ${summary.tenor_months} bulan`, 15, yPos);
+            yPos += 7;
+            const totalRepayment = installments.reduce((sum, inst) => sum + parseFloat(inst.amount), 0);
+            doc.text(`Total Pengembalian: ${formatCurrency(totalRepayment)}`, 15, yPos);
+    
+            // --- Amortization Table ---
+            yPos += 10;
+            doc.autoTable({
+                startY: yPos,
+                head: [['Bulan', 'Jatuh Tempo', 'Jumlah Bayar', 'Status']],
+                body: installments.map(inst => [inst.installmentNumber, formatDate(inst.dueDate), formatCurrency(inst.amount), inst.status]),
+                theme: 'grid',
+                headStyles: { fillColor: [127, 29, 29] },
+                styles: { fontSize: 9 },
+                columnStyles: { 2: { halign: 'right' } }
+            });
+            yPos = doc.lastAutoTable.finalY + 10;
+    
+            // --- Signature ---
+            doc.text(`Bandung, ${formatDate(summary.start_date)}`, 140, yPos);
+            yPos += 7;
+            doc.text('Hormat saya,', 140, yPos);
+            yPos += 5;
+    
+            if (summary.commitment_signature_path) {
+                const signatureUrl = `${API_URL.replace('/api', '')}/${summary.commitment_signature_path.replace(/\\/g, '/')}`;
+                const signatureImg = new Image();
+                signatureImg.src = signatureUrl;
+                signatureImg.crossOrigin = "Anonymous"; // Penting untuk memuat gambar dari domain lain
+                await new Promise(resolve => signatureImg.onload = resolve);
+                doc.addImage(signatureImg, 'PNG', 140, yPos, 50, 25);
+            } else {
+                doc.text('[Tanda Tangan Tidak Tersedia]', 140, yPos + 15);
+            }
+            yPos += 30;
+            doc.setLineWidth(0.2);
+            doc.line(140, yPos, 190, yPos);
+            doc.text(summary.memberName, 140, yPos + 5);
+    
+            doc.save(`Surat_Komitmen_Pinjaman_${summary.memberName}.pdf`);
+    
+        } catch (error) {
+            alert(`Gagal membuat PDF: ${error.message}`);
+        } finally {
+            printBtn.disabled = false;
+            printBtn.textContent = 'Cetak PDF';
+        }
+    };
+
+    const generateAmortizationForModal = (plafon, tenor, annualInterestRate) => {
+        const monthlyInterestRate = (annualInterestRate / 100) / 12;
+        const pokokPerBulan = plafon / tenor;
+        let sisaPinjaman = plafon;
+        let totalCicilan = 0;
+        let tableHtml = `<table class="min-w-full text-xs">
+            <thead class="bg-gray-50 sticky top-0"><tr class="text-left">
+                <th class="p-2">Bln</th><th class="p-2 text-right">Pokok</th><th class="p-2 text-right">Bunga</th><th class="p-2 text-right">Total</th>
+            </tr></thead><tbody class="divide-y">`;
+
+        for (let i = 1; i <= tenor; i++) {
+            const bungaBulanIni = sisaPinjaman * monthlyInterestRate;
+            const cicilanBulanIni = pokokPerBulan + bungaBulanIni;
+            sisaPinjaman -= pokokPerBulan;
+            totalCicilan += cicilanBulanIni;
+            tableHtml += `<tr>
+                <td class="p-2">${i}</td>
+                <td class="p-2 text-right">${formatCurrency(pokokPerBulan)}</td>
+                <td class="p-2 text-right">${formatCurrency(bungaBulanIni)}</td>
+                <td class="p-2 text-right font-semibold">${formatCurrency(cicilanBulanIni)}</td>
+            </tr>`;
+        }
+        tableHtml += `</tbody></table>`;
+        return { tableHtml, totalRepayment: totalCicilan };
+    };
+
+    const showAdminLoanCommitment = async (loanId) => {
+        const modal = document.getElementById('loan-commitment-modal');
+        if (!modal) return;
+    
+        // Reset and show modal with loading state
+        modal.classList.remove('hidden');
+        const printableArea = document.getElementById('printable-commitment-area');
+        printableArea.style.opacity = '0.5';
+    
+        try {
+            // Fetch loan details using the specific endpoint
+            const { summary, installments } = await apiFetch(`${ADMIN_API_URL}/loans/${loanId}/details`);
+    
+            // Populate modal with fetched data
+            document.getElementById('commitment-member-name-text').textContent = `: ${summary.memberName}`;
+            document.getElementById('commitment-coop-number-text').textContent = `: ${summary.cooperativeNumber || 'N/A'}`;
+            document.getElementById('commitment-loan-amount-text').textContent = `: ${formatCurrency(summary.amount)}`;
+            document.getElementById('commitment-loan-term-text').textContent = `: ${summary.loan_type_name} - ${summary.tenor_months} bulan`;
+
+            const { tableHtml, totalRepayment } = generateAmortizationForModal(parseFloat(summary.amount), summary.tenor_months, summary.interest_rate);
+            document.getElementById('commitment-total-repayment-text').textContent = `: ${formatCurrency(totalRepayment)}`;
+            document.getElementById('commitment-amortization-table-container').innerHTML = tableHtml;
+    
+            document.getElementById('commitment-current-date').textContent = formatDate(summary.start_date);
+            document.getElementById('commitment-signature-name-text').textContent = summary.memberName;
+    
+            // Display the member's signature image
+            const signatureContainer = document.getElementById('member-signature-container');
+            const signatureUrl = summary.commitment_signature_path ? `${API_URL.replace('/api', '')}/${summary.commitment_signature_path.replace(/\\/g, '/')}` : null;
+            signatureContainer.innerHTML = signatureUrl ? `<img src="${signatureUrl}" alt="Tanda Tangan Anggota" class="w-full h-full object-contain">` : `<p class="text-gray-500 text-center">Tanda tangan tidak tersedia.</p>`;
+
+            // Setup print button
+            document.getElementById('print-commitment-btn').onclick = () => generateAdminCommitmentPDF(loanId);
+    
+            printableArea.style.opacity = '1';
+        } catch (error) {
+            alert(`Gagal memuat detail komitmen: ${error.message}`);
+            modal.classList.add('hidden');
+        }
+    };
+
+    document.getElementById('close-commitment-modal')?.addEventListener('click', () => document.getElementById('loan-commitment-modal').classList.add('hidden'));
+    document.getElementById('cancel-commitment-modal')?.addEventListener('click', () => document.getElementById('loan-commitment-modal').classList.add('hidden'));
+
     const handleGenericApproval = async (e) => {
+        // Tambahkan pengecekan untuk tombol detail anggota
+        if (e.target.matches('.details-member-btn')) {
+            const memberId = e.target.dataset.id;
+            if (memberId) {
+                showMemberDetails(memberId);
+            }
+            return; // Hentikan eksekusi agar tidak melanjutkan ke logika approve/reject
+        }
+
+        if (e.target.matches('.commitment-letter-btn')) {
+            const loanId = e.target.dataset.loanId;
+            showAdminLoanCommitment(loanId); // Panggil fungsi baru untuk menampilkan modal
+            return;
+        }
+
+        // Logika yang sudah ada untuk approve/reject
         if (!e.target.matches('.approve-btn, .reject-btn')) return;
         const { id, type, newStatus } = e.target.dataset;
         const isApproved = !newStatus.includes('Rejected');
-        const endpoint = type === 'loans' ? `${ADMIN_API_URL}/loans` : `${ADMIN_API_URL}/savings`;
+
+        // Tentukan endpoint API yang benar berdasarkan tipe data
+        let endpoint;
+        if (type === 'loans') {
+            endpoint = `${ADMIN_API_URL}/loans`;
+        } else if (type === 'savings') {
+            endpoint = `${ADMIN_API_URL}/savings`;
+        } else if (type === 'loan-payments') {
+            endpoint = `${ADMIN_API_URL}/loan-payments`;
+        } else { return; } // Jangan lakukan apa-apa jika tipe tidak dikenali
 
         if (!confirm(`Anda yakin ingin ${isApproved ? 'menyetujui' : 'menolak'} pengajuan ini?`)) return;
 
@@ -1716,6 +1945,8 @@ const renderCashFlowChart = (data) => {
             } else if (type === 'savings') {
                 loadPendingDeposits();
                 loadPendingWithdrawals();
+            } else if (type === 'loan-payments') {
+                loadPendingLoanPayments();
             }
         } catch (error) {
             alert(`Terjadi kesalahan: ${error.message}`);
@@ -1725,7 +1956,7 @@ const renderCashFlowChart = (data) => {
     const loadApprovalCounts = async () => {
         try {
             // Endpoint ini perlu dibuat di backend untuk mengembalikan semua hitungan
-            const counts = await apiFetch(`${ADMIN_API_URL}/approvals/counts`);
+            const counts = await apiFetch(`${API_URL}/admin/approval-counts`);
 
             const updateCount = (elementId, count) => {
                 const el = document.getElementById(elementId);
@@ -2147,19 +2378,49 @@ const renderCashFlowChart = (data) => {
 
     // --- FUNGSI UNTUK KASIR UMUM (NON-ANGGOTA) ---
     const setupDirectCashier = () => {
-        const form = document.getElementById('direct-cashier-add-item-form');
-        const productSelect = document.getElementById('direct-cashier-product-select');
-        const quantityInput = document.getElementById('direct-cashier-quantity-input');
-        const tableBody = document.getElementById('direct-cashier-items-body');
+        const productGrid = document.getElementById('direct-cashier-product-grid');
+        const cartBody = document.getElementById('direct-cashier-items-body');
         const totalEl = document.getElementById('direct-cashier-total');
         const completeBtn = document.getElementById('direct-cashier-complete-btn');
+        const searchInput = document.getElementById('direct-cashier-search');
 
-        if (!form) return; // Only run if the UI exists
+        if (!productGrid) return; // Only run if the UI exists
+
+        const renderProductGrid = () => {
+            productGrid.innerHTML = '';
+            const searchTerm = searchInput.value.toLowerCase();
+            const filteredProducts = directCashierProducts.filter(p => p.name.toLowerCase().includes(searchTerm));
+
+            if (filteredProducts.length === 0) {
+                productGrid.innerHTML = `<p class="col-span-full text-center text-gray-500">Produk tidak ditemukan.</p>`;
+                return;
+            }
+
+            filteredProducts.forEach(p => {
+                const isOutOfStock = p.stock <= 0;
+                const card = document.createElement('div');
+                card.className = `product-card border rounded-lg p-2 flex flex-col text-center cursor-pointer hover:shadow-lg transition-shadow ${isOutOfStock ? 'opacity-50 cursor-not-allowed' : ''}`;
+                card.dataset.productId = p.id;
+
+                let imageUrl = p.image_url ? `${API_URL.replace('/api', '')}${p.image_url}` : 'https://placehold.co/150x150?text=No+Image';
+
+                card.innerHTML = `
+                    <img src="${imageUrl}" alt="${p.name}" class="w-full h-24 object-cover rounded-md mb-2">
+                    <p class="text-sm font-semibold flex-grow">${p.name}</p>
+                    <p class="text-xs text-gray-500">Stok: ${p.stock}</p>
+                    <p class="text-sm font-bold text-red-600">${formatCurrency(p.price)}</p>
+                `;
+                if (!isOutOfStock) {
+                    card.addEventListener('click', () => addToCart(p.id));
+                }
+                productGrid.appendChild(card);
+            });
+        };
 
         const renderDirectCart = () => {
-            tableBody.innerHTML = '';
+            cartBody.innerHTML = '';
             if (directCart.length === 0) {
-                tableBody.innerHTML = '<tr><td colspan="4" class="text-center py-4 text-gray-500">Keranjang kosong</td></tr>';
+                cartBody.innerHTML = `<div class="text-center py-10 text-gray-500"><svg class="mx-auto h-12 w-12 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z" /></svg><p class="mt-2 text-sm">Keranjang kosong</p></div>`;
                 completeBtn.disabled = true;
                 totalEl.textContent = formatCurrency(0);
                 return;
@@ -2167,44 +2428,67 @@ const renderCashFlowChart = (data) => {
 
             let total = 0;
             directCart.forEach((item, index) => {
-                const subtotal = item.price * item.quantity;
+                const subtotal = parseFloat(item.price) * item.quantity;
                 total += subtotal;
-                const row = tableBody.insertRow();
-                row.innerHTML = `
-                    <td class="py-2 text-left text-sm">${item.name}</td>
-                    <td class="py-2 text-center text-sm">${item.quantity}</td>
-                    <td class="py-2 text-right text-sm">${formatCurrency(subtotal)}</td>
-                    <td class="py-2 text-center"><button class="remove-direct-cart-item-btn text-red-500 text-xs" data-index="${index}">&times;</button></td>
+                const itemEl = document.createElement('div');
+                itemEl.className = 'flex items-center space-x-3 text-sm p-2 border-b';
+                itemEl.innerHTML = `
+                    <div class="flex-grow">
+                        <p class="font-semibold">${item.name}</p>
+                        <p class="text-xs text-gray-500">${formatCurrency(item.price)}</p>
+                    </div>
+                    <div class="flex items-center space-x-2">
+                        <button class="cart-qty-btn" data-index="${index}" data-action="decrease">-</button>
+                        <span>${item.quantity}</span>
+                        <button class="cart-qty-btn" data-index="${index}" data-action="increase">+</button>
+                    </div>
+                    <p class="font-semibold w-20 text-right">${formatCurrency(subtotal)}</p>
+                    <button class="remove-direct-cart-item-btn text-red-500 hover:text-red-700" data-index="${index}">&times;</button>
                 `;
+                cartBody.appendChild(itemEl);
             });
             totalEl.textContent = formatCurrency(total);
             completeBtn.disabled = false;
         };
 
-        form.addEventListener('submit', (e) => {
-            e.preventDefault();
-            const productId = productSelect.value;
-            const quantity = parseInt(quantityInput.value, 10);
+        const addToCart = (productId, quantity = 1) => {
             const selectedProduct = directCashierProducts.find(p => p.id.toString() === productId);
+            if (!selectedProduct) return;
 
-            if (!selectedProduct || quantity <= 0) return;
-
-            const existingItem = directCart.find(item => item.productId === productId);
+            const existingItem = directCart.find(item => item.productId === selectedProduct.id);
             if (existingItem) {
                 existingItem.quantity += quantity;
             } else {
-                directCart.push({ productId, name: selectedProduct.name, price: selectedProduct.price, quantity });
+                directCart.push({ productId: selectedProduct.id, name: selectedProduct.name, price: selectedProduct.price, quantity });
             }
             renderDirectCart();
-            form.reset();
-            quantityInput.value = 1;
-        });
+        };
 
-        tableBody.addEventListener('click', (e) => {
+        const updateCartQuantity = (index, action) => {
+            const item = directCart[index];
+            if (!item) return;
+
+            if (action === 'increase') {
+                item.quantity++;
+            } else if (action === 'decrease') {
+                item.quantity--;
+                if (item.quantity <= 0) {
+                    directCart.splice(index, 1);
+                }
+            }
+            renderDirectCart();
+        };
+
+        cartBody.addEventListener('click', (e) => {
             if (e.target.matches('.remove-direct-cart-item-btn')) {
                 const index = parseInt(e.target.dataset.index, 10);
                 directCart.splice(index, 1);
                 renderDirectCart();
+            }
+            if (e.target.matches('.cart-qty-btn')) {
+                const index = parseInt(e.target.dataset.index, 10);
+                const action = e.target.dataset.action;
+                updateCartQuantity(index, action);
             }
         });
 
@@ -2225,6 +2509,14 @@ const renderCashFlowChart = (data) => {
                 completeBtn.disabled = false;
                 completeBtn.textContent = 'Selesaikan Penjualan';
             }
+        });
+
+        searchInput.addEventListener('input', renderProductGrid);
+
+        // Initial load
+        apiFetch(`${ADMIN_API_URL}/products?shop=sembako`).then(products => {
+            directCashierProducts = products;
+            renderProductGrid();
         });
     };
 
@@ -3567,7 +3859,7 @@ const renderCashFlowChart = (data) => {
                 if (shopType) {
                     params.append('shopType', shopType);
                 }
-                const data = await apiFetch(`${ADMIN_API_URL}/reports/sales?${params.toString()}`);
+                const data = await apiFetch(`${ADMIN_API_URL}/sales-report?${params.toString()}`);
                 renderReport(data);
             } catch (error) {
                 previewContainer.innerHTML = `<p class="text-center text-red-500">${error.message}</p>`;
@@ -5734,7 +6026,15 @@ const renderCashFlowChart = (data) => {
         if (targetId === 'loans') loadLoans();
         if (targetId === 'approvals') {
             // Data untuk tab lain dimuat saat tab diklik.
-            document.getElementById('approvals-main-view')?.classList.remove('hidden');
+        // FIX: Reset to the main approval view every time the page is loaded.
+            // This prevents a detail tab from staying open when navigating away and back.
+            const mainView = document.getElementById('approvals-main-view');
+            const tabContents = document.querySelectorAll('.approval-tab-content');
+            if (mainView) {
+                mainView.classList.remove('hidden');
+            }
+            if (tabContents) tabContents.forEach(content => content.classList.add('hidden'));
+            loadApprovalCounts(); // Load the counts for the cards.
         } else if (targetId === 'bulk-savings-input') {
             setupBulkSavingsPage();
         }
@@ -5794,6 +6094,8 @@ const renderCashFlowChart = (data) => {
                 setupSalesReport();
             } else if (targetId === 'report-general-ledger') {
                 setupGeneralLedgerReport();
+            } else if (targetId === 'report-loan-interest') {
+                setupLoanInterestReport();
             }
             // For report sub-pages
             parentMenuButton = document.querySelector('.sidebar-link[data-target="reports"]');
@@ -5952,6 +6254,7 @@ const renderCashFlowChart = (data) => {
 
     document.getElementById('pending-loans-table-body')?.addEventListener('click', handleGenericApproval);
     document.getElementById('pending-loan-payments-table-body')?.addEventListener('click', handleGenericApproval);
+    
 
     // Tambahkan penutup untuk modal user-role
     document.getElementById('close-edit-user-modal')?.addEventListener('click', () => document.getElementById('edit-user-modal').classList.add('hidden'));
@@ -6171,6 +6474,137 @@ const renderCashFlowChart = (data) => {
                 submitBtn.disabled = false;
                 submitBtn.textContent = 'Simpan Password';
             }
+        });
+    };
+
+    // --- FUNGSI UNTUK LAPORAN JASA PINJAMAN ---
+    const setupLoanInterestReport = () => {
+        const generateBtn = document.getElementById('generate-li-report-btn');
+        const downloadBtn = document.getElementById('download-li-pdf-btn');
+        const previewContainer = document.getElementById('li-report-preview');
+        const startDateInput = document.getElementById('li-start-date');
+        const endDateInput = document.getElementById('li-end-date');
+
+        if (!generateBtn) return;
+
+        let reportDataCache = null;
+
+        // Set default dates to the current month
+        const today = new Date();
+        const firstDay = new Date(today.getFullYear(), today.getMonth(), 1);
+        startDateInput.value = firstDay.toISOString().split('T')[0];
+        endDateInput.value = today.toISOString().split('T')[0];
+
+        const renderReport = (data) => {
+            reportDataCache = data;
+            const { summary, details } = data;
+
+            const summaryHtml = `
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4 text-center mb-8">
+                    <div class="bg-gray-50 p-4 rounded-lg">
+                        <p class="text-sm text-gray-600">Total Pendapatan Bunga</p>
+                        <p class="text-2xl font-bold text-green-600">${formatCurrency(summary.totalInterestIncome)}</p>
+                    </div>
+                    <div class="bg-gray-50 p-4 rounded-lg">
+                        <p class="text-sm text-gray-600">Jumlah Transaksi Pembayaran</p>
+                        <p class="text-2xl font-bold text-blue-600">${summary.totalPaymentsCount}</p>
+                    </div>
+                </div>
+            `;
+
+            const detailsHtml = `
+                <h3 class="text-lg font-semibold text-gray-800 mb-2">Rincian Pendapatan per Anggota</h3>
+                <div class="overflow-x-auto border rounded-lg">
+                    <table class="min-w-full divide-y divide-gray-200">
+                        <thead class="bg-gray-50">
+                            <tr>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Nama Anggota</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">No. Pinjaman</th>
+                                <th class="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase">Angsuran Ke-</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Tanggal Bayar</th>
+                                <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase">Pendapatan Bunga</th>
+                            </tr>
+                        </thead>
+                        <tbody class="bg-white divide-y divide-gray-200">
+                            ${details.map(d => `
+                                <tr>
+                                    <td class="px-6 py-4 text-sm font-medium text-gray-900">${d.member_name}</td>
+                                    <td class="px-6 py-4 text-sm text-gray-500">${d.loan_id}</td>
+                                    <td class="px-6 py-4 text-sm text-gray-500 text-center">${d.installment_number}</td>
+                                    <td class="px-6 py-4 text-sm text-gray-500">${formatDate(d.payment_date)}</td>
+                                    <td class="px-6 py-4 text-sm text-green-600 font-semibold text-right">${formatCurrency(d.interest_amount)}</td>
+                                </tr>
+                            `).join('')}
+                            ${details.length === 0 ? '<tr><td colspan="5" class="text-center py-4 text-gray-500">Tidak ada pendapatan bunga pada periode ini.</td></tr>' : ''}
+                        </tbody>
+                    </table>
+                </div>
+            `;
+
+            previewContainer.innerHTML = summaryHtml + detailsHtml;
+            downloadBtn.classList.remove('hidden');
+        };
+
+        generateBtn.addEventListener('click', async () => {
+            const startDate = startDateInput.value;
+            const endDate = endDateInput.value;
+
+            if (!startDate || !endDate) {
+                alert('Silakan pilih periode tanggal.');
+                return;
+            }
+
+            generateBtn.disabled = true;
+            generateBtn.textContent = 'Memuat...';
+            previewContainer.innerHTML = '<p class="text-center text-gray-500">Menghasilkan laporan...</p>';
+            downloadBtn.classList.add('hidden');
+
+            try {
+                const data = await apiFetch(`${ADMIN_API_URL}/reports/loan-interest?startDate=${startDate}&endDate=${endDate}`);
+                renderReport(data);
+            } catch (error) {
+                previewContainer.innerHTML = `<p class="text-center text-red-500">${error.message}</p>`;
+            } finally {
+                generateBtn.disabled = false;
+                generateBtn.textContent = 'Tampilkan Laporan';
+            }
+        });
+
+        downloadBtn.addEventListener('click', async () => {
+            if (!reportDataCache) {
+                alert('Silakan hasilkan laporan terlebih dahulu.');
+                return;
+            }
+
+            const { jsPDF } = window.jspdf;
+            const doc = new jsPDF();
+            const { summary, details } = reportDataCache;
+            const companyInfo = await apiFetch(`${ADMIN_API_URL}/company-info`);
+
+            doc.setFontSize(16); doc.setFont('helvetica', 'bold');
+            doc.text(companyInfo.name.toUpperCase() || 'KOPERASI', 105, 15, { align: 'center' });
+            doc.setFontSize(12); doc.text('Laporan Pendapatan Jasa Pinjaman', 105, 22, { align: 'center' });
+            doc.setFontSize(10); doc.setFont('helvetica', 'normal');
+            doc.text(`Periode: ${formatDate(startDateInput.value)} - ${formatDate(endDateInput.value)}`, 105, 28, { align: 'center' });
+
+            const head = [['Anggota', 'No. Pinjaman', 'Angsuran Ke-', 'Tgl Bayar', 'Pendapatan Bunga']];
+            const body = details.map(d => [d.member_name, d.loan_id, d.installment_number, formatDate(d.payment_date), formatCurrency(d.interest_amount)]);
+
+            doc.autoTable({
+                startY: 35,
+                head: head,
+                body: body,
+                theme: 'grid',
+                headStyles: { fillColor: [153, 27, 27] },
+                columnStyles: { 4: { halign: 'right' } },
+                didDrawPage: (data) => {
+                    // Footer
+                    doc.setFontSize(10);
+                    doc.text(`Total Pendapatan Bunga: ${formatCurrency(summary.totalInterestIncome)}`, data.settings.margin.left, doc.internal.pageSize.height - 10);
+                }
+            });
+
+            doc.save(`Laporan_Jasa_Pinjaman_${startDateInput.value}_${endDateInput.value}.pdf`);
         });
     };
 

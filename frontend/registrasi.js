@@ -307,7 +307,7 @@ document.addEventListener('DOMContentLoaded', () => {
         formData.append('address_village', getSelectedText(kelurahanSelect));
         formData.append('address_detail', alamatDetailTextarea.value);
 
-        // Append data alamat domisili jika checkbox tidak dicentang
+        // Append data alamat domisili only if the checkbox is not checked
         if (!domicileSameAsKtpCheckbox.checked) {
             formData.append('domicile_address_province', getSelectedText(domisiliProvinsiSelect));
             formData.append('domicile_address_city', getSelectedText(domisiliKotaSelect));

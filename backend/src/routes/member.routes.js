@@ -50,7 +50,7 @@ router.post('/savings/withdrawal', protect, authorize(['viewDashboard']), create
 
 // Loans
 router.get('/loans', protect, authorize(['viewDashboard']), getMemberLoans);
-router.post('/loans', protect, authorize(['viewDashboard']), createLoanApplication);
+router.post('/loans', protect, authorize(['viewDashboard']), upload.single('commitment_signature'), createLoanApplication);
 router.get('/loans/:id/details', protect, authorize(['viewDashboard']), getLoanDetails);
 router.get('/active-loan-for-payment', protect, authorize(['viewDashboard']), getActiveLoanForPayment);
 router.post('/loan-payment', protect, authorize(['viewDashboard']), upload.single('proof'), submitLoanPayment);

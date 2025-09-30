@@ -1,4 +1,4 @@
-const pool = require('../config/db');
+const pool = require('../../db');
 const crypto = require('crypto');
 const bcrypt = require('bcryptjs');
 const { sendPasswordResetEmail, sendPasswordResetConfirmationEmail } = require('../utils/email.util');

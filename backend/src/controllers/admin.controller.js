@@ -2,6 +2,7 @@ const pool = require('../../db');
 const fs = require('fs');
 const path = require('path');
 const { createNotification } = require('../utils/notification.util');
+const { getApprovalCounts } = require('./approval.controller');
 const dashboardService = require('../services/dashboard.service');
 
 const getDashboardStats = async (req, res) => {
@@ -10,7 +11,11 @@ const getDashboardStats = async (req, res) => {
         const statsQuery = `
             SELECT
                 (SELECT COUNT(*) FROM members WHERE status = 'Active' AND role = 'member') AS total_members,
-                (SELECT COALESCE(SUM(amount), 0) FROM savings WHERE status = 'Approved') AS total_savings,
+                (SELECT COALESCE(SUM(CASE 
+                                        WHEN st.name = 'Penarikan Simpanan Sukarela' THEN -s.amount 
+                                        ELSE s.amount 
+                                    END), 0) 
+                 FROM savings s JOIN saving_types st ON s.saving_type_id = st.id WHERE s.status = 'Approved') AS total_savings,
                 (SELECT COALESCE(SUM(remaining_principal), 0) FROM loans WHERE status = 'Approved') AS total_active_loans,
                 (SELECT COUNT(*) FROM members WHERE status = 'Pending') AS pending_members
         `;
@@ -171,23 +176,78 @@ const updateLoanPaymentStatus = async (req, res) => {
     const client = await pool.connect();
     try {
         await client.query('BEGIN');
+ 
+        // 1. Get payment details and lock the corresponding loan row
+        const paymentRes = await client.query(`
+            SELECT 
+                lp.loan_id, lp.installment_number, lp.status as current_status, lp.amount_paid,
+                l.member_id, l.amount as loan_amount, l.remaining_principal,
+                lt.tenor_months, lt.interest_rate,
+                l_types.account_id as loan_account_id, l_types.name as loan_type_name,
+                m.name as member_name
+            FROM loan_payments lp 
+            JOIN loans l ON lp.loan_id = l.id
+            JOIN loan_terms lt ON l.loan_term_id = lt.id
+            JOIN loan_types l_types ON l.loan_type_id = l_types.id
+            JOIN members m ON l.member_id = m.id
+            WHERE lp.id = $1 FOR UPDATE
+        `, [paymentId]);
 
-        const paymentRes = await client.query(`SELECT lp.loan_id, lp.installment_number, lp.status as current_status, l.member_id FROM loan_payments lp JOIN loans l ON lp.loan_id = l.id WHERE lp.id = $1 FOR UPDATE`, [paymentId]);
         if (paymentRes.rows.length === 0) throw new Error('Data pembayaran tidak ditemukan.');
         const payment = paymentRes.rows[0];
-
+ 
         if (payment.current_status !== 'Pending') throw new Error(`Pembayaran ini sudah pernah diproses dengan status: ${payment.current_status}.`);
-
+ 
+        // 2. Update the payment status
         await client.query('UPDATE loan_payments SET status = $1 WHERE id = $2', [newStatus, paymentId]);
-
+ 
         if (newStatus === 'Approved') {
-            // Logika untuk mengurangi sisa pinjaman dan membuat jurnal akan ditambahkan di sini.
-            // Untuk saat ini, kita hanya akan mengirim notifikasi.
+            // --- LOGIKA KEUANGAN YANG HILANG DITAMBAHKAN DI SINI ---
+
+            // 3. Calculate principal and interest components for this installment
+            const { principalComponent, interestComponent } = _getInstallmentDetails({
+                amount: payment.loan_amount,
+                tenor_months: payment.tenor_months,
+                interest_rate: payment.interest_rate
+            }, parseInt(payment.installment_number, 10));
+
+            // 4. Update remaining principal on the main loan
+            const newRemainingPrincipal = parseFloat(payment.remaining_principal) - principalComponent;
+            await client.query('UPDATE loans SET remaining_principal = $1 WHERE id = $2', [Math.max(0, newRemainingPrincipal), payment.loan_id]);
+
+            // 5. Check if the loan is fully paid
+            if (newRemainingPrincipal <= 1) { // Use a small threshold for floating point inaccuracies
+                await client.query("UPDATE loans SET status = 'Lunas' WHERE id = $1", [payment.loan_id]);
+            }
+
+            // 6. Create Journal Entries
+            if (!payment.loan_account_id) throw new Error(`Tipe pinjaman "${payment.loan_type_name}" belum terhubung ke akun COA Piutang.`);
+            
+            const cashAccountId = 3; // Asumsi ID Akun Kas
+            const interestIncomeAccountId = 7; // Asumsi ID Akun Pendapatan Jasa Simpan Pinjam
+            const description = `Penerimaan angsuran ke-${payment.installment_number} pinjaman ${payment.loan_type_name} a/n ${payment.member_name}`;
+            
+            const journalHeaderRes = await client.query('INSERT INTO general_journal (entry_date, description) VALUES (NOW(), $1) RETURNING id', [description]);
+            const journalId = journalHeaderRes.rows[0].id;
+
+            const journalEntriesQuery = `
+                INSERT INTO journal_entries (journal_id, account_id, debit, credit) VALUES 
+                ($1, $2, $3, 0),      -- Debit Kas (total pembayaran)
+                ($1, $4, 0, $5),      -- Kredit Piutang (pokok)
+                ($1, $6, 0, $7)       -- Kredit Pendapatan Bunga
+            `;
+            await client.query(journalEntriesQuery, [journalId, cashAccountId, payment.amount_paid, payment.loan_account_id, principalComponent, interestIncomeAccountId, interestComponent]);
+
+            // 6.5. Link the journal entry to the payment record
+            await client.query('UPDATE loan_payments SET journal_id = $1 WHERE id = $2', [journalId, paymentId]);
+
+            // 7. Send notification
             createNotification(payment.member_id, `Pembayaran angsuran ke-${payment.installment_number} Anda telah dikonfirmasi.`, 'loans');
+
         } else { // newStatus is 'Rejected'
             createNotification(payment.member_id, `Pembayaran angsuran ke-${payment.installment_number} Anda ditolak. Silakan hubungi admin.`, 'application');
         }
-
+ 
         await client.query('COMMIT');
         res.json({ message: `Status pembayaran berhasil diubah menjadi ${newStatus}.` });
 
@@ -301,7 +361,8 @@ const updateLoanStatus = async (req, res) => {
 const _getInstallmentDetails = (loan, installmentNumber) => {
     const principal = parseFloat(loan.amount);
     const tenor = parseInt(loan.tenor_months, 10);
-    const monthlyInterestRate = parseFloat(loan.interest_rate) / 100;
+    // FIX: Annual interest rate must be divided by 12 to get the monthly rate.
+    const monthlyInterestRate = (parseFloat(loan.interest_rate) / 100) / 12;
 
     if (tenor <= 0) {
         return { principalComponent: 0, interestComponent: 0, total: 0 };
@@ -355,7 +416,7 @@ const recordLoanPayment = async (req, res) => {
         const loan = loanResult.rows[0];
 
         if (loan.status !== 'Approved') {
-            throw new Error('Hanya pinjaman dengan status "Approved" yang bisa dibayar.');
+            throw new Error(`Hanya pinjaman dengan status "Approved" yang bisa dibayar. Status saat ini: ${loan.status}.`);
         }
 
         // 2. Validate installment sequence and check for duplicates
@@ -379,8 +440,8 @@ const recordLoanPayment = async (req, res) => {
 
         // 4. Record the payment
         await client.query(
-            'INSERT INTO loan_payments (loan_id, payment_date, amount_paid, installment_number, notes) VALUES ($1, NOW(), $2, $3, $4)',
-            [loanId, totalInstallmentAmount, requestedInstallmentNumber, `Dicatat oleh ${userRole} ID: ${userId}`]
+            "INSERT INTO loan_payments (loan_id, payment_date, amount_paid, installment_number, notes, status, payment_method) VALUES ($1, NOW(), $2, $3, $4, 'Approved', 'Potong Gaji')",
+            [loanId, totalInstallmentAmount, requestedInstallmentNumber, `Dicatat manual oleh ${userRole} ID: ${userId}`]
         );
 
         // 5. Update remaining_principal on the loan
@@ -451,6 +512,125 @@ const recordLoanPayment = async (req, res) => {
     }
 };
 
+/**
+ * @desc    Cancel/rollback an approved loan payment.
+ * @route   DELETE /api/admin/loan-payments/:id
+ * @access  Private (Admin)
+ */
+const cancelLoanPayment = async (req, res) => {
+    const { id: paymentId } = req.params;
+    const { id: adminUserId } = req.user;
+
+    const client = await pool.connect();
+    try {
+        await client.query('BEGIN');
+
+        // 1. Get payment details and lock the loan row
+        const paymentRes = await client.query(`
+            SELECT 
+                lp.loan_id, lp.status, lp.installment_number,
+                lp.journal_id,
+                l.member_id, l.status as loan_status, l.amount as loan_amount,
+                lt.tenor_months, lt.interest_rate
+            FROM loan_payments lp
+            JOIN loans l ON lp.loan_id = l.id
+            JOIN loan_terms lt ON l.loan_term_id = lt.id
+            WHERE lp.id = $1 FOR UPDATE
+        `, [paymentId]);
+
+        if (paymentRes.rows.length === 0) {
+            throw new Error('Data pembayaran tidak ditemukan.');
+        }
+        const payment = paymentRes.rows[0];
+
+        if (payment.status !== 'Approved') {
+            throw new Error(`Hanya pembayaran dengan status "Approved" yang dapat dibatalkan. Status saat ini: ${payment.status}.`);
+        }
+
+        // 2. Recalculate the principal component that was paid
+        const { principalComponent } = _getInstallmentDetails({
+            amount: payment.loan_amount,
+            tenor_months: payment.tenor_months,
+            interest_rate: payment.interest_rate
+        }, parseInt(payment.installment_number, 10));
+
+        // 3. Add the principal back to the loan's remaining_principal
+        await client.query(
+            'UPDATE loans SET remaining_principal = remaining_principal + $1 WHERE id = $2',
+            [principalComponent, payment.loan_id]
+        );
+
+        // 4. If the loan was 'Lunas', revert its status to 'Approved'
+        if (payment.loan_status === 'Lunas') {
+            await client.query("UPDATE loans SET status = 'Approved' WHERE id = $1", [payment.loan_id]);
+        }
+
+        // 5. Delete the associated journal entry if it exists
+        if (payment.journal_id) {
+            await client.query('DELETE FROM general_journal WHERE id = $1', [payment.journal_id]);
+        }
+
+        // 6. Delete the loan payment record itself
+        await client.query('DELETE FROM loan_payments WHERE id = $1', [paymentId]);
+
+        // 7. Notify the member
+        createNotification(
+            payment.member_id,
+            `Pembayaran angsuran ke-${payment.installment_number} Anda telah dibatalkan oleh admin.`,
+            'loans'
+        ).catch(err => console.error(`Gagal membuat notifikasi pembatalan untuk user ${payment.member_id}:`, err));
+
+        await client.query('COMMIT');
+        res.json({ message: 'Pembayaran berhasil dibatalkan.' });
+
+    } catch (err) {
+        await client.query('ROLLBACK');
+        console.error('Error cancelling loan payment:', err.message);
+        res.status(400).json({ error: err.message || 'Gagal membatalkan pembayaran.' });
+    } finally {
+        client.release();
+    }
+};
+
+/**
+ * @desc    Save commitment letter signature for a loan.
+ * @route   POST /api/admin/loans/:id/commitment
+ * @access  Private (Admin, Akunting)
+ */
+const saveLoanCommitment = async (req, res) => {
+    const { id: loanId } = req.params;
+    const signatureFile = req.file;
+
+    if (!signatureFile) {
+        return res.status(400).json({ error: 'File tanda tangan tidak ditemukan.' });
+    }
+
+    const client = await pool.connect();
+    try {
+        await client.query('BEGIN');
+
+        // 1. Get the old signature path to delete it later
+        const oldSignatureRes = await client.query('SELECT commitment_signature_path FROM loans WHERE id = $1', [loanId]);
+        if (oldSignatureRes.rows.length === 0) {
+            throw new Error('Pinjaman tidak ditemukan.');
+        }
+        const oldSignaturePath = oldSignatureRes.rows[0]?.commitment_signature_path;
+
+        // 2. Update the database with the new signature path
+        const newSignaturePath = signatureFile.path.replace(/\\/g, '/');
+        await client.query('UPDATE loans SET commitment_signature_path = $1 WHERE id = $2', [newSignaturePath, loanId]);
+
+        // 3. Delete the old signature file if it exists
+        if (oldSignaturePath) {
+            const fullOldPath = path.resolve(process.cwd(), oldSignaturePath);
+            fs.unlink(fullOldPath, (err) => { if (err) console.error(`Gagal menghapus file tanda tangan lama: ${fullOldPath}`, err); });
+        }
+
+        await client.query('COMMIT');
+        res.json({ message: 'Tanda tangan berhasil disimpan.', path: newSignaturePath });
+    } catch (err) { await client.query('ROLLBACK'); console.error('Error saving loan commitment:', err.message); res.status(500).json({ error: 'Gagal menyimpan tanda tangan.' }); } finally { client.release(); }
+};
+
 const getLoanDetailsForAdmin = async (req, res) => {
     const { id: loanId } = req.params;
 
@@ -459,14 +639,17 @@ const getLoanDetailsForAdmin = async (req, res) => {
         const loanQuery = `
             SELECT 
                 l.id,
-                l.amount,
-                l.date AS start_date,
-                l.status,
+                l.amount, l.commitment_signature_path,
+                l.date AS start_date, l.status,
+                l.member_id,
+                ltp.name as loan_type_name,
                 m.name as member_name,
+                m.cooperative_number as "cooperativeNumber",
                 lt.tenor_months,
                 lt.interest_rate
             FROM loans l
             JOIN loan_terms lt ON l.loan_term_id = lt.id
+            JOIN loan_types ltp ON l.loan_type_id = ltp.id
             JOIN members m ON l.member_id = m.id
             WHERE l.id = $1
         `;
@@ -481,7 +664,7 @@ const getLoanDetailsForAdmin = async (req, res) => {
         const monthlyInterestRate = parseFloat(loan.interest_rate) / 100;
 
         // 2. Get payment data
-        const paymentsQuery = 'SELECT installment_number, payment_date, amount_paid FROM loan_payments WHERE loan_id = $1';
+        const paymentsQuery = "SELECT installment_number, payment_date, amount_paid FROM loan_payments WHERE loan_id = $1 AND status = 'Approved'";
         const paymentsResult = await pool.query(paymentsQuery, [loanId]);
         const paymentsMap = new Map(paymentsResult.rows.map(p => [p.installment_number, p]));
 
@@ -500,11 +683,12 @@ const getLoanDetailsForAdmin = async (req, res) => {
                 dueDate: dueDate.toISOString(),
                 amount: totalInstallment,
                 paymentDate: payment ? payment.payment_date : null,
+                paymentId: payment ? payment.id : null, // Tambahkan paymentId
                 status: payment ? 'Lunas' : 'Belum Lunas'
             });
         }
         
-        const totalPaid = Array.from(paymentsMap.values()).reduce((sum, p) => sum + parseFloat(p.amount_paid), 0);
+        const totalPaid = Array.from(paymentsMap.values()).reduce((sum, p) => sum + parseFloat(p.amount_paid || 0), 0)
         const { total: monthlyInstallmentFirst } = _getInstallmentDetails(loan, 1);
 
         res.json({ summary: { ...loan, memberName: loan.member_name, monthlyInstallment: monthlyInstallmentFirst, totalPaid: totalPaid }, installments: installments });
@@ -2229,9 +2413,9 @@ const getSalesReport = async (req, res) => {
             SELECT
                 COUNT(id) as "transactionCount",
                 COALESCE(SUM(total_amount), 0) as "totalRevenue",
-                (SELECT COALESCE(SUM(quantity), 0) FROM sale_items si JOIN sales s ON si.sale_id = s.id WHERE s.sale_date BETWEEN $1 AND $2 ${shopTypeCondition}) as "totalItemsSold"
+                (SELECT COALESCE(SUM(quantity), 0) FROM sale_items si JOIN sales s ON si.sale_id = s.id WHERE s.sale_date BETWEEN $1 AND $2 AND s.status = 'Selesai' ${shopTypeCondition}) as "totalItemsSold"
             FROM sales
-            WHERE sale_date BETWEEN $1 AND $2 ${shopTypeCondition};
+            WHERE sale_date BETWEEN $1 AND $2 AND status = 'Selesai' ${shopTypeCondition};
         `;
 
         const byProductQuery = `
@@ -2243,7 +2427,7 @@ const getSalesReport = async (req, res) => {
             FROM sale_items si
             JOIN products p ON si.product_id = p.id
             JOIN sales s ON si.sale_id = s.id
-            WHERE s.sale_date BETWEEN $1 AND $2 ${shopTypeCondition}
+            WHERE s.sale_date BETWEEN $1 AND $2 AND s.status = 'Selesai' ${shopTypeCondition}
             GROUP BY p.name
             ORDER BY total_revenue DESC;
         `;
@@ -2256,7 +2440,7 @@ const getSalesReport = async (req, res) => {
                 SUM(s.total_amount) as total_spent
             FROM sales s
             JOIN members m ON s.member_id = m.id
-            WHERE s.sale_date BETWEEN $1 AND $2 AND s.member_id IS NOT NULL ${shopTypeCondition}
+            WHERE s.sale_date BETWEEN $1 AND $2 AND s.member_id IS NOT NULL AND s.status = 'Selesai' ${shopTypeCondition}
             GROUP BY m.name, m.cooperative_number
             ORDER BY total_spent DESC;
         `;
@@ -3653,6 +3837,67 @@ const getSaleDetailsByOrderId = async (req, res) => {
     }
 };
 
+/**
+ * @desc    Get loan interest income report within a date range.
+ * @route   GET /api/admin/reports/loan-interest
+ * @access  Private (Admin, Akunting)
+ */
+const getLoanInterestReport = async (req, res) => {
+    const { startDate, endDate } = req.query;
+
+    if (!startDate || !endDate) {
+        return res.status(400).json({ error: 'Tanggal mulai dan tanggal akhir diperlukan.' });
+    }
+
+    try {
+        // Query untuk mendapatkan detail setiap pembayaran angsuran yang disetujui dalam rentang tanggal
+        const detailsQuery = `
+            SELECT 
+                lp.id,
+                lp.loan_id,
+                lp.installment_number,
+                lp.payment_date,
+                l.amount as loan_amount,
+                lt.tenor_months,
+                lt.interest_rate,
+                m.name as member_name
+            FROM loan_payments lp
+            JOIN loans l ON lp.loan_id = l.id
+            JOIN loan_terms lt ON l.loan_term_id = lt.id
+            JOIN members m ON l.member_id = m.id
+            WHERE lp.status = 'Approved' AND lp.payment_date BETWEEN $1 AND $2
+            ORDER BY lp.payment_date ASC;
+        `;
+
+        const result = await pool.query(detailsQuery, [startDate, endDate]);
+
+        let totalInterestIncome = 0;
+        const details = result.rows.map(payment => {
+            // Gunakan helper _getInstallmentDetails untuk menghitung porsi bunga
+            const { interestComponent } = _getInstallmentDetails({
+                amount: payment.loan_amount,
+                tenor_months: payment.tenor_months,
+                interest_rate: payment.interest_rate
+            }, parseInt(payment.installment_number, 10));
+
+            totalInterestIncome += interestComponent;
+
+            return {
+                member_name: payment.member_name,
+                loan_id: payment.loan_id,
+                installment_number: payment.installment_number,
+                payment_date: payment.payment_date,
+                interest_amount: interestComponent
+            };
+        });
+
+        res.json({ summary: { totalInterestIncome, totalPaymentsCount: details.length }, details });
+    } catch (err) {
+        console.error('Error generating loan interest report:', err.message);
+        res.status(500).json({ error: 'Gagal membuat laporan jasa pinjaman.' });
+    }
+};
+
 module.exports = {
     getDashboardStats,
     getMemberGrowth,
@@ -3730,7 +3975,7 @@ module.exports = {
     getMonthlyClosingStatus,
     getMonthlyClosings,
     reopenMonthlyClosing,
-    processMonthlyClosing,
+    processMonthlyClosing,    
     getAnnouncements,
     getAnnouncementById,
     createAnnouncement,
@@ -3743,4 +3988,7 @@ module.exports = {
     getPendingLoanPayments,
     updateLoanPaymentStatus,
     createManualSaving,
+    getLoanInterestReport,
+    cancelLoanPayment,
+    saveLoanCommitment,
 };
