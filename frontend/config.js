@@ -1,4 +1,4 @@
- // File: config.js
+// File: config.js
  
  // Karena ini adalah proyek JavaScript vanilla (tanpa build tool),
  // kita tidak bisa menggunakan process.env langsung di browser.
@@ -13,5 +13,4 @@
    : 'https://kopkaka-5i8e.onrender.com/api'; // URL Produksi yang sesuai dengan log Render
  
  // Export variabel agar bisa diimpor di file lain
-
  export { API_URL };
