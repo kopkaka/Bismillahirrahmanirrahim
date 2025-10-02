@@ -10,7 +10,8 @@
  // Jika berjalan di Vercel (atau domain produksi lainnya), gunakan URL backend Render.
  const API_URL = isLocal
    ? 'http://localhost:3000/api'
-   : 'https://kopkaka.onrender.com/api';
+   : 'https://kopkaka-5i8e.onrender.com/api';
  
  // Export variabel agar bisa diimpor di file lain
  export { API_URL };
+
