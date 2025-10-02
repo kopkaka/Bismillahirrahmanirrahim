@@ -31,26 +31,21 @@ if (args.length >= 3) {
 }
 
 // --- Konfigurasi Database ---
-// Menggunakan logika yang sama dengan db.js untuk konsistensi
-const isProduction = process.env.NODE_ENV === 'production';
-
-let pool;
-
-if (isProduction) {
-    // Di produksi (Render), kita WAJIB menggunakan DATABASE_URL.
-    // Jika tidak ada, kita harus menghentikan proses dengan error yang jelas.
-    if (!process.env.DATABASE_URL) {
-        console.error('FATAL: Variabel lingkungan DATABASE_URL tidak ditemukan di lingkungan produksi.');
-        process.exit(1); // Keluar dari skrip dengan kode error
+// Prioritaskan DATABASE_URL dari environment Render, jika tidak ada, gunakan dari .env
+const connectionConfig = process.env.DATABASE_URL ? {
+    connectionString: process.env.DATABASE_URL,
+    ssl: {
+        rejectUnauthorized: false // Diperlukan untuk koneksi ke Render
     }
-    pool = new Pool({
-        connectionString: process.env.DATABASE_URL,
-        ssl: { rejectUnauthorized: false }, // SSL wajib untuk Render
-    });
-} else {
-    // Di lokal, new Pool() akan otomatis membaca variabel PG* dari file .env.
-    pool = new Pool();
-}
+} : {
+    user: process.env.DB_USER,
+    host: process.env.DB_HOST,
+    database: process.env.DB_DATABASE,
+    password: process.env.DB_PASSWORD,
+    port: process.env.DB_PORT,
+};
+
+const pool = new Pool(connectionConfig);
 
 const createOrUpdateAdmin = async () => {
     let client;
