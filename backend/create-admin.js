@@ -31,21 +31,22 @@ if (args.length >= 3) {
 }
 
 // --- Konfigurasi Database ---
-// Prioritaskan DATABASE_URL dari environment Render, jika tidak ada, gunakan dari .env
-const connectionConfig = process.env.DATABASE_URL ? {
-    connectionString: process.env.DATABASE_URL,
+// Menggunakan logika yang sama dengan db.js untuk konsistensi
+const isProduction = process.env.NODE_ENV === 'production';
+
+const connectionConfig = {
+  // Gunakan DATABASE_URL di produksi (Render)
+  connectionString: process.env.DATABASE_URL,
+  // Di produksi, koneksi ke Render memerlukan SSL
+  ...(isProduction && {
     ssl: {
-        rejectUnauthorized: false // Diperlukan untuk koneksi ke Render
-    }
-} : {
-    user: process.env.DB_USER,
-    host: process.env.DB_HOST,
-    database: process.env.DB_DATABASE,
-    password: process.env.DB_PASSWORD,
-    port: process.env.DB_PORT,
+      rejectUnauthorized: false,
+    },
+  }),
 };
 
-const pool = new Pool(connectionConfig);
+// Jika tidak di produksi, Pool() tanpa argumen akan otomatis membaca variabel PG* dari .env
+const pool = isProduction ? new Pool(connectionConfig) : new Pool();
 
 const createOrUpdateAdmin = async () => {
     let client;
