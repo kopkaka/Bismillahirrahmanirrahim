@@ -34,19 +34,23 @@ if (args.length >= 3) {
 // Menggunakan logika yang sama dengan db.js untuk konsistensi
 const isProduction = process.env.NODE_ENV === 'production';
 
-const connectionConfig = {
-  // Gunakan DATABASE_URL di produksi (Render)
-  connectionString: process.env.DATABASE_URL,
-  // Di produksi, koneksi ke Render memerlukan SSL
-  ...(isProduction && {
-    ssl: {
-      rejectUnauthorized: false,
-    },
-  }),
-};
+let pool;
 
-// Jika tidak di produksi, Pool() tanpa argumen akan otomatis membaca variabel PG* dari .env
-const pool = isProduction ? new Pool(connectionConfig) : new Pool();
+if (isProduction) {
+    // Di produksi (Render), kita WAJIB menggunakan DATABASE_URL.
+    // Jika tidak ada, kita harus menghentikan proses dengan error yang jelas.
+    if (!process.env.DATABASE_URL) {
+        console.error('FATAL: Variabel lingkungan DATABASE_URL tidak ditemukan di lingkungan produksi.');
+        process.exit(1); // Keluar dari skrip dengan kode error
+    }
+    pool = new Pool({
+        connectionString: process.env.DATABASE_URL,
+        ssl: { rejectUnauthorized: false }, // SSL wajib untuk Render
+    });
+} else {
+    // Di lokal, new Pool() akan otomatis membaca variabel PG* dari file .env.
+    pool = new Pool();
+}
 
 const createOrUpdateAdmin = async () => {
     let client;
