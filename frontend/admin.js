@@ -1670,12 +1670,6 @@ const renderCashFlowChart = (data) => {
             const items = allItems.filter(item => ['Simpanan Wajib', 'Simpanan Sukarela'].includes(item.savingTypeName));
 
             tableBody.innerHTML = '';
-            // Tambahkan event listener untuk tombol "Ubah Data" di modal detail
-            memberDetailsContent.addEventListener('click', (e) => {
-                if (e.target.id === 'edit-member-btn') {
-                    showMemberEditModal(e.target.dataset.id);
-                }
-            });
             if (items.length === 0) {
                 tableBody.innerHTML = `<tr><td colspan="${colspan}" class="text-center py-4 text-gray-500">Tidak ada pengajuan setoran baru.</td></tr>`;
                 return;
@@ -6874,6 +6868,14 @@ const renderCashFlowChart = (data) => {
         setupCoaExport();
         setupNotificationSystem(); // Panggil fungsi setup notifikasi
         setupCoaImport();
+
+        // Tambahkan event listener untuk tombol "Ubah Data" di modal detail
+        memberDetailsModal.addEventListener('click', (e) => {
+            if (e.target.id === 'edit-member-btn') {
+                showMemberEditModal(e.target.dataset.id);
+            }
+        });
+
         setupMemberEditModal(); // Setup modal edit anggota
         document.getElementById('close-journal-details-modal')?.addEventListener('click', () => document.getElementById('journal-details-modal').classList.add('hidden'));
         setupApprovalCards();
