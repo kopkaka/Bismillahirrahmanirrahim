@@ -1499,7 +1499,11 @@ const renderCashFlowChart = (data) => {
                 const fullUrl = `${API_URL.replace('/api', '')}${webPath.startsWith('/') ? '' : '/'}${webPath}`;
                 return `<div><dt class="text-sm font-medium text-gray-500">${label}</dt><dd class="mt-1"><a href="${fullUrl}" target="_blank" rel="noopener noreferrer"><img src="${fullUrl}" alt="${label}" class="rounded-lg max-h-48 border hover:opacity-80 transition-opacity"></a></dd></div>`;
             };
-
+            
+            // Tambahkan tombol Ubah Data di judul modal
+            const editButton = `<button id="edit-member-btn" data-id="${member.id}" class="ml-auto text-sm bg-indigo-600 text-white py-1 px-3 rounded-md hover:bg-indigo-700">Ubah Data</button>`;
+            memberDetailsModalTitle.innerHTML = `Detail Anggota: ${member.name} ${editButton}`;
+            
             memberDetailsModalTitle.textContent = `Detail Anggota: ${member.name}`;
             const fullAddress = [member.address_detail, member.address_village, member.address_district, member.address_city, member.address_province].filter(Boolean).join(', ');
             const statusClass = member.status === 'Active' ? 'bg-green-100 text-green-800' : (member.status === 'Rejected' ? 'bg-red-100 text-red-800' : 'bg-yellow-100 text-yellow-800');
@@ -1549,7 +1553,7 @@ const renderCashFlowChart = (data) => {
                 <div class="mt-6">
                     <h3 class="text-lg font-medium text-gray-900">Dokumen Terlampir</h3>
                     <div class="mt-2 grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
-                        ${renderDetail('Nama Lengkap', member.name)}
+                        ${renderImage('Foto KTP', member.ktp_photo_path)}
                         ${renderImage('Foto Selfie', member.selfie_photo_path)}
                         ${renderImage('Foto Kartu Keluarga', member.kk_photo_path)}
                     </div>
@@ -1558,6 +1562,101 @@ const renderCashFlowChart = (data) => {
         } catch (error) {
             memberDetailsContent.innerHTML = `<p class="text-center text-red-500">${error.message}</p>`;
         }
+    };
+
+    const showMemberEditModal = async (memberId) => {
+        const modal = document.getElementById('member-edit-modal');
+        const form = document.getElementById('member-edit-form');
+        if (!modal || !form) return;
+
+        form.reset();
+        modal.classList.remove('hidden');
+        document.getElementById('member-edit-modal-title').textContent = 'Memuat data...';
+
+        try {
+            const member = await apiFetch(`${ADMIN_API_URL}/members/${memberId}`);
+            
+            document.getElementById('member-edit-modal-title').textContent = `Ubah Data: ${member.name}`;
+            document.getElementById('member-edit-id').value = member.id;
+            document.getElementById('member-edit-name').value = member.name;
+            document.getElementById('member-edit-ktp').value = member.ktp_number;
+            document.getElementById('member-edit-phone').value = member.phone;
+            document.getElementById('member-edit-email').value = member.email;
+            
+            const companySelect = document.getElementById('member-edit-company');
+            const positionSelect = document.getElementById('member-edit-position');
+            
+            await populateDropdown(companySelect, 'employers', 'id', 'name', 'Perusahaan');
+            await populateDropdown(positionSelect, 'positions', 'id', 'name', 'Jabatan');
+
+            companySelect.value = member.company_id || '';
+            positionSelect.value = member.position_id || '';
+
+            document.getElementById('member-edit-address-detail').value = member.address_detail;
+            document.getElementById('member-edit-heir-name').value = member.heir_name;
+            document.getElementById('member-edit-heir-kk').value = member.heir_kk_number;
+            document.getElementById('member-edit-heir-relationship').value = member.heir_relationship;
+            document.getElementById('member-edit-heir-phone').value = member.heir_phone;
+
+        } catch (error) {
+            alert(`Gagal memuat data anggota: ${error.message}`);
+            modal.classList.add('hidden');
+        }
+    };
+
+    const setupMemberEditModal = () => {
+        const modal = document.getElementById('member-edit-modal');
+        const form = document.getElementById('member-edit-form');
+        if (!modal || !form) return;
+
+        document.getElementById('close-member-edit-modal').addEventListener('click', () => modal.classList.add('hidden'));
+        document.getElementById('cancel-member-edit-modal').addEventListener('click', () => modal.classList.add('hidden'));
+
+        form.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const memberId = document.getElementById('member-edit-id').value;
+            const submitBtn = form.querySelector('button[type="submit"]');
+            
+            const formData = new FormData();
+            formData.append('name', document.getElementById('member-edit-name').value);
+            formData.append('ktp_number', document.getElementById('member-edit-ktp').value);
+            formData.append('phone', document.getElementById('member-edit-phone').value);
+            formData.append('email', document.getElementById('member-edit-email').value);
+            formData.append('company_id', document.getElementById('member-edit-company').value);
+            formData.append('position_id', document.getElementById('member-edit-position').value);
+            formData.append('address_detail', document.getElementById('member-edit-address-detail').value);
+            formData.append('heir_name', document.getElementById('member-edit-heir-name').value);
+            formData.append('heir_kk_number', document.getElementById('member-edit-heir-kk').value);
+            formData.append('heir_relationship', document.getElementById('member-edit-heir-relationship').value);
+            formData.append('heir_phone', document.getElementById('member-edit-heir-phone').value);
+
+            const ktpPhoto = document.getElementById('member-edit-ktp-photo').files[0];
+            const selfiePhoto = document.getElementById('member-edit-selfie-photo').files[0];
+            const kkPhoto = document.getElementById('member-edit-kk-photo').files[0];
+
+            if (ktpPhoto) formData.append('ktp_photo', ktpPhoto);
+            if (selfiePhoto) formData.append('selfie_photo', selfiePhoto);
+            if (kkPhoto) formData.append('kk_photo', kkPhoto);
+
+            submitBtn.disabled = true;
+            submitBtn.textContent = 'Menyimpan...';
+
+            try {
+                await apiFetch(`${ADMIN_API_URL}/members/${memberId}`, {
+                    method: 'PUT',
+                    body: formData
+                });
+                alert('Data anggota berhasil diperbarui.');
+                modal.classList.add('hidden');
+                showMemberDetails(memberId); // Refresh detail modal
+                loadMembers(); // Refresh main table
+            } catch (error) {
+                alert(`Gagal memperbarui data: ${error.message}`);
+            } finally {
+                submitBtn.disabled = false;
+                submitBtn.textContent = 'Simpan Perubahan';
+            }
+        });
     };
 
     const loadPendingDeposits = async () => {
@@ -1573,6 +1672,12 @@ const renderCashFlowChart = (data) => {
             const items = allItems.filter(item => ['Simpanan Wajib', 'Simpanan Sukarela'].includes(item.savingTypeName));
 
             tableBody.innerHTML = '';
+            // Tambahkan event listener untuk tombol "Ubah Data" di modal detail
+            memberDetailsContent.addEventListener('click', (e) => {
+                if (e.target.id === 'edit-member-btn') {
+                    showMemberEditModal(e.target.dataset.id);
+                }
+            });
             if (items.length === 0) {
                 tableBody.innerHTML = `<tr><td colspan="${colspan}" class="text-center py-4 text-gray-500">Tidak ada pengajuan setoran baru.</td></tr>`;
                 return;
@@ -6771,6 +6876,7 @@ const renderCashFlowChart = (data) => {
         setupCoaExport();
         setupNotificationSystem(); // Panggil fungsi setup notifikasi
         setupCoaImport();
+        setupMemberEditModal(); // Setup modal edit anggota
         document.getElementById('close-journal-details-modal')?.addEventListener('click', () => document.getElementById('journal-details-modal').classList.add('hidden'));
         setupApprovalCards();
     
