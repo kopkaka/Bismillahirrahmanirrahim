@@ -60,10 +60,10 @@ const registerMember = async (req, res) => {
                 domicile_address_province, domicile_address_city, domicile_address_district,
                 domicile_address_village, domicile_address_detail,
                 heir_name, heir_kk_number, heir_relationship, 
-                heir_phone, 
+                heir_phone,
                 ktp_photo_path, selfie_photo_path, kk_photo_path,
-                status, registration_date
-        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, 'Pending', NOW())
+                status, role, registration_date
+        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24, 'Pending', 'member', NOW())
             RETURNING id, name, email, role;
         `;
         const values = [
