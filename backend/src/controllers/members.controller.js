@@ -1,6 +1,8 @@
 const pool = require('../../db');
 const { sendApprovalEmail } = require('../utils/email.util');
 const { createNotification } = require('../utils/notification.util');
+const fs = require('fs');
+const path = require('path');
 
 /**
  * @desc    Get all members with filtering
@@ -210,8 +212,89 @@ const updateMemberStatus = async (req, res) => {
     }
 };
 
+/**
+ * @desc    Update a member's profile by Admin
+ * @route   PUT /api/admin/members/:id
+ * @access  Private (Admin)
+ */
+const updateMemberByAdmin = async (req, res) => {
+    const { id } = req.params;
+    const {
+        name, ktp_number, phone, company_id, position_id, email,
+        address_province, address_city, address_district, address_village, address_detail,
+        heir_name, heir_kk_number, heir_relationship, heir_phone
+    } = req.body;
+
+    const client = await pool.connect();
+    try {
+        await client.query('BEGIN');
+
+        // 1. Ambil path file lama untuk dihapus nanti
+        const oldMemberRes = await client.query('SELECT ktp_photo_path, selfie_photo_path, kk_photo_path FROM members WHERE id = $1', [id]);
+        if (oldMemberRes.rows.length === 0) {
+            throw new Error('Anggota tidak ditemukan.');
+        }
+        const oldPaths = oldMemberRes.rows[0];
+
+        // 2. Siapkan field yang akan diupdate
+        const updateFields = {
+            name, ktp_number, phone, email,
+            company_id: company_id || null,
+            position_id: position_id || null,
+            address_province, address_city, address_district, address_village, address_detail,
+            heir_name, heir_kk_number, heir_relationship, heir_phone,
+            updated_at: new Date()
+        };
+
+        // 3. Tambahkan path file baru jika ada
+        const newPaths = {};
+        if (req.files) {
+            if (req.files.ktp_photo) {
+                updateFields.ktp_photo_path = req.files.ktp_photo[0].path;
+                newPaths.ktp_photo_path = oldPaths.ktp_photo_path;
+            }
+            if (req.files.selfie_photo) {
+                updateFields.selfie_photo_path = req.files.selfie_photo[0].path;
+                newPaths.selfie_photo_path = oldPaths.selfie_photo_path;
+            }
+            if (req.files.kk_photo) {
+                updateFields.kk_photo_path = req.files.kk_photo[0].path;
+                newPaths.kk_photo_path = oldPaths.kk_photo_path;
+            }
+        }
+
+        // 4. Bangun query update secara dinamis
+        const fields = Object.keys(updateFields);
+        const values = Object.values(updateFields);
+        const setClause = fields.map((field, index) => `"${field}" = $${index + 1}`).join(', ');
+
+        const query = `UPDATE members SET ${setClause} WHERE id = $${fields.length + 1} RETURNING *`;
+        const result = await client.query(query, [...values, id]);
+
+        await client.query('COMMIT');
+
+        // 5. Hapus file lama setelah commit berhasil
+        Object.values(newPaths).forEach(oldPath => {
+            if (oldPath) {
+                fs.unlink(path.resolve(process.cwd(), oldPath), err => {
+                    if (err) console.error(`Gagal menghapus file lama: ${oldPath}`, err);
+                });
+            }
+        });
+
+        res.json(result.rows[0]);
+    } catch (err) {
+        await client.query('ROLLBACK');
+        console.error('Error updating member by admin:', err.message);
+        res.status(500).json({ error: 'Gagal memperbarui data anggota.' });
+    } finally {
+        client.release();
+    }
+};
+
 module.exports = {
     getAllMembers,
     getMemberById,
     updateMemberStatus,
+    updateMemberByAdmin,
 };
