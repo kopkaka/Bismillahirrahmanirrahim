@@ -1,10 +1,9 @@
 const express = require('express');
 const router = express.Router();
 
-const authRoutes = require('./auth.routes.js');
-const memberRoutes = require('./member.routes.js');
-const adminRoutes = require('./admin.routes.js');
-const passwordRoutes = require('./password.routes.js');
+const authRoutes = require('./auth.routes');
+const memberRoutes = require('./member.routes');
+const adminRoutes = require('./admin.routes');
 const publicRoutes = require('./public.routes.js');
 
 // This main router delegates traffic to the specialized routers.
@@ -14,13 +13,10 @@ const publicRoutes = require('./public.routes.js');
 router.use('/public', publicRoutes); // FIX: Register public routes
 
 // Authentication routes
-router.use('/auth', authRoutes);
-
-// Password reset routes
-router.use('/auth', passwordRoutes);
+router.use('/auth', authRoutes); // auth.routes.js already includes password routes
 
 // Member-specific routes (requires member login)
-router.use('/member', memberRoutes); // FIX: Register member routes
+router.use('/member', memberRoutes);
 
 // Admin/staff routes (requires staff login)
 router.use('/admin', adminRoutes);
