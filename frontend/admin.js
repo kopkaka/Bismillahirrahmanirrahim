@@ -1495,8 +1495,9 @@ const renderCashFlowChart = (data) => {
             const renderDetail = (label, value) => `<div class="py-2 sm:grid sm:grid-cols-3 sm:gap-4"><dt class="text-sm font-medium text-gray-500">${label}</dt><dd class="mt-1 text-sm text-gray-900 sm:mt-0 sm:col-span-2">${value || '-'}</dd></div>`;
             const renderImage = (label, path) => {
                 if (!path) return '';
-                const webPath = path.replace(/\\/g, '/').replace(/^uploads\//, ''); // Hapus 'uploads/' jika ada di awal
-                const fullUrl = `${API_URL.replace('/api', '')}${webPath.startsWith('/') ? '' : '/'}${webPath}`;
+                // FIX: Simplify URL construction to be more robust.
+                const webPath = path.replace(/\\/g, '/'); // Ensure forward slashes
+                const fullUrl = `${API_URL.replace('/api', '')}/${webPath}`; // Always prepend the base URL
                 return `<div><dt class="text-sm font-medium text-gray-500">${label}</dt><dd class="mt-1"><a href="${fullUrl}" target="_blank" rel="noopener noreferrer"><img src="${fullUrl}" alt="${label}" class="rounded-lg max-h-48 border hover:opacity-80 transition-opacity"></a></dd></div>`;
             };
             
