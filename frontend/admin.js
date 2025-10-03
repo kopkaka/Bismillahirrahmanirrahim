@@ -1492,10 +1492,10 @@ const renderCashFlowChart = (data) => {
         try { // Menggunakan endpoint admin yang baru
             const member = await apiFetch(`${ADMIN_API_URL}/members/${memberId}`);
 
-            const renderDetail = (label, value) => `<div><dt class="text-sm font-medium text-gray-500">${label}</dt><dd class="mt-1 text-sm text-gray-900">${value || '-'}</dd></div>`;
+            const renderDetail = (label, value) => `<div class="py-2 sm:grid sm:grid-cols-3 sm:gap-4"><dt class="text-sm font-medium text-gray-500">${label}</dt><dd class="mt-1 text-sm text-gray-900 sm:mt-0 sm:col-span-2">${value || '-'}</dd></div>`;
             const renderImage = (label, path) => {
                 if (!path) return '';
-                const webPath = path.replace(/\\/g, '/');
+                const webPath = path.replace(/\\/g, '/').replace(/^uploads\//, ''); // Hapus 'uploads/' jika ada di awal
                 const fullUrl = `${API_URL.replace('/api', '')}${webPath.startsWith('/') ? '' : '/'}${webPath}`;
                 return `<div><dt class="text-sm font-medium text-gray-500">${label}</dt><dd class="mt-1"><a href="${fullUrl}" target="_blank" rel="noopener noreferrer"><img src="${fullUrl}" alt="${label}" class="rounded-lg max-h-48 border hover:opacity-80 transition-opacity"></a></dd></div>`;
             };
@@ -1505,49 +1505,51 @@ const renderCashFlowChart = (data) => {
             const statusClass = member.status === 'Active' ? 'bg-green-100 text-green-800' : (member.status === 'Rejected' ? 'bg-red-100 text-red-800' : 'bg-yellow-100 text-yellow-800');
 
             memberDetailsContent.innerHTML = `
-                <div class="grid grid-cols-1 md:grid-cols-2 gap-x-4 gap-y-6">
-                    <dl class="space-y-4">
-                        ${renderDetail('Nama Lengkap', member.name)}
-                        ${renderDetail('Nomor Koperasi', member.cooperative_number)}
-                        ${renderDetail('Nomor KTP', member.ktp_number)}
-                        ${renderDetail('Email', member.email)}
-                        ${renderDetail('No. Telepon', member.phone)}
-                    </dl>
-                    <dl class="space-y-4">
-                        ${renderDetail('Perusahaan', member.company_name)}
-                        ${renderDetail('Jabatan', member.position_name)}
-                        ${renderDetail(member.status === 'Active' ? 'Tanggal Bergabung' : 'Tanggal Pendaftaran', formatDate(member.approval_date || member.registration_date))}
-                        ${renderDetail('Status', `<span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${statusClass}">${member.status}</span>`)}
-                    </dl>
-                </div>
-                <div class="border-t border-gray-200 pt-6 mt-6">
-                    <div class="flex justify-between items-center mb-4">
-                        <h4 class="text-md font-semibold text-gray-800">Informasi Keuangan</h4>
-                        <button id="show-member-loan-history-btn" data-member-id="${member.id}" class="text-sm bg-blue-500 text-white py-1 px-3 rounded-md hover:bg-blue-600">Lihat Riwayat Pinjaman</button>
+                <dl class="divide-y divide-gray-200">
+                    ${renderDetail('Nama Lengkap', member.name)}
+                    ${renderDetail('Nomor Koperasi', member.cooperative_number)}
+                    ${renderDetail('Nomor KTP', member.ktp_number)}
+                    ${renderDetail('Email', member.email)}
+                    ${renderDetail('No. Telepon', member.phone)}
+                    ${renderDetail('Perusahaan', member.company_name)}
+                    ${renderDetail('Jabatan', member.position_name)}
+                    ${renderDetail(member.status === 'Active' ? 'Tanggal Bergabung' : 'Tanggal Pendaftaran', formatDate(member.approval_date || member.registration_date))}
+                    ${renderDetail('Status', `<span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${statusClass}">${member.status}</span>`)}
+                </dl>
+
+                <div class="mt-6">
+                    <h3 class="text-lg font-medium text-gray-900">Informasi Keuangan</h3>
+                    <div class="mt-2 flex justify-between items-center">
+                        <dl class="divide-y divide-gray-200 w-full">
+                            ${renderDetail('Total Simpanan', formatCurrency(member.total_savings))}
+                            ${renderDetail('Total Pinjaman Aktif', formatCurrency(member.total_loans))}
+                        </dl>
+                        <button id="show-member-loan-history-btn" data-member-id="${member.id}" class="ml-4 text-sm bg-blue-500 text-white py-1 px-3 rounded-md hover:bg-blue-600 whitespace-nowrap">Lihat Riwayat Pinjaman</button>
                     </div>
-                    <dl class="grid grid-cols-1 md:grid-cols-2 gap-x-4 gap-y-6">
-                        ${renderDetail('Total Simpanan', formatCurrency(member.total_savings))}
-                        ${renderDetail('Total Pinjaman Aktif', formatCurrency(member.total_loans))}
-                    </dl>
                     <div id="member-loan-history-container" class="mt-4 hidden"></div>
                 </div>
-                <div class="border-t border-gray-200 pt-6 mt-6">
-                    <h4 class="text-md font-semibold text-gray-800 mb-4">Alamat</h4>
-                    <dl>${renderDetail('Alamat Lengkap', fullAddress)}</dl>
+
+                <div class="mt-6">
+                    <h3 class="text-lg font-medium text-gray-900">Alamat</h3>
+                    <dl class="mt-2 divide-y divide-gray-200">
+                        ${renderDetail('Alamat Lengkap', fullAddress)}
+                    </dl>
                 </div>
-                <div class="border-t border-gray-200 pt-6 mt-6">
-                    <h4 class="text-md font-semibold text-gray-800 mb-4">Data Ahli Waris</h4>
-                    <dl class="grid grid-cols-1 md:grid-cols-2 gap-x-4 gap-y-6">
+
+                <div class="mt-6">
+                    <h3 class="text-lg font-medium text-gray-900">Data Ahli Waris</h3>
+                    <dl class="mt-2 divide-y divide-gray-200">
                         ${renderDetail('Nama Ahli Waris', member.heir_name)}
                         ${renderDetail('Hubungan', member.heir_relationship)}
                         ${renderDetail('No. Kartu Keluarga', member.heir_kk_number)}
                         ${renderDetail('No. Telepon', member.heir_phone)}
                     </dl>
                 </div>
-                <div class="border-t border-gray-200 pt-6 mt-6">
-                    <h4 class="text-md font-semibold text-gray-800 mb-4">Dokumen Terlampir</h4>
-                    <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
-                        ${renderImage('Foto KTP', member.ktp_photo_path)}
+
+                <div class="mt-6">
+                    <h3 class="text-lg font-medium text-gray-900">Dokumen Terlampir</h3>
+                    <div class="mt-2 grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
+                        ${renderDetail('Nama Lengkap', member.name)}
                         ${renderImage('Foto Selfie', member.selfie_photo_path)}
                         ${renderImage('Foto Kartu Keluarga', member.kk_photo_path)}
                     </div>
