@@ -78,6 +78,16 @@ router.delete('/users/:id', protect, authorize(['manageUsers']), userController.
 router.get('/members', protect, authorize(['viewMembers', 'viewApprovals']), membersController.getAllMembers);
 router.get('/members/:id', protect, authorize(['viewMembers', 'viewApprovals']), membersController.getMemberById);
 router.put('/members/:id/status', protect, authorize(['admin']), membersController.updateMemberStatus);
+router.put('/members/:id',
+    protect,
+    authorize(['admin']),
+    upload.fields([
+        { name: 'ktp_photo', maxCount: 1 },
+        { name: 'selfie_photo', maxCount: 1 },
+        { name: 'kk_photo', maxCount: 1 }
+    ]),
+    membersController.updateMemberByAdmin
+);
 
 // Role & Permission Management
 router.get('/permissions', protect, authorize(['viewSettings']), adminController.getAllPermissions);
