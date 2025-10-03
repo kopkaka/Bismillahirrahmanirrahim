@@ -111,6 +111,19 @@
                     <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z"></path></svg>
                     <span>Riwayat Transaksi</span>
                 </a>
+                <!-- Dropdown Unit Usaha -->
+                <div class="relative" id="unit-usaha-dropdown-container">
+                    <button id="unit-usaha-dropdown-button" class="sidebar-link flex items-center space-x-2 py-2.5 px-4 rounded-lg w-full text-left">
+                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z"></path></svg>
+                        <span>Unit Usaha</span>
+                        <svg class="w-4 h-4 ml-auto transform transition-transform duration-200" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg>
+                    </button>
+                    <div id="unit-usaha-dropdown-menu" class="hidden mt-1 pl-10 space-y-1">
+                        <a href="toko-sembako.html" target="_blank" class="block py-2 px-4 text-sm rounded-lg hover:bg-red-800">Toko Sembako</a>
+                        <a href="toko-elektronik.html" target="_blank" class="block py-2 px-4 text-sm rounded-lg hover:bg-red-800">Toko Elektronik</a>
+                        <a href="toko-aplikasi.html" target="_blank" class="block py-2 px-4 text-sm rounded-lg hover:bg-red-800">Toko Aplikasi</a>
+                    </div>
+                </div>
             </nav>
             <div class="mt-auto">
                 <a href="#" id="logout-button" class="sidebar-link flex items-center space-x-2 py-2.5 px-4 rounded-lg">
@@ -703,6 +716,20 @@
                 </div>
         </div>
     </div>
+
+    <script>
+        // Script untuk dropdown Unit Usaha di sidebar
+        document.addEventListener('DOMContentLoaded', function () {
+            const button = document.getElementById('unit-usaha-dropdown-button');
+            const menu = document.getElementById('unit-usaha-dropdown-menu');
+            const arrow = button.querySelector('svg:last-child');
+
+            button.addEventListener('click', function() {
+                menu.classList.toggle('hidden');
+                arrow.classList.toggle('rotate-180');
+            });
+        });
+    </script>
 
     <script type="module" src="anggota.js"></script>
 </body>
