@@ -1613,7 +1613,8 @@ const renderCashFlowChart = (data) => {
         form.addEventListener('submit', async (e) => {
             e.preventDefault();
             const memberId = document.getElementById('member-edit-id').value;
-            const submitBtn = form.querySelector('button[type="submit"]');
+            // FIX: The submit button is outside the form, so we select it by its 'form' attribute.
+            const submitBtn = document.querySelector('button[type="submit"][form="member-edit-form"]');
             
             const formData = new FormData();
             formData.append('name', document.getElementById('member-edit-name').value);
