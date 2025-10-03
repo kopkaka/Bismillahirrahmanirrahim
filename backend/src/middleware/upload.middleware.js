@@ -13,15 +13,13 @@ const ensureDir = (dirPath) => {
 const storage = multer.diskStorage({
     destination: function (req, file, cb) {
         let uploadPath = 'uploads/';
-        // Bedakan tujuan berdasarkan nama field
-        if (file.fieldname === 'logo' || file.fieldname === 'partnerLogo') { // Ditambahkan partnerLogo
+        if (['logo', 'partnerLogo'].includes(file.fieldname)) {
             uploadPath = path.join(uploadPath, 'logo');
         } else if (file.fieldname === 'productImage') {
             uploadPath = path.join(uploadPath, 'products');
         } else if (file.fieldname === 'testimonialPhoto') {
             uploadPath = path.join(uploadPath, 'testimonials');
-        } else { // Default untuk unggahan lain seperti KTP, selfie, dll.
-            // Default untuk unggahan lain seperti KTP, dll.
+        } else if (['ktp_photo', 'selfie_photo', 'kk_photo', 'proof', 'savingsFile', 'accountsFile'].includes(file.fieldname)) {
             uploadPath = path.join(uploadPath, 'documents');
         }
         ensureDir(uploadPath);
@@ -36,13 +34,17 @@ const storage = multer.diskStorage({
 
 // Filter file untuk hanya menerima gambar
 const fileFilter = (req, file, cb) => {
-    // Hanya terima gambar untuk field-field tertentu
-    if (['logo', 'partnerLogo', 'productImage', 'testimonialPhoto'].includes(file.fieldname) && !file.mimetype.startsWith('image/')) {
+    const imageFields = ['logo', 'partnerLogo', 'productImage', 'testimonialPhoto', 'ktp_photo', 'selfie_photo', 'kk_photo', 'proof'];
+    const excelFields = ['savingsFile', 'accountsFile'];
+
+    if (imageFields.includes(file.fieldname) && !file.mimetype.startsWith('image/')) {
         return cb(new Error('Hanya file gambar yang diizinkan!'), false);
     }
-    if (['ktp_photo', 'selfie_photo', 'kk_photo', 'proof'].includes(file.fieldname) && !file.mimetype.startsWith('image/')) {
-        return cb(new Error('Hanya file gambar yang diizinkan!'), false);
+
+    if (excelFields.includes(file.fieldname) && !['application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', 'application/vnd.ms-excel'].includes(file.mimetype)) {
+        return cb(new Error('Hanya file Excel (.xlsx, .xls) yang diizinkan!'), false);
     }
+
     cb(null, true);
 };
 
