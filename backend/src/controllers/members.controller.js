@@ -41,10 +41,14 @@ const getAllMembers = async (req, res) => {
     const values = [];
     let paramIndex = 1;
 
+    // Default filter to only show active members if no status is specified
     if (status) {
         conditions.push(`m.status = $${paramIndex++}`);
         values.push(status);
+    } else {
+        conditions.push(`m.status = 'Active'`);
     }
+
     if (search) {
         conditions.push(`(m.name ILIKE $${paramIndex} OR m.cooperative_number ILIKE $${paramIndex} OR m.ktp_number ILIKE $${paramIndex})`);
         values.push(`%${search}%`);
