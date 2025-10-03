@@ -742,6 +742,7 @@ const renderCashFlowChart = (data) => {
         membersFilterForm.addEventListener('submit', (e) => {
             e.preventDefault();
             currentMemberFilters = {
+                status: '', // Reset status filter
                 search: document.getElementById('members-filter-search').value,
                 companyId: document.getElementById('members-filter-company').value,
             };
