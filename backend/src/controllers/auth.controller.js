@@ -2,6 +2,7 @@ const pool = require('../../db');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const { sendRegistrationEmail, sendAdminNewRegistrationNotification } = require('../utils/email.util');
+const { createNotification } = require('../utils/notification.util');
 require('dotenv').config();
 
 const registerMember = async (req, res) => {
