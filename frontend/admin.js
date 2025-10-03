@@ -1503,8 +1503,6 @@ const renderCashFlowChart = (data) => {
             // Tambahkan tombol Ubah Data di judul modal
             const editButton = `<button id="edit-member-btn" data-id="${member.id}" class="ml-auto text-sm bg-indigo-600 text-white py-1 px-3 rounded-md hover:bg-indigo-700">Ubah Data</button>`;
             memberDetailsModalTitle.innerHTML = `Detail Anggota: ${member.name} ${editButton}`;
-            
-            memberDetailsModalTitle.textContent = `Detail Anggota: ${member.name}`;
             const fullAddress = [member.address_detail, member.address_village, member.address_district, member.address_city, member.address_province].filter(Boolean).join(', ');
             const statusClass = member.status === 'Active' ? 'bg-green-100 text-green-800' : (member.status === 'Rejected' ? 'bg-red-100 text-red-800' : 'bg-yellow-100 text-yellow-800');
 
