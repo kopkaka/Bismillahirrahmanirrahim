@@ -295,8 +295,17 @@ document.addEventListener('DOMContentLoaded', () => {
         formData.append('name', document.getElementById('reg-nama').value);
         formData.append('ktp_number', document.getElementById('reg-ktp').value);
         formData.append('phone', document.getElementById('reg-telepon').value);
-        formData.append('company_id', perusahaanSelect.value);
-        formData.append('position_id', jabatanSelect.value);
+        
+        // Improvement: Send null if individual registration is checked
+        const isIndividual = document.getElementById('individual-registration').checked;
+        if (isIndividual) {
+            formData.append('company_id', null);
+            formData.append('position_id', null);
+        } else {
+            formData.append('company_id', perusahaanSelect.value);
+            formData.append('position_id', jabatanSelect.value);
+        }
+
         formData.append('email', document.getElementById('reg-email').value);
         formData.append('password', passwordInput.value); // Hashing akan dilakukan di backend
         
