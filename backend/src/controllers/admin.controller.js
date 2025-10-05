@@ -3917,53 +3917,6 @@ const getLoanInterestReport = async (req, res) => {
     }
 };
 
-/**
- * @desc    Get cashier sales report
- * @route   GET /api/admin/reports/cashier
- * @access  Private (Admin, Akunting)
- */
-const getCashierReport = async (req, res) => {
-    const { startDate, endDate, userId } = req.query;
-
-    if (!startDate || !endDate) {
-        return res.status(400).json({ error: 'Tanggal mulai dan tanggal akhir diperlukan.' });
-    }
-
-    const params = [startDate, endDate];
-    const conditions = [];
-    let paramIndex = 3; // Start after startDate and endDate
-
-    try {
-        if (userId) {
-            conditions.push(`s.created_by_user_id = $${paramIndex++}`);
-            params.push(userId);
-        }
-
-        const whereClause = conditions.length > 0 ? ` AND ${conditions.join(' AND ')}` : '';
-
-        const query = `
-            SELECT
-                m.name as cashier_name,
-                COUNT(s.id) as transaction_count,
-                COALESCE(SUM(CASE WHEN s.payment_method = 'Cash' THEN s.total_amount ELSE 0 END), 0) as total_cash,
-                COALESCE(SUM(s.total_amount), 0) as total_revenue
-            FROM sales s
-            JOIN members m ON s.created_by_user_id = m.id
-            WHERE s.sale_date::date BETWEEN $1 AND $2 -- Use ::date for performance on TIMESTAMPTZ
-              AND s.status = 'Selesai'
-              ${whereClause}
-            GROUP BY m.name
-            ORDER BY total_revenue DESC;
-        `;
-
-        const result = await pool.query(query, params);
-        res.json(result.rows);
-    } catch (err) {
-        console.error('Error generating cashier report:', err.message);
-        res.status(500).json({ error: 'Gagal membuat laporan kasir.' });
-    }
-};
-
 module.exports = {
     getDashboardStats,
     getMemberGrowth,
@@ -4059,4 +4012,5 @@ module.exports = {
     cancelLoanPayment,
     saveLoanCommitment,
     getLoanTypeIdByName,
+
 };
