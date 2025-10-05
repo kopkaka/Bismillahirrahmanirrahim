@@ -1548,6 +1548,23 @@ const getElectronicLoanTerms = async (req, res) => {
     }
 };
 
+/**
+ * @desc    Get loan type ID by its name
+ * @route   GET /api/admin/loantype-id-by-name
+ * @access  Private (Admin)
+ */
+const getLoanTypeIdByName = async (req, res) => {
+    const { name } = req.query;
+    if (!name) {
+        return res.status(400).json({ error: 'Nama tipe pinjaman diperlukan.' });
+    }
+    try {
+        const result = await pool.query('SELECT id FROM loan_types WHERE name = $1', [name]);
+        if (result.rows.length === 0) return res.status(404).json({ error: 'Tipe pinjaman tidak ditemukan.' });
+        res.json(result.rows[0]);
+    } catch (err) { console.error('Error fetching loan type ID by name:', err.message); res.status(500).json({ error: 'Gagal mengambil ID tipe pinjaman.' }); }
+};
+
 
 
 const getSuppliers = async (req, res) => {
@@ -4057,4 +4074,5 @@ module.exports = {
     cancelLoanPayment,
     getCashierReport,
     saveLoanCommitment,
+    getLoanTypeIdByName,
 };
