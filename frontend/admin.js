@@ -2957,7 +2957,7 @@ const renderCashFlowChart = (data) => {
             const allPermissions = await apiFetch(`${ADMIN_API_URL}/permissions`);
 
             // 2. Definisikan peran yang akan dikelola
-            const rolesToManage = ['admin', 'manager', 'akunting'];
+            const rolesToManage = ['admin', 'manager', 'akunting', 'kasir'];
 
             // 3. Ambil dan render kartu untuk setiap peran
             const rolePromises = rolesToManage.map(async (role) => {
