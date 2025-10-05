@@ -11,7 +11,7 @@ const {
 } = require('../controllers/employer.controller');
 
 // Permissions
-const viewPermission = ['viewSettings', 'viewMembers'];
+const viewPermission = ['viewSettings', 'viewMembers', 'viewUsahaKoperasi'];
 const managePermission = ['viewSettings'];
 const deletePermission = ['deleteData'];
 
