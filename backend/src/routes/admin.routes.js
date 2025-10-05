@@ -61,6 +61,7 @@ router.post('/savings/manual', protect, authorize(['approveSaving']), adminContr
 router.get('/loans', protect, authorize(['viewLoans']), loanController.getLoans);
 router.get('/loans/:id/details', protect, authorize(['viewLoans']), adminController.getLoanDetailsForAdmin);
 router.post('/loans/payment', protect, authorize(['approveLoanAccounting']), adminController.recordLoanPayment);
+router.get('/loans/:id', protect, authorize(['manageUsers']), adminController.getLoanById);
 router.put('/loan-payments/:id/status', protect, authorize(['approveLoanAccounting']), adminController.updateLoanPaymentStatus);
 router.delete('/loan-payments/:id', protect, authorize(['admin']), adminController.cancelLoanPayment); // Rute baru untuk pembatalan
 router.post('/loans/:id/commitment', protect, authorize(['approveLoanAccounting']), upload.single('signature'), adminController.saveLoanCommitment);
@@ -77,16 +78,6 @@ router.delete('/users/:id', protect, authorize(['manageUsers']), userController.
 router.get('/members', protect, authorize(['viewMembers', 'viewApprovals']), membersController.getAllMembers);
 router.get('/members/:id', protect, authorize(['viewMembers', 'viewApprovals']), membersController.getMemberById);
 router.put('/members/:id/status', protect, authorize(['admin']), membersController.updateMemberStatus);
-router.put('/members/:id',
-    protect,
-    authorize(['admin']),
-    upload.fields([
-        { name: 'ktp_photo', maxCount: 1 },
-        { name: 'selfie_photo', maxCount: 1 },
-        { name: 'kk_photo', maxCount: 1 }
-    ]),
-    membersController.updateMemberByAdmin
-);
 
 // Role & Permission Management
 router.get('/permissions', protect, authorize(['viewSettings']), adminController.getAllPermissions);
@@ -94,21 +85,21 @@ router.get('/roles/:roleName/permissions', protect, authorize(['viewSettings']),
 router.put('/roles/:roleName/permissions', protect, authorize(['viewSettings']), adminController.updateRolePermissions);
 
 // Product Management
-const productManagementPermission = ['viewDashboard', 'viewUsahaKoperasi']; // Kasir perlu akses ini
+const productManagementPermission = ['viewDashboard']; // Gunakan permission yang sudah ada untuk simpel
 router.get('/products', protect, authorize(productManagementPermission), adminController.getProducts);
 router.get('/products/:id', protect, authorize(productManagementPermission), adminController.getProductById);
 router.post('/sales', protect, authorize(productManagementPermission), adminController.createSale);
 router.post('/products', protect, authorize(productManagementPermission), upload.single('productImage'), adminController.createProduct);
 router.put('/products/:id', protect, authorize(productManagementPermission), upload.single('productImage'), adminController.updateProduct);
 router.delete('/products/:id', protect, authorize(productManagementPermission), adminController.deleteProduct);
-router.post('/cash-sale', protect, authorize(['viewUsahaKoperasi', 'approveLoanAccounting']), adminController.createCashSale);
+router.post('/cash-sale', protect, authorize(['viewUsahaKoperasi']), adminController.createCashSale);
 router.get('/logistics-products/:shopType', protect, authorize(productManagementPermission), adminController.getAvailableLogisticsProducts);
 // Rute baru untuk mengambil pesanan yang menunggu pengambilan
-router.get('/sales/pending', protect, authorize(['viewUsahaKoperasi']), adminController.getPendingSales);
+router.get('/sales/pending', protect, authorize(['approveLoanAccounting']), adminController.getPendingSales);
 // Rute baru untuk mengambil detail item dari sebuah pesanan
-router.get('/sales/:orderId/items', protect, authorize(['viewUsahaKoperasi']), adminController.getSaleItemsByOrderId);
+router.get('/sales/:orderId/items', protect, authorize(['approveLoanAccounting']), adminController.getSaleItemsByOrderId);
 // Rute baru untuk verifikasi pesanan oleh kasir
-router.get('/sales/order/:orderId', protect, authorize(['viewUsahaKoperasi']), adminController.getSaleDetailsByOrderId);
+router.get('/sales/order/:orderId', protect, authorize(['approveLoanAccounting']), adminController.getSaleDetailsByOrderId);
 
 // Rute baru untuk mengambil permintaan pengunduran diri
 router.get('/pending-resignations', protect, authorize(['admin']), adminController.getPendingResignations);
@@ -237,9 +228,6 @@ router.get('/master-products', protect, authorize(['viewSettings']), adminContro
 router.post('/master-products', protect, authorize(['viewSettings']), adminController.createMasterProduct);
 router.put('/master-products/:id', protect, authorize(['viewSettings']), adminController.updateMasterProduct);
 router.delete('/master-products/:id', protect, authorize(['deleteData']), adminController.deleteMasterProduct);
-
-// Rute untuk mendapatkan ID tipe pinjaman berdasarkan nama, digunakan di panel admin
-router.get('/loantype-id-by-name', protect, authorize(['viewSettings']), adminController.getLoanTypeIdByName);
 
 
 module.exports = router;
