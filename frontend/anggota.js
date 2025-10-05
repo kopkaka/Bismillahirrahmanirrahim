@@ -968,6 +968,52 @@ document.addEventListener('DOMContentLoaded', () => {
         doc.save(`Surat_Komitmen_Pinjaman_${summary.memberName}.pdf`);
     };
 
+    // Fungsi ini diekspos ke window agar bisa dipanggil dari toko.js
+    window.showLoanCommitmentModalFromToko = async (loanData, tenor, interestRate) => {
+        const modal = document.getElementById('loan-commitment-modal');
+        const form = document.getElementById('loan-application-form'); // Kita tetap gunakan form ini untuk data
+        if (!modal || !form) return;
+
+        const signaturePadEl = document.getElementById('member-signature-pad');
+        const signaturePad = new SignaturePad(signaturePadEl, { backgroundColor: 'rgb(249, 250, 251)' });
+
+        // Isi data dari `loanData` ke dalam form (tersembunyi) untuk konsistensi
+        // Ini juga akan digunakan saat submit dari modal komitmen
+        document.getElementById('loan-term-id').value = loanData.loan_term_id;
+        document.getElementById('loan-amount').value = loanData.amount;
+        document.getElementById('bank-name').value = loanData.bank_name;
+        document.getElementById('bank-account-number').value = loanData.bank_account_number;
+
+        // Generate amortization table and total repayment
+        const { tableHtml, totalRepayment } = generateAmortizationForModal(parseFloat(loanData.amount), tenor, interestRate);
+
+        // Isi data ke dalam modal surat komitmen
+        try {
+            const profile = await apiFetch(`${MEMBER_API_URL}/profile`);
+            document.getElementById('commitment-member-name-text').textContent = `: ${profile.name}`;
+            document.getElementById('commitment-coop-number-text').textContent = `: ${profile.cooperative_number || 'N/A'}`;
+            document.getElementById('commitment-signature-name-text').textContent = profile.name;
+        } catch (error) {
+            console.error("Gagal memuat profil untuk surat komitmen:", error);
+            alert("Gagal memuat data anggota. Silakan coba lagi.");
+            return;
+        }
+        
+        // Ambil teks dari dropdown tenor di modal kredit
+        const creditTenorSelect = document.getElementById('credit-loan-term-select');
+        const selectedOptionText = creditTenorSelect.options[creditTenorSelect.selectedIndex].text;
+
+        document.getElementById('commitment-loan-amount-text').textContent = `: ${formatCurrency(loanData.amount)}`;
+        document.getElementById('commitment-loan-term-text').textContent = `: ${selectedOptionText}`;
+        document.getElementById('commitment-total-repayment-text').textContent = `: ${formatCurrency(totalRepayment)}`;
+        document.getElementById('commitment-amortization-table-container').innerHTML = tableHtml;
+        document.getElementById('commitment-current-date').textContent = new Date().toLocaleDateString('id-ID', { day: '2-digit', month: 'long', year: 'numeric' });
+
+        // Tampilkan modal
+        signaturePad.clear();
+        modal.classList.remove('hidden');
+    };
+    
     // --- FUNGSI UNTUK MODAL SURAT KOMITMEN PINJAMAN ---
     const setupLoanCommitmentModal = () => {
         const modal = document.getElementById('loan-commitment-modal');
