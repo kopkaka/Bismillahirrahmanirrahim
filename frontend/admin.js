@@ -6463,7 +6463,7 @@ const renderCashFlowChart = (data) => {
 
         // Set default values
         document.getElementById('edit-user-status-select').value = 'Active';
-        document.getElementById('edit-user-role-select').value = 'akunting';
+        document.getElementById('edit-user-role-select').value = 'member';
 
         // Populate dropdowns
         try {
