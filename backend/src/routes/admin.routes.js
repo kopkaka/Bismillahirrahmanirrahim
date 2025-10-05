@@ -158,7 +158,7 @@ router.get('/reports/cash-flow', protect, authorize(['viewReports']), adminContr
 router.get('/sales-report', protect, authorize(['viewReports']), adminController.getSalesReport);
 router.get('/reports/loan-interest', protect, authorize(['viewReports']), adminController.getLoanInterestReport);
 router.get('/reports/monthly-closing-status', protect, authorize(['viewReports']), adminController.getMonthlyClosingStatus);
-router.get('/reports/cashier', protect, authorize(['viewUsahaKoperasi']), adminController.getCashierReport);
+router.get('/reports/cashier', protect, authorize(['viewUsahaKoperasi', 'viewReports']), adminController.getCashierReport);
 
 // SHU Rules Management
 router.get('/shu-rules/:year', protect, authorize(['viewSettings']), adminController.getShuRules);
@@ -212,4 +212,5 @@ router.use('/positions', positionRoutes);
 router.use('/savingtypes', savingTypeRoutes);
 router.use('/loantypes', loanTypeRoutes);
 router.use('/loanterms', loanTermRoutes);
+
 router.use('/accounts', accountRoutes);
