@@ -1,5 +1,6 @@
 const express = require('express');
 const router = express.Router();
+const protect = require('../middleware/auth.middleware');
 const {
     getPublicTestimonials,
     getPublicPartners,
@@ -27,7 +28,7 @@ router.get('/loan-terms/elektronik', getElectronicLoanTerms);
 
 
 // Rute untuk Halaman Utama (Landing Page) & Registrasi
-router.get('/testimonials', getTestimonials);
+router.get('/testimonials', getPublicTestimonials);
 router.get('/partners', getPublicPartners);
 router.get('/loan-terms', getPublicLoanTerms);
 router.get('/employers', getPublicEmployers);
