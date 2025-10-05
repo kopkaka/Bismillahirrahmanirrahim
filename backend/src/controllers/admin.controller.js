@@ -3967,6 +3967,7 @@ const getCashierReport = async (req, res) => {
                 COUNT(s.id) as transaction_count,
                 COALESCE(SUM(CASE WHEN s.payment_method = 'Cash' THEN s.total_amount ELSE 0 END), 0) as total_cash,
                 COALESCE(SUM(CASE WHEN s.payment_method = 'Potong Gaji' THEN s.total_amount ELSE 0 END), 0) as total_payroll_deduction,
+                COALESCE(SUM(CASE WHEN s.payment_method = 'Transfer' THEN s.total_amount ELSE 0 END), 0) as total_transfer,
                 COALESCE(SUM(s.total_amount), 0) as total_revenue
             FROM sales s
             LEFT JOIN members m ON s.created_by_user_id = m.id
