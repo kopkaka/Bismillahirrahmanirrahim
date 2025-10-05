@@ -208,7 +208,7 @@ document.addEventListener('DOMContentLoaded', () => {
     // Event delegation untuk tombol "Tambah ke Keranjang"
     productGrid.addEventListener('click', (e) => {
         // Cari elemen tombol terdekat yang diklik
-        const button = e.target.closest('.add-to-cart-btn, .buy-electronic-btn');
+        const button = e.target.closest('.add-to-cart-btn, .buy-electronic-btn'); // Pastikan buy-electronic-btn juga ditangani
         if (button) {
             const card = button.closest('.bg-white');
             const name = card.querySelector('h3').textContent;
