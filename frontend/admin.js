@@ -3889,6 +3889,7 @@ const renderCashFlowChart = (data) => {
                                     <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase">Jumlah Terjual</th>
                                     <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase">Total Pendapatan</th>
                                     <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase">Total HPP</th>
+                                <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase">Total Transfer</th>
                                     <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase">Laba Kotor</th>
                                 </tr>
                             </thead>
@@ -6130,6 +6131,7 @@ const renderCashFlowChart = (data) => {
                             <td class="px-6 py-4 text-sm text-gray-500 text-right">${row.transaction_count}</td>
                             <td class="px-6 py-4 text-sm text-gray-500 text-right">${formatCurrency(row.total_cash)}</td>
                             <td class="px-6 py-4 text-sm text-gray-500 text-right">${formatCurrency(row.total_payroll_deduction)}</td>
+                            <td class="px-6 py-4 text-sm text-gray-500 text-right">${formatCurrency(row.total_transfer)}</td>
                             <td class="px-6 py-4 text-sm font-bold text-gray-800 text-right">${formatCurrency(row.total_revenue)}</td>
                         </tr>`;
                 });
