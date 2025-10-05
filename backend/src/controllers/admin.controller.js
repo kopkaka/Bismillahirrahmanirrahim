@@ -3929,26 +3929,29 @@ const getCashierReport = async (req, res) => {
         return res.status(400).json({ error: 'Tanggal mulai dan tanggal akhir diperlukan.' });
     }
 
+    const params = [startDate, endDate];
+    const conditions = [];
+    let paramIndex = 3; // Start after startDate and endDate
+
     try {
-        const params = [startDate, endDate];
-        let userCondition = '';
         if (userId) {
+            conditions.push(`s.created_by_user_id = $${paramIndex++}`);
             params.push(userId);
-            userCondition = ` AND s.created_by_user_id = $${params.length}`;
         }
+
+        const whereClause = conditions.length > 0 ? ` AND ${conditions.join(' AND ')}` : '';
 
         const query = `
             SELECT
                 m.name as cashier_name,
                 COUNT(s.id) as transaction_count,
                 COALESCE(SUM(CASE WHEN s.payment_method = 'Cash' THEN s.total_amount ELSE 0 END), 0) as total_cash,
-                COALESCE(SUM(CASE WHEN s.payment_method = 'Potong Gaji' THEN s.total_amount ELSE 0 END), 0) as total_payroll_deduction,
                 COALESCE(SUM(s.total_amount), 0) as total_revenue
             FROM sales s
             JOIN members m ON s.created_by_user_id = m.id
-            WHERE s.sale_date::date BETWEEN $1 AND $2
+            WHERE s.sale_date::date BETWEEN $1 AND $2 -- Use ::date for performance on TIMESTAMPTZ
               AND s.status = 'Selesai'
-              ${userCondition}
+              ${whereClause}
             GROUP BY m.name
             ORDER BY total_revenue DESC;
         `;
