@@ -13,7 +13,8 @@ const {
     getTestimonials,
     getPartners,
     getLoanTerms,
-    getElectronicLoanTerms,
+    getElectronicLoanTerms, // Tetap di sini untuk toko
+    getLoanTypeIdByName, // Tambahkan ini untuk admin panel
     getPositions
 } = require('../controllers/admin.controller');
 const { getEmployers } = require('../controllers/employer.controller');
@@ -28,6 +29,7 @@ router.post('/sales/:orderId/cancel', cancelSaleByMember);
 
 // Rute baru untuk tenor elektronik
 router.get('/loan-terms/elektronik', getElectronicLoanTerms);
+router.get('/loantype-id-by-name', getLoanTypeIdByName); // Rute baru
 
 
 // Rute untuk Halaman Utama (Landing Page) & Registrasi
