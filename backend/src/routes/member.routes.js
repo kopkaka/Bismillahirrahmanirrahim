@@ -71,7 +71,7 @@ router.post('/request-resignation', protect, authorize(['viewDashboard']), creat
 router.post('/cancel-resignation', protect, authorize(['viewDashboard']), cancelResignationRequest);
 
 // Permissions & Announcements
-router.get('/permissions', protect, getMyPermissions);
+router.get('/permissions', protect, authorize(['viewDashboard']), getMyPermissions);
 router.get('/announcements', protect, getAnnouncements);
 
 // Chart Data
