@@ -228,11 +228,7 @@ document.addEventListener('DOMContentLoaded', () => {
             }
 
             // Jika nomor koperasi sudah ada, lanjutkan ke logika spesifik toko
-            if (product.shopType === 'elektronik') {
-                showCreditApplicationModal(product);
-            } else {
-                addToCart(product);
-            }
+            addToCart(product);
         }
     });
 
@@ -295,84 +291,6 @@ document.addEventListener('DOMContentLoaded', () => {
     if (cancelCoopNumberBtn) {
         cancelCoopNumberBtn.addEventListener('click', hideCoopModal);
     }
-
-    // --- CREDIT APPLICATION MODAL (NEW) ---
-    const creditModal = document.getElementById('credit-application-modal');
-    const creditForm = document.getElementById('credit-application-form');
-
-    const generateCreditAmortization = (plafon, tenor, annualInterestRate) => {
-        const tableBody = document.getElementById('credit-amortization-preview-table-body');
-        const section = document.getElementById('credit-amortization-preview-section');
-        if (!tableBody || !section) return;
-
-        tableBody.innerHTML = '';
-        if (plafon <= 0 || tenor <= 0 || isNaN(plafon) || isNaN(tenor) || isNaN(annualInterestRate)) {
-            section.classList.add('hidden');
-            return;
-        }
-        section.classList.remove('hidden');
-
-        const monthlyInterestRate = (annualInterestRate / 100) / 12;
-        const pokokPerBulan = plafon / tenor;
-        let sisaPinjaman = plafon;
-
-        for (let i = 1; i <= tenor; i++) {
-            const bungaBulanIni = sisaPinjaman * monthlyInterestRate;
-            const cicilanBulanIni = pokokPerBulan + bungaBulanIni;
-            sisaPinjaman -= pokokPerBulan;
-            const row = `<tr>
-                <td class="px-3 py-2 text-center">${i}</td>
-                <td class="px-3 py-2 text-right">${formatCurrency(pokokPerBulan)}</td>
-                <td class="px-3 py-2 text-right">${formatCurrency(bungaBulanIni)}</td>
-                <td class="px-3 py-2 text-right font-semibold">${formatCurrency(cicilanBulanIni)}</td>
-            </tr>`;
-            tableBody.innerHTML += row;
-        }
-    };
-
-    const showCreditApplicationModal = async (product) => {
-        if (!creditModal) return;
-        productToAdd = product;
-
-        // Populate product info
-        document.getElementById('credit-product-image').src = product.imageUrl;
-        document.getElementById('credit-product-name').textContent = product.name;
-        document.getElementById('credit-product-price').textContent = formatCurrency(product.price);
-        document.getElementById('credit-amount-input').value = formatCurrency(product.price);
-        document.getElementById('credit-product-id-input').value = product.id;
-
-        // Reset and fetch tenor options
-        const tenorSelect = document.getElementById('credit-loan-term-select');
-        tenorSelect.innerHTML = '<option>Memuat tenor...</option>';
-        tenorSelect.disabled = true;
-        document.getElementById('credit-amortization-preview-section').classList.add('hidden');
-
-        try {
-            const response = await fetch(`${API_URL}/public/loan-terms/elektronik`);
-            if (!response.ok) throw new Error('Gagal memuat pilihan cicilan.');
-            const tenors = await response.json();
-
-            if (tenors.length === 0) {
-                tenorSelect.innerHTML = '<option>Pilihan cicilan tidak tersedia.</option>';
-            } else {
-                tenorSelect.innerHTML = '<option value="">-- Pilih Tenor --</option>';
-                tenors.forEach(term => {
-                    const option = document.createElement('option');
-                    option.value = term.id;
-                    option.dataset.tenor = term.tenor_months;
-                    option.dataset.interest = term.interest_rate;
-                    option.textContent = `${term.tenor_months} bulan (${term.interest_rate}% bunga/tahun)`;
-                    tenorSelect.appendChild(option);
-                });
-                tenorSelect.disabled = false;
-            }
-        } catch (error) {
-            console.error(error);
-            tenorSelect.innerHTML = `<option>${error.message}</option>`;
-        }
-
-        creditModal.classList.remove('hidden');
-    };
 
     if (creditModal) {
         document.getElementById('close-credit-modal-btn').addEventListener('click', () => creditModal.classList.add('hidden'));
