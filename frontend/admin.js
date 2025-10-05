@@ -34,6 +34,12 @@ document.addEventListener('DOMContentLoaded', () => {
         // Ini penting untuk role kasir.
         if (!hasPerm('viewDashboard')) document.querySelector('.sidebar-link[data-target="dashboard"]')?.remove();
 
+        // Sembunyikan menu berdasarkan hak akses yang diperlukan
+        if (!hasPerm('viewApprovals')) document.querySelector('.sidebar-link[data-target="approvals"]')?.remove();
+        if (!hasPerm('viewMembers')) document.querySelector('.sidebar-link[data-target="members"]')?.remove();
+        if (!hasPerm('viewSavings')) document.querySelector('.sidebar-link[data-target="savings"]')?.remove();
+        if (!hasPerm('viewLoans')) document.querySelector('.sidebar-link[data-target="loans"]')?.remove();
+
         // Hide sidebar links based on permissions
         if (!hasPerm('viewUsahaKoperasi')) document.querySelector('.sidebar-link[data-target="usaha-koperasi"]')?.remove();
         if (!hasPerm('viewAccounting')) document.querySelector('.sidebar-link[data-target="accounting"]')?.remove();
