@@ -1,5 +1,7 @@
 const express = require('express');
 const router = express.Router();
+const multer = require('multer');
+const excelUpload = multer({ storage: multer.memoryStorage() }); // Define multer for Excel in-memory processing
 const upload = require('../middleware/upload.middleware');
 const protect = require('../middleware/auth.middleware');
 const authorize = require('../middleware/role.middleware'); // Now checks permissions
@@ -7,6 +9,8 @@ const authorize = require('../middleware/role.middleware'); // Now checks permis
 const membersController = require('../controllers/members.controller');
 const userController = require('../controllers/user.controller');
 const adminController = require('../controllers/admin.controller');
+const savingController = require('../controllers/saving.controller');
+const loanController = require('../controllers/loan.controller');
 const journalController = require('../controllers/journal.controller.js');
 
 const { getApprovalCounts } = require('../controllers/approval.controller');
@@ -14,6 +18,12 @@ const { getApprovalCounts } = require('../controllers/approval.controller');
 const announcementRoutes = require('./announcement.routes.js');
 const employerRoutes = require('./employer.routes.js');
 const partnerRoutes = require('./partner.routes.js');
+const positionRoutes = require('./position.routes.js');
+const savingTypeRoutes = require('./savingtype.routes.js');
+const loanTypeRoutes = require('./loantype.routes.js');
+const loanTermRoutes = require('./loanterms.routes.js');
+const accountRoutes = require('./account.routes.js');
+const supplierRoutes = require('./supplier.routes.js');
 
 // Dashboard
 router.get('/stats', protect, authorize(['viewDashboard']), adminController.getDashboardStats);
@@ -29,11 +39,20 @@ router.get('/approval-counts', protect, authorize(['viewApprovals']), getApprova
 // This route can be accessed by accounting (for first approval) or manager (for final approval)
 router.put('/loans/:id/status', protect, authorize(['approveLoanAccounting', 'approveLoanManager']), adminController.updateLoanStatus);
 
+// Savings Management
+router.get('/savings', protect, authorize(['viewSavings']), savingController.getSavings);
+router.get('/savings/member/:memberId', protect, authorize(['viewSavings']), savingController.getSavingsByMember);
+router.post('/savings', protect, authorize(['approveSaving']), savingController.createSaving);
+router.put('/savings/:id/status', protect, authorize(['approveSaving']), savingController.updateSavingStatus);
+router.put('/savings/:id', protect, authorize(['deleteData']), savingController.updateSaving);
+router.delete('/savings/:id', protect, authorize(['deleteData']), savingController.deleteSaving);
+
 // Manual Saving Input
 router.post('/savings/manual', protect, authorize(['approveSaving']), adminController.createManualSaving);
 
 
 // Loan Management (for admin)
+router.get('/loans', protect, authorize(['viewLoans']), loanController.getLoans);
 router.get('/loans/:id/details', protect, authorize(['viewLoans']), adminController.getLoanDetailsForAdmin);
 router.post('/loans/payment', protect, authorize(['approveLoanAccounting']), adminController.recordLoanPayment);
 router.put('/loan-payments/:id/status', protect, authorize(['approveLoanAccounting']), adminController.updateLoanPaymentStatus);
@@ -165,12 +184,14 @@ router.delete('/journals/:id', protect, authorize(accountingPermission), journal
 router.get('/journal-accounts', protect, authorize(['viewAccounting']), adminController.getAccounts);
 
 // Suppliers
-router.get('/suppliers', protect, authorize(['viewSettings', 'viewAccounting']), adminController.getSuppliers);
-router.get('/employers', protect, authorize(['viewSettings', 'viewMembers']), adminController.getEmployers);
-// Note: Supplier creation/update/delete logic is not fully implemented in a dedicated controller yet.
-// This part might need a separate controller in the future.
+router.use('/suppliers', supplierRoutes);
+
+// Bulk Savings Management
+router.get('/savings/export-template', protect, authorize(['approveSaving']), savingController.exportSavingsTemplate);
+router.post('/savings/bulk-upload', protect, authorize(['approveSaving']), excelUpload.single('savingsFile'), savingController.uploadBulkSavings);
 
 // Master Products CRUD
+router.get('/employers', protect, authorize(['viewSettings', 'viewMembers']), adminController.getEmployers);
 router.get('/master-products', protect, authorize(['viewSettings']), adminController.getMasterProducts);
 router.post('/master-products', protect, authorize(['viewSettings']), adminController.createMasterProduct);
 router.put('/master-products/:id', protect, authorize(['viewSettings']), adminController.updateMasterProduct);
@@ -178,17 +199,17 @@ router.delete('/master-products/:id', protect, authorize(['deleteData']), adminC
 
 // Rute untuk mendapatkan ID tipe pinjaman berdasarkan nama, digunakan di panel admin
 router.get('/loantype-id-by-name', protect, authorize(['viewSettings']), adminController.getLoanTypeIdByName);
-router.get('/positions', protect, authorize(['viewSettings', 'viewMembers']), adminController.getPositions);
-router.get('/savingtypes', protect, authorize(['viewSettings', 'viewSavings']), adminController.getSavingTypes);
-router.get('/loantypes', protect, authorize(['viewSettings']), adminController.getLoanTypes);
-router.get('/loanterms', protect, authorize(['viewSettings']), adminController.getLoanTerms);
-router.get('/accounts', protect, authorize(['viewSettings']), adminController.getAccounts);
 
 
 module.exports = router;
 
 // --- Sub-routers (MUST be at the end) ---
-// These are now mostly handled by the main index.js router
+// These handle specific CRUD operations for settings pages
 router.use('/announcements', announcementRoutes);
 router.use('/employers', employerRoutes);
 router.use('/partners', partnerRoutes);
+router.use('/positions', positionRoutes);
+router.use('/savingtypes', savingTypeRoutes);
+router.use('/loantypes', loanTypeRoutes);
+router.use('/loanterms', loanTermRoutes);
+router.use('/accounts', accountRoutes);
