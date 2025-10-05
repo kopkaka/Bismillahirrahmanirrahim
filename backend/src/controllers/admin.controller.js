@@ -1530,6 +1530,26 @@ const getLoanTerms = async (req, res) => {
     }
 };
 
+const getElectronicLoanTerms = async (req, res) => {
+    try {
+        const query = `
+            SELECT 
+                lt.id, lt.tenor_months, lt.interest_rate
+            FROM loan_terms lt
+            JOIN loan_types ltp ON lt.loan_type_id = ltp.id
+            WHERE ltp.name = 'Kredit Elektronik'
+            ORDER BY lt.tenor_months ASC
+        `;
+        const result = await pool.query(query);
+        res.json(result.rows);
+    } catch (err) {
+        console.error('Error fetching electronic loan terms:', err.message);
+        res.status(500).json({ error: 'Gagal mengambil data tenor kredit elektronik.' });
+    }
+};
+
+
+
 const getSuppliers = async (req, res) => {
     try {
         // This query is simple and doesn't need pagination for a dropdown.
@@ -3950,6 +3970,7 @@ module.exports = {
     getLoanTypes,
     getSuppliers,
     getLoanTerms,
+    getElectronicLoanTerms,
     getEmployers,
     getAccounts,
     getAllProductsForDropdown,
