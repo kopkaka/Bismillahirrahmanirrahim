@@ -3960,13 +3960,13 @@ const getCashierReport = async (req, res) => {
 
         const query = `
             SELECT
-                m.name as cashier_name,
+                COALESCE(m.name, 'Online Order') as cashier_name,
                 COUNT(s.id) as transaction_count,
                 COALESCE(SUM(CASE WHEN s.payment_method = 'Cash' THEN s.total_amount ELSE 0 END), 0) as total_cash,
                 COALESCE(SUM(CASE WHEN s.payment_method = 'Potong Gaji' THEN s.total_amount ELSE 0 END), 0) as total_payroll_deduction,
                 COALESCE(SUM(s.total_amount), 0) as total_revenue
             FROM sales s
-            JOIN members m ON s.created_by_user_id = m.id
+            LEFT JOIN members m ON s.created_by_user_id = m.id
             WHERE s.sale_date::date BETWEEN $1 AND $2
               AND s.status = 'Selesai'
               ${userCondition}
