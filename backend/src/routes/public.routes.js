@@ -14,7 +14,7 @@ const {
 } = require('../controllers/public.controller');
 const { validateMemberByCoopNumber } = require('../controllers/auth.controller');
 const { cancelSaleOrder } = require('../controllers/member.controller');
-const { getElectronicLoanTerms } = require('../controllers/loanterms.controller');
+const { getElectronicLoanTerms, getLoanTerms } = require('../controllers/loanterms.controller');
 
 // Rute untuk Toko dan Checkout
 router.get('/products', getPublicProducts);
@@ -30,7 +30,7 @@ router.get('/loan-terms/elektronik', getElectronicLoanTerms);
 // Rute untuk Halaman Utama (Landing Page) & Registrasi
 router.get('/testimonials', getPublicTestimonials);
 router.get('/partners', getPublicPartners);
-router.get('/loan-terms', getPublicLoanTerms);
+router.get('/loan-terms', getLoanTerms);
 router.get('/employers', getPublicEmployers);
 router.get('/positions', getPublicPositions);
 router.get('/announcements', getPublicAnnouncements);
