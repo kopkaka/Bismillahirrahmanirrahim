@@ -40,6 +40,12 @@ document.addEventListener('DOMContentLoaded', () => {
         if (!hasPerm('viewSavings')) document.querySelector('.sidebar-link[data-target="savings"]')?.remove();
         if (!hasPerm('viewLoans')) document.querySelector('.sidebar-link[data-target="loans"]')?.remove();
 
+        // Sembunyikan kartu ringkasan di dasbor jika tidak memiliki hak akses
+        if (!hasPerm('viewMembers')) document.querySelector('#total-members')?.closest('.bg-white')?.remove();
+        if (!hasPerm('viewSavings')) document.querySelector('#total-savings')?.closest('.bg-white')?.remove();
+        if (!hasPerm('viewLoans')) document.querySelector('#total-loans')?.closest('.bg-white')?.remove();
+        if (!hasPerm('viewApprovals')) document.querySelector('#pending-members-count')?.closest('.bg-white')?.remove();
+
         // Hide sidebar links based on permissions
         if (!hasPerm('viewUsahaKoperasi')) document.querySelector('.sidebar-link[data-target="usaha-koperasi"]')?.remove();
         if (!hasPerm('viewAccounting')) document.querySelector('.sidebar-link[data-target="accounting"]')?.remove();
