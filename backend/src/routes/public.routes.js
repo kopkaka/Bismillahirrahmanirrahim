@@ -1,30 +1,27 @@
 const express = require('express');
 const router = express.Router();
+const {
+    getPublicTestimonials,
+    getPublicPartners,
+    getPublicLoanTerms,
+    getPublicProducts,
+    getSaleDetailsForMember,
+    cancelSaleByMember
+} = require('../controllers/public.controller');
 
-const publicController = require('../controllers/public.controller'); // No change here, just for context
-const memberController = require('../controllers/member.controller');
-const protect = require('../middleware/auth.middleware');
-const authorize = require('../middleware/role.middleware');
+// Import fungsi yang kita butuhkan dari admin controller
+const { getElectronicLoanTerms } = require('../controllers/admin.controller');
 
-// This router handles all public-facing endpoints that do not require authentication.
-// It is mounted at /api/public in the main router.
+// Rute yang sudah ada (diasumsikan)
+router.get('/testimonials', getPublicTestimonials);
+router.get('/partners', getPublicPartners);
+router.get('/loan-terms', getPublicLoanTerms);
+router.get('/products', getPublicProducts);
+router.get('/sales/:orderId', getSaleDetailsForMember);
+router.post('/sales/:orderId/cancel', cancelSaleByMember);
 
-// Routes for the public-facing shop (toko.html, etc.)
-router.get('/products', publicController.getPublicProducts);
+// Rute baru untuk tenor elektronik
+router.get('/loan-terms/elektronik', getElectronicLoanTerms);
 
-// Routes for the registration page (registrasi.html)
-router.get('/testimonials', publicController.getPublicTestimonials);
-router.get('/employers', publicController.getPublicEmployers);
-router.get('/positions', publicController.getPublicPositions);
-router.get('/loan-terms', publicController.getPublicLoanTerms);
-router.get('/announcements', publicController.getPublicAnnouncements);
-router.get('/partners', publicController.getPublicPartners);
-
-// Routes for shop checkout logic
-router.get('/sales/:orderId', publicController.getPublicSaleDetailsByOrderId);
-router.post('/sales', publicController.createSaleOrder);
-// Route for cancelling an order. Requires authentication.
-// It can be cancelled by the member who made it, or by an admin/accounting staff.
-router.post('/sales/:orderId/cancel', protect, memberController.cancelSaleOrder);
 
 module.exports = router;
