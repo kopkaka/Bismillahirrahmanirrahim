@@ -123,7 +123,15 @@ document.addEventListener('DOMContentLoaded', () => {
         if (isOutOfStock) {
             buttonHtml = `<span class="text-sm font-semibold text-red-500">Stok Habis</span>`;
         } else if (product.shop_type === 'elektronik') {
-            buttonHtml = `<button class="buy-electronic-btn bg-accent text-white px-4 py-2 rounded-lg font-semibold hover:bg-red-800 transition-colors text-sm" data-product-id="${product.id}">Beli dengan Cicilan</button>`;
+            // Mengubah tombol menjadi ikon dengan tooltip
+            buttonHtml = `<div class="relative">
+                            <button class="buy-electronic-btn bg-accent text-white p-2 rounded-full hover:bg-red-800 transition-transform transform group-hover:scale-110 focus:outline-none focus:ring-2 focus:ring-red-400" data-product-id="${product.id}" data-product-shop-type="elektronik" data-product-stock="${product.stock}">
+                                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                                    <path d="M3 1a1 1 0 000 2h1.22l.305 1.222a.997.997 0 00.922.778h9.246a1 1 0 00.97-.743l1.455-5.433A1 1 0 0016.22 0H4.342a1 1 0 00-.97.743L3.07 2.175A.997.997 0 002.148 3H1a1 1 0 100 2h.382l1.438 5.752A3 3 0 007.14 13h5.72a3 3 0 002.92-2.248L17.62 5H7.14a1 1 0 00-.922-.778L5.915 3H4.78a1 1 0 00-.97.743L3.38 4.917l-.305-1.222H1a1 1 0 00-1-1H.5a1 1 0 000 2h.538l.305 1.222a2.99 2.99 0 002.764 2.356h9.246a3 3 0 002.92-2.248L18.38 3H19a1 1 0 100-2h-2.78a3 3 0 00-2.92-2.248L12.86 0H4.342A3 3 0 001.42 2.248L.382 6.752A1 1 0 001.304 8H1a1 1 0 100-2h.382l.305-1.222A1 1 0 002.609 4H3V1zM7 15a2 2 0 100 4 2 2 0 000-4zm8 0a2 2 0 100 4 2 2 0 000-4z" />
+                                </svg>
+                            </button>
+                            <span class="absolute bottom-full mb-2 w-max bg-gray-700 text-white text-xs rounded py-1 px-2 opacity-0 group-hover:opacity-100 transition-opacity">Beli dengan Cicilan</span>
+                          </div>`;
         } else {
             buttonHtml = `<button 
                     class="add-to-cart-btn bg-green-500 text-white p-2 rounded-full hover:bg-green-600 transition-transform transform group-hover:scale-110 focus:outline-none focus:ring-2 focus:ring-green-400"
