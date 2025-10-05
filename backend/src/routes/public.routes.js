@@ -1,30 +1,37 @@
 const express = require('express');
 const router = express.Router();
+const {
+    getPublicTestimonials,
+    getPublicPartners,
+    getPublicProducts,
+    getPublicEmployers,
+    getPublicPositions,
+    getPublicLoanTerms,
+    getPublicAnnouncements,
+    createSaleOrder,
+    getPublicSaleDetailsByOrderId
+} = require('../controllers/public.controller');
+const { validateMemberByCoopNumber } = require('../controllers/auth.controller');
+const { cancelSaleOrder } = require('../controllers/member.controller');
+const { getElectronicLoanTerms } = require('../controllers/loanterms.controller');
 
-const publicController = require('../controllers/public.controller'); // No change here, just for context
-const memberController = require('../controllers/member.controller');
-const protect = require('../middleware/auth.middleware');
-const authorize = require('../middleware/role.middleware');
+// Rute untuk Toko dan Checkout
+router.get('/products', getPublicProducts);
+router.post('/validate-member', validateMemberByCoopNumber);
+router.post('/sales', createSaleOrder);
+router.get('/sales/:orderId', getPublicSaleDetailsByOrderId);
+router.post('/sales/:orderId/cancel', protect, cancelSaleOrder); // Added protect middleware
 
-// This router handles all public-facing endpoints that do not require authentication.
-// It is mounted at /api/public in the main router.
+// Rute baru untuk tenor elektronik
+router.get('/loan-terms/elektronik', getElectronicLoanTerms);
 
-// Routes for the public-facing shop (toko.html, etc.)
-router.get('/products', publicController.getPublicProducts);
 
-// Routes for the registration page (registrasi.html)
-router.get('/testimonials', publicController.getPublicTestimonials);
-router.get('/employers', publicController.getPublicEmployers);
-router.get('/positions', publicController.getPublicPositions);
-router.get('/loan-terms', publicController.getPublicLoanTerms);
-router.get('/announcements', publicController.getPublicAnnouncements);
-router.get('/partners', publicController.getPublicPartners);
-
-// Routes for shop checkout logic
-router.get('/sales/:orderId', publicController.getPublicSaleDetailsByOrderId);
-router.post('/sales', publicController.createSaleOrder);
-// Route for cancelling an order. Requires authentication.
-// It can be cancelled by the member who made it, or by an admin/accounting staff.
-router.post('/sales/:orderId/cancel', protect, memberController.cancelSaleOrder);
+// Rute untuk Halaman Utama (Landing Page) & Registrasi
+router.get('/testimonials', getTestimonials);
+router.get('/partners', getPublicPartners);
+router.get('/loan-terms', getPublicLoanTerms);
+router.get('/employers', getPublicEmployers);
+router.get('/positions', getPublicPositions);
+router.get('/announcements', getPublicAnnouncements);
 
 module.exports = router;
