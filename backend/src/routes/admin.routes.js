@@ -239,6 +239,9 @@ router.post('/master-products', protect, authorize(['viewSettings']), adminContr
 router.put('/master-products/:id', protect, authorize(['viewSettings']), adminController.updateMasterProduct);
 router.delete('/master-products/:id', protect, authorize(['deleteData']), adminController.deleteMasterProduct);
 
+// Rute untuk mendapatkan ID tipe pinjaman berdasarkan nama, digunakan di panel admin
+router.get('/loantype-id-by-name', protect, authorize(['viewSettings']), adminController.getLoanTypeIdByName);
+
 
 module.exports = router;
 
