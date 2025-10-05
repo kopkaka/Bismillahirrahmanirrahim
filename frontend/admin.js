@@ -9,7 +9,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const allLinks = document.querySelectorAll('.sidebar-link, .settings-card-link, .accounting-card-link, .report-card-link');
     const contentSections = document.querySelectorAll('.content-section');
     const sidebarLinks = document.querySelectorAll('.sidebar-link');
-
+ 
     // --- AUTH & ROLE CHECK ---
     const token = localStorage.getItem('token');
     const userName = localStorage.getItem('user_name');
@@ -30,6 +30,10 @@ document.addEventListener('DOMContentLoaded', () => {
     const applyUIPermissions = () => {
         const hasPerm = (key) => userPermissions.has(key);
 
+        // FIX: Pastikan menu Beranda selalu terlihat jika pengguna memiliki akses viewDashboard
+        // Ini penting untuk role kasir.
+        if (!hasPerm('viewDashboard')) document.querySelector('.sidebar-link[data-target="dashboard"]')?.remove();
+
         // Hide sidebar links based on permissions
         if (!hasPerm('viewUsahaKoperasi')) document.querySelector('.sidebar-link[data-target="usaha-koperasi"]')?.remove();
         if (!hasPerm('viewAccounting')) document.querySelector('.sidebar-link[data-target="accounting"]')?.remove();
@@ -38,7 +42,7 @@ document.addEventListener('DOMContentLoaded', () => {
     };
 
     const checkAdminAuth = async () => {
-        if (!token || !['admin', 'akunting', 'manager'].includes(userRole)) {
+        if (!token || !['admin', 'akunting', 'manager', 'kasir'].includes(userRole)) {
             alert('Akses ditolak. Silakan masuk sebagai staf.');
             localStorage.clear();
             window.location.href = 'login.html';
