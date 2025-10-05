@@ -6970,7 +6970,17 @@ const renderCashFlowChart = (data) => {
         setupLogout();
 
         // Muat konten awal
-        switchContent('dashboard');
+        const urlParams = new URLSearchParams(window.location.search);
+        const defaultPage = urlParams.get('defaultPage');
+        
+        // Cek apakah ada halaman default dari URL dan apakah user punya izin
+        if (defaultPage && userPermissions.has(`view${defaultPage.replace(/-(\w)/g, (match, p1) => p1.toUpperCase()).replace(/^\w/, c => c.toUpperCase())}`)) {
+            switchContent(defaultPage, {}, document.querySelector(`.sidebar-link[data-target="${defaultPage}"]`));
+        } else {
+            // Jika tidak, muat halaman default berdasarkan role
+            const initialPage = userRole === 'kasir' ? 'usaha-koperasi' : 'dashboard';
+            switchContent(initialPage, {}, document.querySelector(`.sidebar-link[data-target="${initialPage}"]`));
+        }
     };
 
     initializeApp();
