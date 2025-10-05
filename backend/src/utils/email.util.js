@@ -1,6 +1,11 @@
 const nodemailer = require('nodemailer');
 require('dotenv').config();
 
+// Tambahkan pengecekan variabel lingkungan untuk memberikan peringatan jika tidak diatur.
+if (!process.env.EMAIL_USER || !process.env.EMAIL_PASS) {
+    console.warn('PERINGATAN: Variabel lingkungan EMAIL_USER atau EMAIL_PASS tidak diatur. Fitur pengiriman email akan dinonaktifkan.');
+}
+
 // Konfigurasi transporter Nodemailer yang fleksibel
 const transporter = nodemailer.createTransport({
     host: process.env.EMAIL_HOST || 'smtp.gmail.com',
@@ -18,6 +23,12 @@ const transporter = nodemailer.createTransport({
 });
 
 const sendRegistrationEmail = async (to, name) => {
+    // Jangan coba kirim email jika kredensial tidak ada
+    if (!process.env.EMAIL_USER || !process.env.EMAIL_PASS) {
+        console.log(`Skipping registration email to ${to} because email credentials are not configured.`);
+        return;
+    }
+
     // Fungsi ini "fire and forget". Error akan di-log tetapi tidak akan menghentikan alur program.
     const mailOptions = {
         from: `"Koperasi Karya Kagum Abadi" <${process.env.EMAIL_USER}>`,
@@ -47,6 +58,12 @@ const sendRegistrationEmail = async (to, name) => {
 };
 
 const sendApprovalEmail = async (to, name) => {
+    // Jangan coba kirim email jika kredensial tidak ada
+    if (!process.env.EMAIL_USER || !process.env.EMAIL_PASS) {
+        console.log(`Skipping approval email to ${to} because email credentials are not configured.`);
+        return;
+    }
+
     // Fungsi ini "fire and forget". Error akan di-log tetapi tidak akan menghentikan alur program.
     const mailOptions = {
         from: `"Koperasi Karya Kagum Abadi" <${process.env.EMAIL_USER}>`,
@@ -76,6 +93,12 @@ const sendApprovalEmail = async (to, name) => {
 };
 
 const sendAdminNewRegistrationNotification = async (adminEmails, newMember) => {
+    // Jangan coba kirim email jika kredensial tidak ada
+    if (!process.env.EMAIL_USER || !process.env.EMAIL_PASS) {
+        console.log(`Skipping admin notification for ${newMember.email} because email credentials are not configured.`);
+        return;
+    }
+
     // Fungsi ini "fire and forget". Error akan di-log tetapi tidak akan menghentikan alur program.
     if (!adminEmails || adminEmails.length === 0) {
         console.log("No admin emails found to send notification.");
@@ -111,6 +134,12 @@ const sendAdminNewRegistrationNotification = async (adminEmails, newMember) => {
 };
 
 const sendPasswordResetEmail = async (to, name, resetUrl) => {
+    // Jangan coba kirim email jika kredensial tidak ada
+    if (!process.env.EMAIL_USER || !process.env.EMAIL_PASS) {
+        console.log(`Skipping password reset email to ${to} because email credentials are not configured.`);
+        return;
+    }
+
     const mailOptions = {
         from: `"Koperasi Karya Kagum Abadi" <${process.env.EMAIL_USER}>`,
         to: to,
@@ -141,6 +170,12 @@ const sendPasswordResetEmail = async (to, name, resetUrl) => {
 };
 
 const sendPasswordResetConfirmationEmail = async (to, name) => {
+    // Jangan coba kirim email jika kredensial tidak ada
+    if (!process.env.EMAIL_USER || !process.env.EMAIL_PASS) {
+        console.log(`Skipping password reset confirmation email to ${to} because email credentials are not configured.`);
+        return;
+    }
+
     const mailOptions = {
         from: `"Koperasi Karya Kagum Abadi" <${process.env.EMAIL_USER}>`,
         to: to,
