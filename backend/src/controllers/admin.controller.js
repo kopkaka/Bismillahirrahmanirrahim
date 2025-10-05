@@ -3979,7 +3979,7 @@ const getCashierReport = async (req, res) => {
             WHERE s.sale_date::date BETWEEN $1 AND $2
               AND s.status = 'Selesai'
               ${conditions.length > 0 ? `AND ${conditions.join(' AND ')}` : ''}
-            GROUP BY m.name
+            GROUP BY cashier_name
             ORDER BY total_revenue DESC;
         `;
 
