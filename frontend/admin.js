@@ -6098,8 +6098,14 @@ const renderCashFlowChart = (data) => {
 
         if (!form || !tableBody) return;
 
-        // Populate cashier dropdown
-        populateDropdown(userFilterSelect, 'users?role=kasir', 'id', 'name', 'Semua Kasir');
+        // Hanya muat dropdown kasir jika pengguna memiliki izin untuk mengelola pengguna.
+        // Jika tidak, sembunyikan filternya.
+        if (userPermissions.has('manageUsers')) {
+            populateDropdown(userFilterSelect, 'users?role=kasir', 'id', 'name', 'Semua Kasir');
+        } else {
+            // Sembunyikan filter kasir untuk role seperti 'kasir'
+            userFilterSelect.parentElement.classList.add('hidden');
+        }
 
         // Set default dates to the current month
         const today = new Date();
