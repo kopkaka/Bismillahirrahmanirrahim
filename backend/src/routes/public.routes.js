@@ -14,7 +14,7 @@ const {
 } = require('../controllers/public.controller');
 const { validateMemberByCoopNumber } = require('../controllers/auth.controller');
 const { cancelSaleOrder } = require('../controllers/member.controller');
-const { getElectronicLoanTerms, getLoanTerms } = require('../controllers/loanterms.controller');
+const { getLoanTerms } = require('../controllers/loanterms.controller');
 
 // Rute untuk Toko dan Checkout
 router.get('/products', getPublicProducts);
@@ -22,9 +22,6 @@ router.post('/validate-member', validateMemberByCoopNumber);
 router.post('/sales', createSaleOrder);
 router.get('/sales/:orderId', getPublicSaleDetailsByOrderId);
 router.post('/sales/:orderId/cancel', protect, cancelSaleOrder); // Added protect middleware
-
-// Rute baru untuk tenor elektronik
-router.get('/loan-terms/elektronik', getElectronicLoanTerms);
 
 
 // Rute untuk Halaman Utama (Landing Page) & Registrasi
