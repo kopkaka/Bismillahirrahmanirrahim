@@ -3,9 +3,9 @@ const { getPositions, createPosition, updatePosition, deletePosition } = require
 
 const router = Router();
 
-router.get('/positions', getPositions);
-router.post('/positions', createPosition);
-router.put('/positions/:id', updatePosition);
-router.delete('/positions/:id', deletePosition);
+router.get('/', getPositions);
+router.post('/', createPosition);
+router.put('/:id', updatePosition);
+router.delete('/:id', deletePosition);
 
 module.exports = router;
