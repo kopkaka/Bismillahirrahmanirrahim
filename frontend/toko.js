@@ -143,7 +143,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 tenors.forEach(term => {
                     const option = document.createElement('option');
                     option.value = term.id;
-                    option.dataset.rate = term.interest_rate;
+                    option.dataset.interestRate = term.interest_rate;
                     option.textContent = `${term.tenor_months} bulan (bunga ${term.interest_rate}%/tahun)`;
                     installmentTenorSelect.appendChild(option);
                 });
@@ -384,12 +384,12 @@ document.addEventListener('DOMContentLoaded', () => {
 
             const price = productToAdd.price;
             const tenor = parseInt(selectedOption.textContent, 10); // e.g., "12 bulan..." -> 12
-            const annualRate = parseFloat(selectedOption.dataset.rate);
+            const annualRate = parseFloat(selectedOption.dataset.interestRate);
             const monthlyRate = (annualRate / 100) / 12;
 
-            // Simple interest calculation for estimation
-            const totalInterest = price * monthlyRate * tenor;
-            const totalPayment = price + totalInterest;
+            // Perhitungan bunga flat untuk estimasi cicilan
+            const totalBunga = price * (annualRate / 100) * (tenor / 12);
+            const totalPayment = price + totalBunga;
             const monthlyPayment = totalPayment / tenor;
 
             monthlyPaymentEl.querySelector('span').textContent = formatCurrency(monthlyPayment);
@@ -415,12 +415,23 @@ document.addEventListener('DOMContentLoaded', () => {
             installmentError.classList.add('hidden');
 
             try {
-                // Menggunakan endpoint pengajuan pinjaman anggota
+                // Dapatkan token dari localStorage. Endpoint ini memerlukan otentikasi.
+                const token = localStorage.getItem('token');
+                if (!token) {
+                    // Jika karena suatu alasan token tidak ada, minta pengguna login ulang.
+                    alert('Sesi Anda tidak valid. Silakan login kembali.');
+                    localStorage.clear();
+                    window.location.href = 'login.html';
+                    return;
+                }
+
+                // Menggunakan endpoint pengajuan pinjaman anggota yang sudah ada
                 const response = await fetch(`${API_URL}/member/loans`, {
                     method: 'POST',
-                    headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${localStorage.getItem('token')}` },
+                    headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
                     body: JSON.stringify(payload)
                 });
+                
                 if (!response.ok) throw new Error('Gagal mengajukan kredit. Pastikan Anda tidak memiliki pinjaman aktif lain.');
                 
                 alert(`Pengajuan kredit untuk "${productToAdd.name}" berhasil! Admin akan segera memproses pengajuan Anda.`);
