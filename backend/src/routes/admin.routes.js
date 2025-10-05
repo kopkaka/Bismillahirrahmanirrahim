@@ -193,6 +193,7 @@ router.post('/savings/bulk-upload', protect, authorize(['approveSaving']), excel
 // Master Products CRUD
 router.get('/employers', protect, authorize(['viewSettings', 'viewMembers']), adminController.getEmployers);
 router.get('/master-products', protect, authorize(['viewSettings']), adminController.getMasterProducts);
+router.get('/savingtypes', protect, authorize(['viewSettings']), adminController.getSavingTypes);
 router.post('/master-products', protect, authorize(['viewSettings']), adminController.createMasterProduct);
 router.put('/master-products/:id', protect, authorize(['viewSettings']), adminController.updateMasterProduct);
 router.delete('/master-products/:id', protect, authorize(['deleteData']), adminController.deleteMasterProduct);
@@ -212,5 +213,4 @@ router.use('/positions', positionRoutes);
 router.use('/savingtypes', savingTypeRoutes);
 router.use('/loantypes', loanTypeRoutes);
 router.use('/loanterms', loanTermRoutes);
-
 router.use('/accounts', accountRoutes);
