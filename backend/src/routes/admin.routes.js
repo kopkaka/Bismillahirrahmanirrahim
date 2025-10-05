@@ -95,21 +95,21 @@ router.get('/roles/:roleName/permissions', protect, authorize(['viewSettings']),
 router.put('/roles/:roleName/permissions', protect, authorize(['viewSettings']), adminController.updateRolePermissions);
 
 // Product Management
-const productManagementPermission = ['viewDashboard']; // Gunakan permission yang sudah ada untuk simpel
+const productManagementPermission = ['viewDashboard', 'viewUsahaKoperasi']; // Kasir perlu akses ini
 router.get('/products', protect, authorize(productManagementPermission), adminController.getProducts);
 router.get('/products/:id', protect, authorize(productManagementPermission), adminController.getProductById);
 router.post('/sales', protect, authorize(productManagementPermission), adminController.createSale);
 router.post('/products', protect, authorize(productManagementPermission), upload.single('productImage'), adminController.createProduct);
 router.put('/products/:id', protect, authorize(productManagementPermission), upload.single('productImage'), adminController.updateProduct);
 router.delete('/products/:id', protect, authorize(productManagementPermission), adminController.deleteProduct);
-router.post('/cash-sale', protect, authorize(['viewUsahaKoperasi']), adminController.createCashSale);
+router.post('/cash-sale', protect, authorize(['viewUsahaKoperasi', 'approveLoanAccounting']), adminController.createCashSale);
 router.get('/logistics-products/:shopType', protect, authorize(productManagementPermission), adminController.getAvailableLogisticsProducts);
 // Rute baru untuk mengambil pesanan yang menunggu pengambilan
-router.get('/sales/pending', protect, authorize(['approveLoanAccounting']), adminController.getPendingSales);
+router.get('/sales/pending', protect, authorize(['viewUsahaKoperasi']), adminController.getPendingSales);
 // Rute baru untuk mengambil detail item dari sebuah pesanan
-router.get('/sales/:orderId/items', protect, authorize(['approveLoanAccounting']), adminController.getSaleItemsByOrderId);
+router.get('/sales/:orderId/items', protect, authorize(['viewUsahaKoperasi']), adminController.getSaleItemsByOrderId);
 // Rute baru untuk verifikasi pesanan oleh kasir
-router.get('/sales/order/:orderId', protect, authorize(['approveLoanAccounting']), adminController.getSaleDetailsByOrderId);
+router.get('/sales/order/:orderId', protect, authorize(['viewUsahaKoperasi']), adminController.getSaleDetailsByOrderId);
 
 // Rute baru untuk mengambil permintaan pengunduran diri
 router.get('/pending-resignations', protect, authorize(['admin']), adminController.getPendingResignations);
