@@ -61,7 +61,6 @@ router.post('/savings/manual', protect, authorize(['approveSaving']), adminContr
 router.get('/loans', protect, authorize(['viewLoans']), loanController.getLoans);
 router.get('/loans/:id/details', protect, authorize(['viewLoans']), adminController.getLoanDetailsForAdmin);
 router.post('/loans/payment', protect, authorize(['approveLoanAccounting']), adminController.recordLoanPayment);
-router.get('/loans/:id', protect, authorize(['manageUsers']), adminController.getLoanById);
 router.put('/loan-payments/:id/status', protect, authorize(['approveLoanAccounting']), adminController.updateLoanPaymentStatus);
 router.delete('/loan-payments/:id', protect, authorize(['admin']), adminController.cancelLoanPayment); // Rute baru untuk pembatalan
 router.post('/loans/:id/commitment', protect, authorize(['approveLoanAccounting']), upload.single('signature'), adminController.saveLoanCommitment);

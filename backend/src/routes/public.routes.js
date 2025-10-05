@@ -12,11 +12,12 @@ const {
 const {
     getTestimonials,
     getPartners,
-    getPositions
+    getPositions,
+    getElectronicLoanTerms
 } = require('../controllers/admin.controller');
 const { getEmployers } = require('../controllers/employer.controller');
 const { getAnnouncements } = require('../controllers/member.controller');
-const { getLoanTerms, getElectronicLoanTerms } = require('../controllers/loanterms.controller');
+const { getLoanTerms } = require('../controllers/loanterms.controller');
 
 // Rute untuk Toko dan Checkout
 router.get('/products', getPublicProducts);
