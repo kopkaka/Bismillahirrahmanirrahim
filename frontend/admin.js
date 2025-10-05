@@ -2513,7 +2513,13 @@ const renderCashFlowChart = (data) => {
                 card.className = `product-card border rounded-lg p-2 flex flex-col text-center cursor-pointer hover:shadow-lg transition-shadow ${isOutOfStock ? 'opacity-50 cursor-not-allowed' : ''}`;
                 card.dataset.productId = p.id;
 
-                let imageUrl = p.image_url ? `${API_URL.replace('/api', '')}${p.image_url}` : 'https://placehold.co/150x150?text=No+Image';
+                let imageUrl = 'https://placehold.co/150x150?text=No+Image';
+                if (p.image_url) {
+                    // Periksa apakah URL sudah lengkap atau hanya path
+                    imageUrl = p.image_url.startsWith('http') 
+                        ? p.image_url 
+                        : `${API_URL.replace('/api', '')}${p.image_url}`;
+                }
 
                 card.innerHTML = `
                     <img src="${imageUrl}" alt="${p.name}" class="w-full h-24 object-cover rounded-md mb-2">
