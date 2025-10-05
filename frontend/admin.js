@@ -30,9 +30,12 @@ document.addEventListener('DOMContentLoaded', () => {
     const applyUIPermissions = () => {
         const hasPerm = (key) => userPermissions.has(key);
 
-        // FIX: Pastikan menu Beranda selalu terlihat jika pengguna memiliki akses viewDashboard
-        // Ini penting untuk role kasir.
-        if (!hasPerm('viewDashboard')) document.querySelector('.sidebar-link[data-target="dashboard"]')?.remove();
+        // Sembunyikan menu Beranda khusus untuk Kasir
+        if (userRole === 'kasir') {
+            document.querySelector('.sidebar-link[data-target="dashboard"]')?.remove();
+        } else if (!hasPerm('viewDashboard')) { // Untuk role lain, sembunyikan jika tidak ada izin
+            document.querySelector('.sidebar-link[data-target="dashboard"]')?.remove();
+        }
 
         // Sembunyikan menu berdasarkan hak akses yang diperlukan
         if (!hasPerm('viewApprovals')) document.querySelector('.sidebar-link[data-target="approvals"]')?.remove();
@@ -2264,18 +2267,8 @@ const renderCashFlowChart = (data) => {
             if (targetContent) {
                 if (targetId === 'sembako-orders-tab') {
                     loadPendingOrders();
-                }
-                if (targetId === 'sembako-direct-cashier-tab') {
-                    // Load products for the direct cashier dropdown
-                    const productSelect = document.getElementById('direct-cashier-product-select');
-                    if (productSelect) {
-                        apiFetch(`${ADMIN_API_URL}/products?shop=sembako`).then(products => {
-                            directCashierProducts = products;
-                            productSelect.innerHTML = '<option value="">-- Pilih Produk --</option>' + products
-                                .filter(p => p.stock > 0) // Only show products in stock
-                                .map(p => `<option value="${p.id}">${p.name} (${formatCurrency(p.price)})</option>`).join('');
-                        });
-                    }
+                } else if (targetId === 'sembako-direct-cashier-tab') {
+                    setupDirectCashier(); // Panggil fungsi yang benar untuk memuat produk
                 }
                 targetContent.classList.remove('hidden');
             }

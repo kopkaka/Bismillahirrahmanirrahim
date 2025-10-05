@@ -57,7 +57,9 @@ document.addEventListener('DOMContentLoaded', () => {
             localStorage.setItem('user_role', data.user.role);
 
             // Arahkan pengguna berdasarkan peran (role)
-            if (data.user.role === 'admin' || data.user.role === 'akunting' || data.user.role === 'manager' || data.user.role === 'kasir') {
+            if (data.user.role === 'kasir') {
+                window.location.href = 'admin.html?defaultPage=usaha-koperasi';
+            } else if (data.user.role === 'admin' || data.user.role === 'akunting' || data.user.role === 'manager') {
                 window.location.href = 'admin.html';
             } else {
                 window.location.href = 'anggota.html';
