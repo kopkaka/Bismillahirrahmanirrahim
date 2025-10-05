@@ -190,17 +190,6 @@ router.use('/suppliers', supplierRoutes);
 router.get('/savings/export-template', protect, authorize(['approveSaving']), savingController.exportSavingsTemplate);
 router.post('/savings/bulk-upload', protect, authorize(['approveSaving']), excelUpload.single('savingsFile'), savingController.uploadBulkSavings);
 
-// Master Products CRUD
-router.get('/employers', protect, authorize(['viewSettings', 'viewMembers']), adminController.getEmployers);
-router.get('/master-products', protect, authorize(['viewSettings']), adminController.getMasterProducts);
-router.get('/savingtypes', protect, authorize(['viewSettings']), adminController.getSavingTypes);
-router.post('/master-products', protect, authorize(['viewSettings']), adminController.createMasterProduct);
-router.put('/master-products/:id', protect, authorize(['viewSettings']), adminController.updateMasterProduct);
-router.delete('/master-products/:id', protect, authorize(['deleteData']), adminController.deleteMasterProduct);
-
-// Rute untuk mendapatkan ID tipe pinjaman berdasarkan nama, digunakan di panel admin
-router.get('/loantype-id-by-name', protect, authorize(['viewSettings']), adminController.getLoanTypeIdByName);
-
 
 module.exports = router;
 
