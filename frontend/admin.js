@@ -6140,91 +6140,6 @@ const renderCashFlowChart = (data) => {
         document.getElementById('cashier-report-reset-btn').addEventListener('click', () => { form.reset(); loadReport(); });
     };
 
-    // --- FUNGSI UNTUK KELOLA CICILAN ELEKTRONIK ---
-    const setupElectronicInstallments = () => {
-        const section = document.getElementById('electronic-installments-section');
-        const manageBtn = document.getElementById('manage-electronic-installments-btn');
-        const tableBody = document.getElementById('electronic-terms-table-body');
-        const modal = document.getElementById('electronic-term-modal');
-        const form = document.getElementById('electronic-term-form');
-
-        if (!section || !manageBtn || !tableBody || !modal || !form) return;
-
-        let electronicLoanTypeId = null;
-
-        const loadElectronicTerms = async () => {
-            if (!electronicLoanTypeId) {
-                try {
-                    // Endpoint baru untuk mendapatkan ID tipe pinjaman berdasarkan nama
-                    const typeData = await apiFetch(`${ADMIN_API_URL}/loantype-id-by-name?name=Kredit Elektronik`);
-                    electronicLoanTypeId = typeData.id;
-                } catch (error) {
-                    tableBody.innerHTML = `<tr><td colspan="3" class="text-center py-4 text-red-500">Error: Tipe pinjaman 'Kredit Elektronik' tidak ditemukan. Harap buat terlebih dahulu di Pengaturan > Kelola Tipe Pinjaman.</td></tr>`;
-                    return;
-                }
-            }
-
-            tableBody.innerHTML = `<tr><td colspan="3" class="text-center py-4 text-gray-500">Memuat opsi cicilan...</td></tr>`;
-            try {
-                const allTerms = await apiFetch(`${ADMIN_API_URL}/loanterms`);
-                const electronicTerms = allTerms.filter(term => term.loan_type_id === electronicLoanTypeId);
-
-                tableBody.innerHTML = '';
-                if (electronicTerms.length === 0) {
-                    tableBody.innerHTML = `<tr><td colspan="3" class="text-center py-4 text-gray-500">Belum ada opsi cicilan. Klik "Kelola Cicilan" untuk menambah.</td></tr>`;
-                } else {
-                    electronicTerms.forEach(term => {
-                        tableBody.innerHTML += `
-                            <tr>
-                                <td class="px-6 py-4 text-sm text-gray-900">${term.tenor_months} bulan</td>
-                                <td class="px-6 py-4 text-sm text-gray-500">${term.interest_rate}%</td>
-                                <td class="px-6 py-4 text-sm font-medium space-x-2">
-                                    <button class="edit-electronic-term-btn text-indigo-600 hover:text-indigo-900" data-id="${term.id}" data-tenor="${term.tenor_months}" data-interest="${term.interest_rate}">Ubah</button>
-                                    <button class="delete-electronic-term-btn text-red-600 hover:text-red-900" data-id="${term.id}">Hapus</button>
-                                </td>
-                            </tr>`;
-                    });
-                }
-            } catch (error) { tableBody.innerHTML = `<tr><td colspan="3" class="text-center py-4 text-red-500">${error.message}</td></tr>`; }
-        };
-
-        manageBtn.addEventListener('click', () => {
-            section.classList.toggle('hidden');
-            if (!section.classList.contains('hidden')) {
-                loadElectronicTerms();
-            }
-        });
-
-        // Event delegation untuk tombol di dalam tabel
-        tableBody.addEventListener('click', (e) => {
-            const id = e.target.dataset.id;
-            if (e.target.matches('.edit-electronic-term-btn')) {
-                document.getElementById('electronic-term-modal-title').textContent = 'Ubah Opsi Cicilan';
-                document.getElementById('electronic-term-id-input').value = id;
-                document.getElementById('electronic-term-tenor-input').value = e.target.dataset.tenor;
-                document.getElementById('electronic-term-interest-input').value = e.target.dataset.interest;
-                modal.classList.remove('hidden');
-            } else if (e.target.matches('.delete-electronic-term-btn')) {
-                if (confirm('Anda yakin ingin menghapus opsi cicilan ini?')) {
-                    apiFetch(`${ADMIN_API_URL}/loanterms/${id}`, { method: 'DELETE' }).then(loadElectronicTerms).catch(err => alert(err.message));
-                }
-            }
-        });
-
-        // Submit form untuk tambah/ubah
-        form.addEventListener('submit', async (e) => {
-            e.preventDefault();
-            const id = document.getElementById('electronic-term-id-input').value;
-            const body = { loan_type_id: electronicLoanTypeId, tenor_months: document.getElementById('electronic-term-tenor-input').value, interest_rate: document.getElementById('electronic-term-interest-input').value };
-            const url = id ? `${ADMIN_API_URL}/loanterms/${id}` : `${ADMIN_API_URL}/loanterms`;
-            const method = id ? 'PUT' : 'POST';
-            try { await apiFetch(url, { method, body: JSON.stringify(body) }); modal.classList.add('hidden'); loadElectronicTerms(); } catch (error) { alert(error.message); }
-        });
-
-        // Panggil fungsi load saat pertama kali setup
-        loadElectronicTerms();
-    };
-
     // --- FUNGSI UNTUK NAVIGASI KONTEN UTAMA ---
     const switchContent = (targetId, params = {}, clickedLink = null) => {
         contentSections.forEach(section => {
@@ -6313,10 +6228,7 @@ const renderCashFlowChart = (data) => {
             loadShopProducts(shopType);
             if (shopType === 'sembako') loadPendingOrders();
         }
-        // Panggil setup saat tab produk elektronik aktif
-        if (targetId === 'products-elektronik-tab') {
-            setupElectronicInstallments();
-        }
+        
         if (targetId === 'report-cashier') {
             setupCashierReport();
         }
