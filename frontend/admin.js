@@ -6082,6 +6082,64 @@ const renderCashFlowChart = (data) => {
         });
     });
 
+    // --- FUNGSI UNTUK LAPORAN KASIR ---
+    const setupCashierReport = () => {
+        const form = document.getElementById('cashier-report-filter-form');
+        const tableBody = document.getElementById('cashier-report-table-body');
+        const userFilterSelect = document.getElementById('cashier-report-user-filter');
+
+        if (!form || !tableBody) return;
+
+        // Populate cashier dropdown
+        populateDropdown(userFilterSelect, 'users?role=kasir', 'id', 'name', 'Semua Kasir');
+
+        // Set default dates to the current month
+        const today = new Date();
+        const firstDay = new Date(today.getFullYear(), today.getMonth(), 1);
+        document.getElementById('cashier-report-start-date').value = firstDay.toISOString().split('T')[0];
+        document.getElementById('cashier-report-end-date').value = today.toISOString().split('T')[0];
+
+        const loadReport = async () => {
+            const startDate = document.getElementById('cashier-report-start-date').value;
+            const endDate = document.getElementById('cashier-report-end-date').value;
+            const userId = userFilterSelect.value;
+
+            if (!startDate || !endDate) {
+                alert('Silakan pilih periode tanggal.');
+                return;
+            }
+
+            tableBody.innerHTML = `<tr><td colspan="5" class="text-center py-4 text-gray-500">Memuat laporan...</td></tr>`;
+
+            try {
+                const params = new URLSearchParams({ startDate, endDate });
+                if (userId) params.append('userId', userId);
+
+                const data = await apiFetch(`${ADMIN_API_URL}/reports/cashier?${params.toString()}`);
+
+                tableBody.innerHTML = '';
+                if (data.length === 0) {
+                    tableBody.innerHTML = `<tr><td colspan="5" class="text-center py-4 text-gray-500">Tidak ada data penjualan untuk filter yang dipilih.</td></tr>`;
+                    return;
+                }
+
+                data.forEach(row => {
+                    tableBody.innerHTML += `
+                        <tr>
+                            <td class="px-6 py-4 text-sm font-medium text-gray-900">${row.cashier_name}</td>
+                            <td class="px-6 py-4 text-sm text-gray-500 text-right">${row.transaction_count}</td>
+                            <td class="px-6 py-4 text-sm text-gray-500 text-right">${formatCurrency(row.total_cash)}</td>
+                            <td class="px-6 py-4 text-sm text-gray-500 text-right">${formatCurrency(row.total_payroll_deduction)}</td>
+                            <td class="px-6 py-4 text-sm font-bold text-gray-800 text-right">${formatCurrency(row.total_revenue)}</td>
+                        </tr>`;
+                });
+            } catch (error) { tableBody.innerHTML = `<tr><td colspan="5" class="text-center py-4 text-red-500">${error.message}</td></tr>`; }
+        };
+
+        form.addEventListener('submit', (e) => { e.preventDefault(); loadReport(); });
+        document.getElementById('cashier-report-reset-btn').addEventListener('click', () => { form.reset(); loadReport(); });
+    };
+
     // --- FUNGSI UNTUK NAVIGASI KONTEN UTAMA ---
     const switchContent = (targetId, params = {}, clickedLink = null) => {
         contentSections.forEach(section => {
@@ -6170,6 +6228,9 @@ const renderCashFlowChart = (data) => {
             loadShopProducts(shopType);
             if (shopType === 'sembako') loadPendingOrders();
         }
+        if (targetId === 'report-cashier') {
+            setupCashierReport();
+        }
 
         // Perbarui status 'active' pada link sidebar dan tombol menu
         sidebarLinks.forEach(link => {
@@ -6205,7 +6266,7 @@ const renderCashFlowChart = (data) => {
             }
             // For report sub-pages
             parentMenuButton = document.querySelector('.sidebar-link[data-target="reports"]');
-        } else if (['toko-sembako'].includes(targetId)) { // For Usaha Koperasi sub-pages
+        } else if (['toko-sembako', 'report-cashier'].includes(targetId)) { // For Usaha Koperasi sub-pages
             parentMenuButton = document.querySelector('.sidebar-link[data-target="usaha-koperasi"]');
         } else if (targetId.startsWith('bulk-') || ['general-journal', 'receivables-ledger', 'logistics-card', 'stock-card', 'payable-card', 'post-shu', 'monthly-closing'].includes(targetId)) {
             // For accounting sub-pages
