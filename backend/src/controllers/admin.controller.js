@@ -3947,7 +3947,7 @@ const getLoanInterestReport = async (req, res) => {
  * @access  Private (Admin, Akunting)
  */
 const getCashierReport = async (req, res) => {
-    const { startDate, endDate, userId } = req.query;
+    const { startDate, endDate, userId, paymentMethod } = req.query;
 
     if (!startDate || !endDate) {
         return res.status(400).json({ error: 'Tanggal mulai dan tanggal akhir diperlukan.' });
@@ -3955,10 +3955,15 @@ const getCashierReport = async (req, res) => {
 
     try {
         const params = [startDate, endDate];
-        let userCondition = '';
+        const conditions = [];
+
         if (userId) {
             params.push(userId);
-            userCondition = ` AND s.created_by_user_id = $${params.length}`;
+            conditions.push(`s.created_by_user_id = $${params.length}`);
+        }
+        if (paymentMethod) {
+            params.push(paymentMethod);
+            conditions.push(`s.payment_method = $${params.length}`);
         }
 
         const query = `
@@ -3973,7 +3978,7 @@ const getCashierReport = async (req, res) => {
             LEFT JOIN members m ON s.created_by_user_id = m.id
             WHERE s.sale_date::date BETWEEN $1 AND $2
               AND s.status = 'Selesai'
-              ${userCondition}
+              ${conditions.length > 0 ? `AND ${conditions.join(' AND ')}` : ''}
             GROUP BY m.name
             ORDER BY total_revenue DESC;
         `;
