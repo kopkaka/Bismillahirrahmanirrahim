@@ -6088,6 +6088,7 @@ const renderCashFlowChart = (data) => {
         const form = document.getElementById('cashier-report-filter-form');
         const tableBody = document.getElementById('cashier-report-table-body');
         const userFilterSelect = document.getElementById('cashier-report-user-filter');
+        const paymentMethodFilterSelect = document.getElementById('cashier-report-payment-method-filter');
 
         if (!form || !tableBody) return;
 
@@ -6104,6 +6105,7 @@ const renderCashFlowChart = (data) => {
             const startDate = document.getElementById('cashier-report-start-date').value;
             const endDate = document.getElementById('cashier-report-end-date').value;
             const userId = userFilterSelect.value;
+            const paymentMethod = paymentMethodFilterSelect.value;
 
             if (!startDate || !endDate) {
                 alert('Silakan pilih periode tanggal.');
@@ -6115,6 +6117,7 @@ const renderCashFlowChart = (data) => {
             try {
                 const params = new URLSearchParams({ startDate, endDate });
                 if (userId) params.append('userId', userId);
+                if (paymentMethod) params.append('paymentMethod', paymentMethod);
 
                 const data = await apiFetch(`${ADMIN_API_URL}/reports/cashier?${params.toString()}`);
 
