@@ -2617,8 +2617,11 @@ const completeSale = async (req, res) => {
     try {
         // This logic is complex and involves stock reduction, journaling, etc.
         // It seems the logic is missing from the provided `createSale` function.
-        // For now, let's assume the main goal is to update the payment method on an existing sale.
-        const result = await pool.query("UPDATE sales SET status = 'Selesai', payment_method = $1, created_by_user_id = $2 WHERE order_id = $3 RETURNING *", [payment.method, cashierId, orderId]);
+        // For now, let's assume the main goal is to update the payment method and cashier on an existing sale.
+        const result = await pool.query(
+            "UPDATE sales SET status = 'Selesai', payment_method = $1, created_by_user_id = $2 WHERE order_id = $3 RETURNING *", 
+            [payment.method, cashierId, orderId]
+        );
         if (result.rowCount === 0) return res.status(404).json({ error: 'Pesanan tidak ditemukan.' });
         res.json({ message: 'Transaksi berhasil diselesaikan.' });
     } catch (err) {
