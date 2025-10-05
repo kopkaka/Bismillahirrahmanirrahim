@@ -95,9 +95,9 @@ const getPublicAnnouncements = async (req, res) => {
 };
 
 const createSaleOrder = async (req, res) => {
-    const { items, memberId, shopType, totalAmount } = req.body;
+    const { items, memberId, shopType, totalAmount, paymentMethod } = req.body;
 
-    if (!items || !Array.isArray(items) || items.length === 0 || !shopType || !totalAmount) {
+    if (!items || !Array.isArray(items) || items.length === 0 || !shopType || !totalAmount || !paymentMethod) {
         return res.status(400).json({ error: 'Data pesanan tidak lengkap.' });
     }
 
@@ -110,8 +110,8 @@ const createSaleOrder = async (req, res) => {
 
         // 2. Create sales header
         const saleRes = await client.query(
-            'INSERT INTO sales (order_id, member_id, shop_type, total_amount, status) VALUES ($1, $2, $3, $4, $5) RETURNING id',
-            [orderId, memberId, shopType, totalAmount, 'Menunggu Pengambilan']
+            'INSERT INTO sales (order_id, member_id, shop_type, total_amount, status, payment_method) VALUES ($1, $2, $3, $4, $5, $6) RETURNING id',
+            [orderId, memberId, shopType, totalAmount, 'Menunggu Pengambilan', paymentMethod]
         );
         const saleId = saleRes.rows[0].id;
 
