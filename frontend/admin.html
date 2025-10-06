@@ -2829,6 +2829,33 @@
         </div>
     </div>
 
+    <!-- Direct Cashier Payment Modal -->
+    <div id="direct-cashier-payment-modal" class="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full hidden z-50 p-4">
+        <div class="relative top-20 mx-auto p-5 border w-full max-w-md shadow-lg rounded-md bg-white">
+            <div class="flex justify-between items-center pb-3 border-b">
+                <h3 class="text-lg font-semibold text-gray-900">Konfirmasi Pembayaran</h3>
+                <button id="close-direct-cashier-payment-modal" class="text-gray-400 hover:text-gray-600 text-2xl font-bold">&times;</button>
+            </div>
+            <div class="mt-5">
+                <div class="mb-4">
+                    <p class="text-sm text-gray-600">Total Belanja:</p>
+                    <p id="direct-cashier-payment-total" class="text-3xl font-bold text-gray-800">Rp 0</p>
+                </div>
+                <fieldset>
+                    <legend class="text-base font-medium text-gray-900">Pilih Metode Pembayaran</legend>
+                    <div class="mt-4 space-y-4">
+                        <div class="flex items-center"><input id="payment-cash-direct" name="direct-payment-method" type="radio" value="Cash" checked class="focus:ring-red-500 h-4 w-4 text-red-600 border-gray-300"><label for="payment-cash-direct" class="ml-3 block text-sm font-medium text-gray-700">Tunai (Cash)</label></div>
+                        <div class="flex items-center"><input id="payment-transfer-direct" name="direct-payment-method" type="radio" value="Bank Transfer" class="focus:ring-red-500 h-4 w-4 text-red-600 border-gray-300"><label for="payment-transfer-direct" class="ml-3 block text-sm font-medium text-gray-700">Bank Transfer</label></div>
+                        <div class="flex items-center"><input id="payment-qris-direct" name="direct-payment-method" type="radio" value="QRIS" class="focus:ring-red-500 h-4 w-4 text-red-600 border-gray-300"><label for="payment-qris-direct" class="ml-3 block text-sm font-medium text-gray-700">QRIS</label></div>
+                        <div class="flex items-center"><input id="payment-cc-direct" name="direct-payment-method" type="radio" value="Credit Card" class="focus:ring-red-500 h-4 w-4 text-red-600 border-gray-300"><label for="payment-cc-direct" class="ml-3 block text-sm font-medium text-gray-700">Kartu Kredit</label></div>
+                        <div class="flex items-center"><input id="payment-ledger-direct" name="direct-payment-method" type="radio" value="Employee Ledger" class="focus:ring-red-500 h-4 w-4 text-red-600 border-gray-300"><label for="payment-ledger-direct" class="ml-3 block text-sm font-medium text-gray-700">Potong Gaji (Employee Ledger)</label></div>
+                    </div>
+                </fieldset>
+            </div>
+            <div class="flex justify-end space-x-2 pt-6 border-t mt-6"><button type="button" id="cancel-direct-cashier-payment-modal" class="bg-gray-200 text-gray-700 py-2 px-4 rounded-md hover:bg-gray-300">Batal</button><button type="button" id="confirm-direct-cashier-payment-btn" class="bg-red-600 text-white py-2 px-4 rounded-md hover:bg-red-700">Konfirmasi Pembayaran</button></div>
+        </div>
+    </div>
+
     <!-- Toast Notification Container -->
     <div id="toast-container" class="fixed top-5 right-5 z-50 space-y-2"></div>
 

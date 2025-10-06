@@ -2623,24 +2623,53 @@ const renderCashFlowChart = (data) => {
             }
         });
 
-        completeBtn.addEventListener('click', async () => {
-            if (directCart.length === 0 || !confirm('Selesaikan dan catat penjualan ini?')) return;
+        // --- NEW LOGIC: Show payment modal on complete ---
+        const paymentModal = document.getElementById('direct-cashier-payment-modal');
+        const closePaymentModalBtn = document.getElementById('close-direct-cashier-payment-modal');
+        const cancelPaymentModalBtn = document.getElementById('cancel-direct-cashier-payment-modal');
+        const confirmPaymentBtn = document.getElementById('confirm-direct-cashier-payment-btn');
+        const paymentTotalEl = document.getElementById('direct-cashier-payment-total');
 
-            completeBtn.disabled = true;
-            completeBtn.textContent = 'Memproses...';
+        if (paymentModal) {
+            closePaymentModalBtn.addEventListener('click', () => paymentModal.classList.add('hidden'));
+            cancelPaymentModalBtn.addEventListener('click', () => paymentModal.classList.add('hidden'));
 
-            try {
-                await apiFetch(`${ADMIN_API_URL}/cash-sale`, { method: 'POST', body: JSON.stringify({ items: directCart, paymentMethod: 'Cash' }) });
-                alert('Penjualan berhasil dicatat.');
-                directCart = [];
-                renderDirectCart();
-            } catch (error) {
-                alert(`Error: ${error.message}`);
-            } finally {
-                completeBtn.disabled = false;
-                completeBtn.textContent = 'Selesaikan Penjualan';
-            }
-        });
+            completeBtn.addEventListener('click', () => {
+                if (directCart.length === 0) return;
+                const total = directCart.reduce((sum, item) => sum + (parseFloat(item.price) * item.quantity), 0);
+                paymentTotalEl.textContent = formatCurrency(total);
+                paymentModal.classList.remove('hidden');
+            });
+
+            confirmPaymentBtn.addEventListener('click', async () => {
+                const selectedPaymentMethod = document.querySelector('input[name="direct-payment-method"]:checked').value;
+                
+                confirmPaymentBtn.disabled = true;
+                confirmPaymentBtn.textContent = 'Memproses...';
+
+                try {
+                    await apiFetch(`${ADMIN_API_URL}/cash-sale`, { 
+                        method: 'POST', 
+                        body: JSON.stringify({ 
+                            items: directCart, 
+                            paymentMethod: selectedPaymentMethod 
+                        }) 
+                    });
+                    alert('Penjualan berhasil dicatat.');
+                    directCart = [];
+                    renderDirectCart();
+                    paymentModal.classList.add('hidden');
+                } catch (error) {
+                    alert(`Error: ${error.message}`);
+                } finally {
+                    confirmPaymentBtn.disabled = false;
+                    confirmPaymentBtn.textContent = 'Konfirmasi Pembayaran';
+                }
+            });
+        } else {
+            console.error("Direct cashier payment modal not found in HTML.");
+        }
+        // --- END OF NEW LOGIC ---
 
         searchInput.addEventListener('input', renderProductGrid);
 
