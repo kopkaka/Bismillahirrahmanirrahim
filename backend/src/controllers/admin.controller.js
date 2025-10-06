@@ -2989,7 +2989,7 @@ const getCashFlowStatement = async (req, res) => {
 };
 
 const createCashSale = async (req, res) => {
-    const { items, paymentMethod } = req.body; // items: [{ productId, quantity }]
+    const { items, paymentMethod, memberId } = req.body; // items: [{ productId, quantity }], memberId is optional
     const createdByUserId = req.user.id;
 
     if (!Array.isArray(items) || items.length === 0) {
@@ -2999,6 +2999,14 @@ const createCashSale = async (req, res) => {
     const client = await pool.connect();
     try {
         await client.query('BEGIN');
+
+        // Jika pembayaran adalah Employee Ledger, validasi memberId
+        if (paymentMethod === 'Employee Ledger') {
+            if (!memberId) throw new Error('ID Anggota diperlukan untuk pembayaran Potong Gaji.');
+            const memberRes = await client.query('SELECT id FROM members WHERE id = $1 AND status = \'Active\'', [memberId]);
+            if (memberRes.rows.length === 0) throw new Error(`Anggota dengan ID ${memberId} tidak ditemukan atau tidak aktif.`);
+        }
+
 
         let totalSaleAmount = 0;
         let totalCostOfGoodsSold = 0;
@@ -3040,8 +3048,8 @@ const createCashSale = async (req, res) => {
         const orderId = `CASH-${Date.now()}`;
 
         const saleRes = await client.query(
-            'INSERT INTO sales (order_id, total_amount, payment_method, created_by_user_id, member_id, sale_date, status, shop_type) VALUES ($1, $2, $3, $4, NULL, NOW(), \'Selesai\', $5) RETURNING id',
-            [orderId, totalSaleAmount, paymentMethod, createdByUserId, shopType] // No change needed here, the query was just misaligned in my previous thought process. Let's check the other file.
+            'INSERT INTO sales (order_id, total_amount, payment_method, created_by_user_id, member_id, sale_date, status, shop_type) VALUES ($1, $2, $3, $4, $5, NOW(), \'Selesai\', $6) RETURNING id',
+            [orderId, totalSaleAmount, paymentMethod, createdByUserId, memberId || null, shopType]
         );
         const saleId = saleRes.rows[0].id;
 
@@ -3053,10 +3061,18 @@ const createCashSale = async (req, res) => {
         
         await client.query(`INSERT INTO sale_items (sale_id, product_id, quantity, price, cost_per_item) VALUES ${saleItemsQueryParts}`, saleItemsValues);
 
-        const cashAccountId = 3;
+        // --- DYNAMIC ACCOUNT MAPPING FOR PAYMENT ---
+        const paymentMethodRes = await client.query('SELECT account_id FROM payment_methods WHERE name = $1', [paymentMethod]);
+        if (paymentMethodRes.rows.length === 0 || !paymentMethodRes.rows[0].account_id) {
+            throw new Error(`Metode pembayaran "${paymentMethod}" tidak valid atau belum terhubung ke akun COA.`);
+        }
+        const debitAccountId = paymentMethodRes.rows[0].account_id;
+        // --- END DYNAMIC MAPPING ---
+
         const inventoryAccountId = 8;
         const salesRevenueAccountId = 12;
         const cogsAccountId = 13;
+
         const description = `Penjualan Tunai Toko (Kasir Umum) Struk #${saleId}`;
 
         const journalHeaderRes = await client.query('INSERT INTO general_journal (entry_date, description, reference_number) VALUES (NOW(), $1, $2) RETURNING id', [description, `CASH-SALE-${saleId}`]);
@@ -3064,12 +3080,12 @@ const createCashSale = async (req, res) => {
 
         const journalEntriesQuery = `
             INSERT INTO journal_entries (journal_id, account_id, debit, credit) VALUES
-            ($1, $2, $3, 0),      -- Debit Kas
+            ($1, $2, $3, 0),      -- Debit Akun Pembayaran (Kas/Bank/Piutang)
             ($1, $4, 0, $3),      -- Kredit Pendapatan Penjualan
             ($1, $5, $6, 0),      -- Debit HPP
             ($1, $7, 0, $6)       -- Kredit Persediaan
         `;
-        await client.query(journalEntriesQuery, [journalId, cashAccountId, totalSaleAmount, salesRevenueAccountId, cogsAccountId, totalCostOfGoodsSold, inventoryAccountId]);
+        await client.query(journalEntriesQuery, [journalId, debitAccountId, totalSaleAmount, salesRevenueAccountId, cogsAccountId, totalCostOfGoodsSold, inventoryAccountId]);
 
         await client.query('COMMIT');
         res.status(201).json({ message: 'Penjualan tunai berhasil dicatat.', saleId: saleId });
@@ -4044,6 +4060,8 @@ module.exports = {
     updateTestimonial,
     deleteTestimonial,
     mapSavingAccount,
+    getPaymentMethods,
+    mapPaymentMethodAccount,
     mapLoanAccount,
     getReceivableLogistics,
     receiveLogisticsItems,
