@@ -151,9 +151,15 @@ router.delete('/testimonials/:id', protect, authorize(testimonialPermission), ad
 // Account Mapping
 router.put('/map-saving-account/:id', protect, authorize(['viewSettings']), adminController.mapSavingAccount);
 router.put('/map-loan-account/:id', protect, authorize(['viewSettings']), adminController.mapLoanAccount);
-// Payment Method Account Mapping
+
+// --- Payment Method Management ---
+// CRUD for payment method types
 router.get('/payment-methods', protect, authorize(['viewSettings']), adminController.getPaymentMethods);
-router.put('/payment-methods/:id', protect, authorize(['viewSettings']), adminController.mapPaymentMethodAccount);
+router.post('/payment-methods', protect, authorize(['viewSettings']), adminController.createPaymentMethod);
+router.put('/payment-methods/:id', protect, authorize(['viewSettings']), adminController.updatePaymentMethod);
+router.delete('/payment-methods/:id', protect, authorize(['viewSettings']), adminController.deletePaymentMethod);
+// Route specific for account mapping
+router.put('/map-payment-method-account/:id', protect, authorize(['viewSettings']), adminController.mapPaymentMethodAccount);
 
 // Goods Receipt & Accounts Payable
 const accountingPermission = ['viewAccounting'];
