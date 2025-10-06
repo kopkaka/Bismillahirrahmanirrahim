@@ -3799,6 +3799,31 @@ const renderCashFlowChart = (data) => {
         typeIdField: 'id'
     });
 
+    // --- FUNGSI UNTUK KELOLA TIPE PEMBAYARAN ---
+    const loadPaymentMethods = setupSimpleCrud({
+        modal: document.getElementById('payment-method-modal'),
+        form: document.getElementById('payment-method-form'),
+        tableBody: document.getElementById('payment-methods-table-body'),
+        addBtn: document.getElementById('add-payment-method-btn'),
+        endpoint: 'payment-methods',
+        title: 'Tipe Pembayaran',
+        fields: ['name', 'is_active'],
+        onEdit: (item) => {
+            document.getElementById('is-active-input').checked = item.is_active;
+        },
+        renderRow: (item, role) => {
+            const statusClass = item.is_active ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800';
+            const statusText = item.is_active ? 'Aktif' : 'Nonaktif';
+            return `
+            <tr>
+                <td class="px-6 py-4 text-sm text-gray-900">${item.name}</td>
+                <td class="px-6 py-4 text-sm"><span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${statusClass}">${statusText}</span></td>
+                <td class="px-6 py-4 text-sm font-medium space-x-2"><button class="edit-tipe-pembayaran-btn text-indigo-600 hover:text-indigo-900" data-id="${item.id}">Ubah</button></td>
+            </tr>`;
+        },
+        typeIdField: 'id'
+    });
+
     // --- FUNGSI UNTUK KARTU STOK BARANG ---
     const loadStockCard = async () => {
         const productSelect = document.getElementById('stock-card-product-select');
@@ -6415,7 +6440,10 @@ const renderCashFlowChart = (data) => {
                 'manage-accounts': () => { loadAccounts(); loadAccountTypes(); },
                 'manage-suppliers': () => { loadSuppliers(); loadMasterProducts(); masterProductOptionsCache = null; }, // Load both and clear cache
                 'manage-cooperative-profile': loadCooperativeProfile, 'manage-saving-account-mapping': loadSavingAccountMapping, 
-                'manage-loan-account-mapping': loadLoanAccountMapping, 'manage-payment-method-mapping': loadPaymentMethodMapping, 'manage-shu-rules': loadShuRules, 'manage-announcements': loadAnnouncements, 
+                'manage-loan-account-mapping': loadLoanAccountMapping, 
+                'manage-payment-method-mapping': () => { loadPaymentMethodMapping(); loadPaymentMethods(); }, 
+                'manage-shu-rules': loadShuRules, 
+                'manage-announcements': loadAnnouncements, 
                 'manage-partners': setupPartnerManagement, 
                 'manage-products': () => { document.querySelector('.product-tab-btn[data-target="products-sembako-tab"]').click(); } 
             }[targetId];
@@ -6552,6 +6580,22 @@ const renderCashFlowChart = (data) => {
             btn.classList.remove('border-transparent', 'text-gray-500', 'hover:text-gray-700', 'hover:border-gray-300');
 
             coaTabContents.forEach(content => content.classList.toggle('hidden', content.id !== targetId));
+        });
+    });
+
+    // --- FUNGSI UNTUK TAB DI HALAMAN KELOLA METODE PEMBAYARAN ---
+    const paymentMethodTabBtns = document.querySelectorAll('.payment-method-tab-btn');
+    const paymentMethodTabContents = document.querySelectorAll('.payment-method-tab-content');
+
+    paymentMethodTabBtns.forEach(btn => {
+        btn.addEventListener('click', (e) => {
+            e.preventDefault();
+            const targetId = btn.dataset.target;
+            paymentMethodTabBtns.forEach(b => b.classList.remove('border-red-500', 'text-red-600'));
+            paymentMethodTabBtns.forEach(b => b.classList.add('border-transparent', 'text-gray-500', 'hover:text-gray-700', 'hover:border-gray-300'));
+            btn.classList.add('border-red-500', 'text-red-600');
+            btn.classList.remove('border-transparent', 'text-gray-500', 'hover:text-gray-700', 'hover:border-gray-300');
+            paymentMethodTabContents.forEach(content => content.classList.toggle('hidden', content.id !== targetId));
         });
     });
 
