@@ -924,6 +924,14 @@
                             <h3 class="font-semibold text-lg text-gray-800">Maping Akun Pinjaman</h3>
                             <p class="text-sm text-gray-500 mt-1 flex-grow">Hubungkan setiap tipe pinjaman ke akun COA.</p>
                         </div>
+                        <!-- Card Maping Akun Pembayaran -->
+                        <div data-target="manage-payment-method-mapping" class="settings-card-link bg-white p-6 rounded-lg shadow-md hover:shadow-lg transition-shadow cursor-pointer flex flex-col">
+                            <div class="w-12 h-12 rounded-full bg-cyan-100 flex items-center justify-center mb-4">
+                                <svg class="w-6 h-6 text-cyan-600" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z"></path></svg>
+                            </div>
+                            <h3 class="font-semibold text-lg text-gray-800">Maping Akun Pembayaran</h3>
+                            <p class="text-sm text-gray-500 mt-1 flex-grow">Hubungkan metode pembayaran (Kas, Bank) ke akun COA.</p>
+                        </div>
                         <div data-target="manage-shu-rules" class="settings-card-link bg-white p-6 rounded-lg shadow-md hover:shadow-lg transition-shadow cursor-pointer flex flex-col">
                             <div class="w-12 h-12 rounded-full bg-blue-100 flex items-center justify-center mb-4">
                                 <svg class="w-6 h-6 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 7h6m0 10v-3m-3 3h3m-3 0v-3m-3 3h3m-3 0v-3m8-5H7a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2V9a2 2 0 00-2-2z"></path></svg>
@@ -1933,6 +1941,27 @@
                     </div>
                 </div>
 
+                <!-- Payment Method Account Mapping Section -->
+                <div id="manage-payment-method-mapping-content" class="content-section">
+                    <div class="flex justify-between items-center mb-6">
+                        <h2 class="text-2xl font-semibold text-gray-800">Maping Akun Metode Pembayaran</h2>
+                        <button class="back-to-settings-btn text-sm text-red-600 hover:underline">&larr; Kembali ke Pengaturan</button>
+                    </div>
+                    <div class="bg-white p-6 rounded-lg shadow-md">
+                        <div class="overflow-x-auto">
+                            <table class="min-w-full divide-y divide-gray-200">
+                                <thead class="bg-gray-50">
+                                    <tr>
+                                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Metode Pembayaran</th>
+                                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Akun Terhubung (COA)</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="payment-method-mapping-table-body" class="bg-white divide-y divide-gray-200"></tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+
                 <!-- SHU Rules Management Section -->
                 <div id="manage-shu-rules-content" class="content-section">
                     <div class="flex justify-between items-center mb-6">
@@ -2841,6 +2870,18 @@
                     <p class="text-sm text-gray-600">Total Belanja:</p>
                     <p id="direct-cashier-payment-total" class="text-3xl font-bold text-gray-800">Rp 0</p>
                 </div>
+                <!-- Input untuk jumlah uang yang dibayarkan -->
+                <div id="direct-cashier-payment-amount-container" class="mb-4">
+                    <label for="direct-cashier-payment-amount" class="block text-sm font-medium text-gray-700">Jumlah Uang Bayar (Rp)</label>
+                    <input type="number" id="direct-cashier-payment-amount" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-red-500 focus:ring-red-500 text-lg p-2" placeholder="0">
+                </div>
+
+                <!-- Area untuk menampilkan kembalian -->
+                <div class="mb-6 p-3 bg-green-50 rounded-lg text-center hidden" id="direct-cashier-change-container">
+                    <p class="text-sm text-green-700">Kembalian:</p>
+                    <p id="direct-cashier-change-amount" class="text-2xl font-bold text-green-800">Rp 0</p>
+                    <p id="direct-cashier-payment-error" class="text-sm text-red-600 font-semibold hidden mt-1">Uang pembayaran kurang.</p>
+                </div>
                 <fieldset>
                     <legend class="text-base font-medium text-gray-900">Pilih Metode Pembayaran</legend>
                     <div class="mt-4 space-y-4">
@@ -2851,6 +2892,13 @@
                         <div class="flex items-center"><input id="payment-ledger-direct" name="direct-payment-method" type="radio" value="Employee Ledger" class="focus:ring-red-500 h-4 w-4 text-red-600 border-gray-300"><label for="payment-ledger-direct" class="ml-3 block text-sm font-medium text-gray-700">Potong Gaji (Employee Ledger)</label></div>
                     </div>
                 </fieldset>
+
+                <!-- Employee Ledger Details - Hidden by default -->
+                <div id="direct-cashier-ledger-details" class="hidden mt-4 space-y-2 border-t pt-4">
+                    <label for="direct-cashier-coop-number" class="block text-sm font-medium text-gray-700">Nomor Koperasi Anggota</label>
+                    <input type="text" id="direct-cashier-coop-number" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-red-500 focus:ring-red-500" placeholder="Masukkan nomor koperasi...">
+                    <div id="direct-cashier-member-name-display" class="p-2 bg-gray-100 rounded-md text-sm text-gray-700 hidden"></div>
+                </div>
             </div>
             <div class="flex justify-end space-x-2 pt-6 border-t mt-6"><button type="button" id="cancel-direct-cashier-payment-modal" class="bg-gray-200 text-gray-700 py-2 px-4 rounded-md hover:bg-gray-300">Batal</button><button type="button" id="confirm-direct-cashier-payment-btn" class="bg-red-600 text-white py-2 px-4 rounded-md hover:bg-red-700">Konfirmasi Pembayaran</button></div>
         </div>
