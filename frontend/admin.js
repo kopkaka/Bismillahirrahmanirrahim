@@ -3818,7 +3818,10 @@ const renderCashFlowChart = (data) => {
             <tr>
                 <td class="px-6 py-4 text-sm text-gray-900">${item.name}</td>
                 <td class="px-6 py-4 text-sm"><span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${statusClass}">${statusText}</span></td>
-                <td class="px-6 py-4 text-sm font-medium space-x-2"><button class="edit-tipe-pembayaran-btn text-indigo-600 hover:text-indigo-900" data-id="${item.id}">Ubah</button></td>
+                <td class="px-6 py-4 text-sm font-medium space-x-2">
+                    <button class="edit-tipe-pembayaran-btn text-indigo-600 hover:text-indigo-900" data-id="${item.id}">Ubah</button>
+                    <button class="delete-tipe-pembayaran-btn text-red-600 hover:text-red-900" data-id="${item.id}">Hapus</button>
+                </td>
             </tr>`;
         },
         typeIdField: 'id'
