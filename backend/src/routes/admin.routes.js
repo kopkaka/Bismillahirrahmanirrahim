@@ -190,9 +190,6 @@ router.use('/suppliers', supplierRoutes);
 router.get('/savings/export-template', protect, authorize(['approveSaving']), savingController.exportSavingsTemplate);
 router.post('/savings/bulk-upload', protect, authorize(['approveSaving']), excelUpload.single('savingsFile'), savingController.uploadBulkSavings);
 
-
-module.exports = router;
-
 // --- Sub-routers (MUST be at the end) ---
 // These handle specific CRUD operations for settings pages
 router.use('/announcements', announcementRoutes);
@@ -209,3 +206,5 @@ router.get('/master-products', protect, authorize(['viewSettings']), adminContro
 router.post('/master-products', protect, authorize(['viewSettings']), adminController.createMasterProduct);
 router.put('/master-products/:id', protect, authorize(['viewSettings']), adminController.updateMasterProduct);
 router.delete('/master-products/:id', protect, authorize(['viewSettings']), adminController.deleteMasterProduct);
+
+module.exports = router;
