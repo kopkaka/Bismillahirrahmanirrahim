@@ -11,6 +11,7 @@ const userController = require('../controllers/user.controller');
 const adminController = require('../controllers/admin.controller');
 const savingController = require('../controllers/saving.controller');
 const loanController = require('../controllers/loan.controller');
+const accounttypeController = require('../controllers/accounttype.controller'); // Import accounttypeController
 const journalController = require('../controllers/journal.controller.js');
 
 const { getApprovalCounts } = require('../controllers/approval.controller');
@@ -31,6 +32,17 @@ router.get('/cashflow-summary', protect, authorize(['viewDashboard']), adminCont
 router.get('/member-growth', protect, authorize(['viewDashboard']), adminController.getMemberGrowth);
 router.get('/balance-sheet-summary', protect, authorize(['viewDashboard']), adminController.getBalanceSheetSummary);
 router.get('/income-statement-summary', protect, authorize(['viewDashboard']), adminController.getIncomeStatementSummary);
+
+// Explicit GET routes for dropdowns and tables to resolve 404s
+// These use functions exported from adminController or specific controllers.
+router.get('/loantypes', protect, authorize(['viewSettings']), adminController.getLoanTypes);
+router.get('/loanterms', protect, authorize(['viewSettings']), adminController.getLoanTerms);
+router.get('/accounts', protect, authorize(['viewSettings']), adminController.getAccounts);
+router.get('/employers', protect, authorize(['viewSettings']), adminController.getEmployers);
+router.get('/positions', protect, authorize(['viewSettings']), adminController.getPositions);
+router.get('/savingtypes', protect, authorize(['viewSettings']), adminController.getSavingTypes);
+router.get('/suppliers', protect, authorize(['viewSettings']), adminController.getSuppliers);
+router.get('/accounttypes', protect, authorize(['viewSettings']), accounttypeController.getAccountTypes); // Using specific controller
 
 // Approvals
 router.get('/pending-loans', protect, authorize(['viewApprovals']), adminController.getPendingLoans);
