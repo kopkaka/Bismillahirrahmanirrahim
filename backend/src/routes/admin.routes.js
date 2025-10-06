@@ -203,3 +203,9 @@ router.use('/savingtypes', savingTypeRoutes);
 router.use('/loantypes', loanTypeRoutes);
 router.use('/loanterms', loanTermRoutes);
 router.use('/accounts', accountRoutes);
+
+// FIX: Add routes for master products
+router.get('/master-products', protect, authorize(['viewSettings']), adminController.getMasterProducts);
+router.post('/master-products', protect, authorize(['viewSettings']), adminController.createMasterProduct);
+router.put('/master-products/:id', protect, authorize(['viewSettings']), adminController.updateMasterProduct);
+router.delete('/master-products/:id', protect, authorize(['viewSettings']), adminController.deleteMasterProduct);
