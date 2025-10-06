@@ -2537,8 +2537,12 @@ const createSale = async (req, res) => {
 
             // 3. Get latest purchase price as COGS
             const cogsRes = await client.query(
-                `SELECT purchase_price FROM logistics_entries WHERE product_name = $1 AND status = 'Received' ORDER BY entry_date DESC, id DESC LIMIT 1`,
-                [product.name]
+                `SELECT le.purchase_price 
+                 FROM logistics_entries le
+                 JOIN master_products mp ON le.master_product_id = mp.id
+                 WHERE mp.name = $1 AND le.status = 'Received' 
+                 ORDER BY le.entry_date DESC, le.id DESC LIMIT 1`,
+                 [product.name]
             );
             // If no purchase history, we can't calculate COGS. Use 0 as a fallback.
             const costPerItem = cogsRes.rows.length > 0 ? parseFloat(cogsRes.rows[0].purchase_price) : 0;
@@ -3015,8 +3019,12 @@ const createCashSale = async (req, res) => {
             if (product.stock < requestedQty) throw new Error(`Stok tidak mencukupi untuk produk "${product.name}". Sisa stok: ${product.stock}.`);
 
             const cogsRes = await client.query(
-                `SELECT purchase_price FROM logistics_entries WHERE product_name = $1 AND status = 'Received' ORDER BY entry_date DESC, id DESC LIMIT 1`,
-                [product.name]
+                `SELECT le.purchase_price 
+                 FROM logistics_entries le
+                 JOIN master_products mp ON le.master_product_id = mp.id
+                 WHERE mp.name = $1 AND le.status = 'Received' 
+                 ORDER BY le.entry_date DESC, le.id DESC LIMIT 1`,
+                 [product.name]
             );
             const costPerItem = cogsRes.rows.length > 0 ? parseFloat(cogsRes.rows[0].purchase_price) : 0;
 
