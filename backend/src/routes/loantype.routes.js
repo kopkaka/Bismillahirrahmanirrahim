@@ -7,9 +7,9 @@ const {
     deleteLoanType
 } = require('../controllers/loantype.controller');
 
-router.get('/loantypes', getLoanTypes);
-router.post('/loantypes', createLoanType);
-router.put('/loantypes/:id', updateLoanType);
-router.delete('/loantypes/:id', deleteLoanType);
+router.get('/', getLoanTypes);
+router.post('/', createLoanType);
+router.put('/:id', updateLoanType);
+router.delete('/:id', deleteLoanType);
 
 module.exports = router;

@@ -3,9 +3,9 @@ const { getAccounts, createAccount, updateAccount, deleteAccount } = require('..
 
 const router = Router();
 
-router.get('/accounts', getAccounts);
-router.post('/accounts', createAccount);
-router.put('/accounts/:id', updateAccount);
-router.delete('/accounts/:id', deleteAccount);
+router.get('/', getAccounts);
+router.post('/', createAccount);
+router.put('/:id', updateAccount);
+router.delete('/:id', deleteAccount);
 
 module.exports = router;
