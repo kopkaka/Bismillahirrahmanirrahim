@@ -1719,6 +1719,61 @@ const mapPaymentMethodAccount = async (req, res) => {
     }
 };
 
+const createPaymentMethod = async (req, res) => {
+    const { name, is_active } = req.body;
+    if (!name?.trim()) {
+        return res.status(400).json({ error: 'Nama metode pembayaran wajib diisi.' });
+    }
+    try {
+        const result = await pool.query(
+            'INSERT INTO payment_methods (name, is_active) VALUES ($1, $2) RETURNING *',
+            [name.trim(), is_active]
+        );
+        res.status(201).json(result.rows[0]);
+    } catch (err) {
+        console.error('Error creating payment method:', err.message);
+        if (err.code === '23505') { // unique_violation
+            return res.status(400).json({ error: 'Nama metode pembayaran sudah ada.' });
+        }
+        res.status(500).json({ error: 'Gagal membuat metode pembayaran baru.' });
+    }
+};
+
+const updatePaymentMethod = async (req, res) => {
+    const { id } = req.params;
+    const { name, is_active } = req.body;
+    if (!name?.trim()) {
+        return res.status(400).json({ error: 'Nama metode pembayaran wajib diisi.' });
+    }
+    try {
+        const result = await pool.query(
+            'UPDATE payment_methods SET name = $1, is_active = $2 WHERE id = $3 RETURNING *',
+            [name.trim(), is_active, id]
+        );
+        if (result.rowCount === 0) {
+            return res.status(404).json({ error: 'Metode pembayaran tidak ditemukan.' });
+        }
+        res.json(result.rows[0]);
+    } catch (err) {
+        console.error('Error updating payment method:', err.message);
+        if (err.code === '23505') { // unique_violation
+            return res.status(400).json({ error: 'Nama metode pembayaran sudah ada.' });
+        }
+        res.status(500).json({ error: 'Gagal memperbarui metode pembayaran.' });
+    }
+};
+
+const deletePaymentMethod = async (req, res) => {
+    const { id } = req.params;
+    try {
+        await pool.query('DELETE FROM payment_methods WHERE id = $1', [id]);
+        res.status(204).send();
+    } catch (err) {
+        console.error('Error deleting payment method:', err.message);
+        res.status(500).json({ error: 'Gagal menghapus metode pembayaran.' });
+    }
+};
+
 const getPaymentMethods = async (req, res) => {
     try {
         const result = await pool.query('SELECT id, name, account_id FROM payment_methods ORDER BY name ASC');
@@ -4139,6 +4194,9 @@ module.exports = {
     getLoanInterestReport,
     getCashierReport,
     cancelLoanPayment,
+    createPaymentMethod,
+    updatePaymentMethod,
+    deletePaymentMethod,
     saveLoanCommitment,
     getLoanTypeIdByName,
 };
