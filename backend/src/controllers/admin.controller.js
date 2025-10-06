@@ -1705,6 +1705,20 @@ const mapSavingAccount = async (req, res) => {
     }
 };
 
+const mapPaymentMethodAccount = async (req, res) => {
+    const { id } = req.params;
+    const { accountId } = req.body;
+    try {
+        // Update the account_id for a specific payment method
+        const result = await pool.query('UPDATE payment_methods SET account_id = $1 WHERE id = $2 RETURNING *', [accountId, id]);
+        if (result.rowCount === 0) return res.status(404).json({ error: 'Metode pembayaran tidak ditemukan.' });
+        res.json(result.rows[0]);
+    } catch (err) {
+        console.error('Error mapping payment method account:', err.message);
+        res.status(500).json({ error: 'Gagal menyimpan maping akun.' });
+    }
+};
+
 const getPaymentMethods = async (req, res) => {
     try {
         const result = await pool.query('SELECT id, name, account_id FROM payment_methods ORDER BY name ASC');
