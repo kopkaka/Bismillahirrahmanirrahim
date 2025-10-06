@@ -2565,14 +2565,15 @@ const createSale = async (req, res) => {
         const saleId = saleRes.rows[0].id;
 
         // 6. Create sale items
-        const saleItemsQueryParts = [];
-        const saleItemsValues = [];
-        let paramIndex = 1;
-        for (const pItem of processedItems) {
-            saleItemsQueryParts.push(`($${paramIndex++}, $${paramIndex++}, $${paramIndex++}, $${paramIndex++})`);
-            saleItemsValues.push(saleId, pItem.productId, pItem.quantity, pItem.costPerItem);
-        }
-        const saleItemsQuery = `INSERT INTO sale_items (sale_id, product_id, quantity, cost_per_item) VALUES ${saleItemsQueryParts.join(', ')}`;
+        const saleItemsQueryParts = processedItems.map((_, i) => 
+            `($1, $${i*4 + 2}, $${i*4 + 3}, $${i*4 + 4}, $${i*4 + 5})`
+        ).join(', ');
+        
+        const saleItemsValues = [saleId, ...processedItems.flatMap(p => 
+            [p.productId, p.quantity, p.pricePerItem, p.costPerItem]
+        )];
+
+        const saleItemsQuery = `INSERT INTO sale_items (sale_id, product_id, quantity, price, cost_per_item) VALUES ${saleItemsQueryParts}`;
         await client.query(saleItemsQuery, saleItemsValues);
 
         // 7. Create journal entries
@@ -3036,9 +3037,13 @@ const createCashSale = async (req, res) => {
         );
         const saleId = saleRes.rows[0].id;
 
-        const saleItemsQueryParts = processedItems.map((_, i) => `($1, $${i*5+2}, $${i*5+3}, $${i*5+4}, $${i*5+5})`);
+        const saleItemsQueryParts = processedItems.map((_, i) => 
+            `($1, $${i*4 + 2}, $${i*4 + 3}, $${i*4 + 4}, $${i*4 + 5})`
+        ).join(', ');
+
         const saleItemsValues = [saleId, ...processedItems.flatMap(p => [p.productId, p.quantity, p.pricePerItem, p.costPerItem])];
-        await client.query(`INSERT INTO sale_items (sale_id, product_id, quantity, price, cost_per_item) VALUES ${saleItemsQueryParts.join(', ')}`, saleItemsValues);
+        
+        await client.query(`INSERT INTO sale_items (sale_id, product_id, quantity, price, cost_per_item) VALUES ${saleItemsQueryParts}`, saleItemsValues);
 
         const cashAccountId = 3;
         const inventoryAccountId = 8;
