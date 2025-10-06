@@ -1705,6 +1705,16 @@ const mapSavingAccount = async (req, res) => {
     }
 };
 
+const getPaymentMethods = async (req, res) => {
+    try {
+        const result = await pool.query('SELECT id, name, account_id FROM payment_methods ORDER BY name ASC');
+        res.json(result.rows);
+    } catch (err) {
+        console.error('Error fetching payment methods:', err.message);
+        res.status(500).json({ error: 'Gagal mengambil data metode pembayaran.' });
+    }
+};
+
 const mapLoanAccount = async (req, res) => {
     const { id } = req.params;
     const { accountId } = req.body;
