@@ -3077,6 +3077,59 @@ const getCashFlowStatement = async (req, res) => {
     }
 };
 
+/**
+ * @desc    Cancel a completed sale, restore stock, and delete associated journal entries.
+ * @route   POST /api/admin/sales/:id/cancel
+ * @access  Private (Admin, Akunting)
+ */
+const cancelSale = async (req, res) => {
+    const { id: saleId } = req.params;
+    const { role: userRole } = req.user;
+
+    // Hanya admin dan akunting yang boleh membatalkan
+    if (!['admin', 'akunting'].includes(userRole)) {
+        return res.status(403).json({ error: 'Anda tidak memiliki izin untuk tindakan ini.' });
+    }
+
+    const client = await pool.connect();
+    try {
+        await client.query('BEGIN');
+
+        // 1. Dapatkan detail penjualan dan pastikan statusnya 'Selesai'
+        const saleRes = await client.query("SELECT id, status, journal_id FROM sales WHERE id = $1 FOR UPDATE", [saleId]);
+        if (saleRes.rows.length === 0) throw new Error('Transaksi penjualan tidak ditemukan.');
+        const sale = saleRes.rows[0];
+        if (sale.status !== 'Selesai') throw new Error(`Hanya transaksi dengan status "Selesai" yang dapat dibatalkan. Status saat ini: ${sale.status}.`);
+
+        // 2. Dapatkan item yang terjual untuk mengembalikan stok
+        const itemsRes = await client.query('SELECT product_id, quantity FROM sale_items WHERE sale_id = $1', [saleId]);
+        if (itemsRes.rows.length === 0) throw new Error('Item penjualan tidak ditemukan untuk transaksi ini.');
+
+        for (const item of itemsRes.rows) {
+            await client.query('UPDATE products SET stock = stock + $1 WHERE id = $2', [item.quantity, item.product_id]);
+        }
+
+        // 3. Hapus jurnal akuntansi yang terkait
+        if (sale.journal_id) {
+            // Menghapus dari general_journal akan otomatis menghapus entri terkait di journal_entries karena ON DELETE CASCADE
+            await client.query('DELETE FROM general_journal WHERE id = $1', [sale.journal_id]);
+        }
+
+        // 4. Ubah status penjualan menjadi 'Dibatalkan'
+        await client.query("UPDATE sales SET status = 'Dibatalkan' WHERE id = $1", [saleId]);
+
+        await client.query('COMMIT');
+        res.json({ message: 'Transaksi berhasil dibatalkan. Stok telah dikembalikan dan jurnal telah dihapus.' });
+
+    } catch (err) {
+        await client.query('ROLLBACK');
+        console.error('Error cancelling sale:', err.message);
+        res.status(400).json({ error: err.message || 'Gagal membatalkan transaksi.' });
+    } finally {
+        client.release();
+    }
+};
+
 const createCashSale = async (req, res) => {
     const { items, paymentMethod, memberId } = req.body; // items: [{ productId, quantity }], memberId is optional
     const createdByUserId = req.user.id;
@@ -3175,6 +3228,9 @@ const createCashSale = async (req, res) => {
             ($1, $7, 0, $6)       -- Kredit Persediaan
         `;
         await client.query(journalEntriesQuery, [journalId, debitAccountId, totalSaleAmount, salesRevenueAccountId, cogsAccountId, totalCostOfGoodsSold, inventoryAccountId]);
+
+        // Simpan journal_id ke tabel sales untuk referensi pembatalan
+        await client.query('UPDATE sales SET journal_id = $1 WHERE id = $2', [journalId, saleId]);
 
         await client.query('COMMIT');
         res.status(201).json({ message: 'Penjualan tunai berhasil dicatat.', saleId: saleId });
@@ -4072,9 +4128,15 @@ const getCashierReport = async (req, res) => {
     }
 
     try {
+        // --- Base Query ---
         const params = [startDate, endDate];
         const conditions = [];
-
+        let baseQuery = `
+            FROM sales s
+            LEFT JOIN members m ON s.created_by_user_id = m.id
+            WHERE s.sale_date::date BETWEEN $1 AND $2
+        `;
+        
         if (userId) {
             params.push(userId);
             conditions.push(`s.created_by_user_id = $${params.length}`);
@@ -4084,21 +4146,22 @@ const getCashierReport = async (req, res) => {
             conditions.push(`s.payment_method = $${params.length}`);
         }
 
+        if (conditions.length > 0) {
+            baseQuery += ` AND ${conditions.join(' AND ')}`;
+        }
+
+        // --- Data Query ---
         const query = `
             SELECT
-                COALESCE(m.name, 'Online Order') as cashier_name,
-                COUNT(s.id) as transaction_count,
-                COALESCE(SUM(CASE WHEN s.payment_method = 'Cash' THEN s.total_amount ELSE 0 END), 0) as total_cash,
-                COALESCE(SUM(CASE WHEN s.payment_method = 'Potong Gaji' THEN s.total_amount ELSE 0 END), 0) as total_payroll_deduction,
-                COALESCE(SUM(CASE WHEN s.payment_method = 'Transfer' THEN s.total_amount ELSE 0 END), 0) as total_transfer,
-                COALESCE(SUM(s.total_amount), 0) as total_revenue
-            FROM sales s
-            LEFT JOIN members m ON s.created_by_user_id = m.id
-            WHERE s.sale_date::date BETWEEN $1 AND $2
-              AND s.status = 'Selesai'
-              ${conditions.length > 0 ? `AND ${conditions.join(' AND ')}` : ''}
-            GROUP BY cashier_name
-            ORDER BY total_revenue DESC;
+                s.id,
+                s.sale_date,
+                s.total_amount,
+                s.payment_method,
+                s.status,
+                COALESCE(m.name, 'Kasir Umum') as cashier_name,
+                (SELECT m2.name FROM members m2 WHERE m2.id = s.member_id) as member_name
+            ${baseQuery}
+            ORDER BY s.sale_date DESC;
         `;
 
         const result = await pool.query(query, params);
@@ -4106,7 +4169,7 @@ const getCashierReport = async (req, res) => {
     } catch (err) {
         console.error('Error generating cashier report:', err.message);
         res.status(500).json({ error: 'Gagal membuat laporan kasir.' });
-    }
+    } 
 };
 
 module.exports = {
@@ -4209,5 +4272,6 @@ module.exports = {
     saveLoanCommitment,
     getPaymentMethods,
     getLoanTypeIdByName,
-    deletePaymentMethod
+    deletePaymentMethod,
+    cancelSale
 };
