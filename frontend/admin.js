@@ -2968,12 +2968,14 @@ const renderCashFlowChart = (data) => {
         const modalTitle = modal.querySelector('[id$="-modal-title"]');
         const finalEndpoint = endpoint.startsWith('admin/') ? `${API_URL}/${endpoint}` : `${ADMIN_API_URL}/${endpoint}`;
 
-        const loadData = async () => {
+        const loadData = async (forceReload = false) => {
             try {
-                const items = await apiFetch(finalEndpoint);
-                itemsCache = items; // Simpan item ke cache
+                if (forceReload || itemsCache.length === 0) {
+                    const items = await apiFetch(finalEndpoint);
+                    itemsCache = items; // Simpan item ke cache
+                }
                 tableBody.innerHTML = '';
-                items.forEach((item, index) => tableBody.insertAdjacentHTML('beforeend', renderRow(item, userRole, index)));
+                itemsCache.forEach((item, index) => tableBody.insertAdjacentHTML('beforeend', renderRow(item, userRole, index)));
             } catch (error) {
                 console.error(`Error loading ${title}:`, error);
                 tableBody.innerHTML = `<tr><td colspan="${fields.length + 1}" class="text-center py-4 text-red-500">${error.message || 'Gagal memuat data.'}</td></tr>`;
@@ -2981,13 +2983,15 @@ const renderCashFlowChart = (data) => {
         };
 
         addBtn?.addEventListener('click', () => {
-            form.reset();
-            idInput.value = '';
-            modalTitle.textContent = `Tambah ${title} Baru`;
-            if (config.onAdd) config.onAdd();
-            modal.classList.remove('hidden');
+            if (form && idInput && modalTitle && modal) {
+                form.reset();
+                idInput.value = '';
+                modalTitle.textContent = `Tambah ${title} Baru`;
+                if (config.onAdd) config.onAdd();
+                modal.classList.remove('hidden');
+            }
         });
-
+        
         form?.addEventListener('submit', async (e) => {
             e.preventDefault();
             const id = idInput.value;
