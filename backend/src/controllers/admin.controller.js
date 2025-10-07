@@ -4208,5 +4208,6 @@ module.exports = {
     mapPaymentMethodAccount,
     saveLoanCommitment,
     getPaymentMethods,
-    getLoanTypeIdByName
+    getLoanTypeIdByName,
+    deletePaymentMethod
 };
