@@ -3801,8 +3801,8 @@ const renderCashFlowChart = (data) => {
 
     // --- FUNGSI UNTUK KELOLA TIPE PEMBAYARAN ---
     const loadPaymentMethods = setupSimpleCrud({
-        modal: document.getElementById('payment-method-modal'),
-        form: document.getElementById('payment-method-form'),
+        modal: document.getElementById('payment-method-type-modal'),
+        form: document.getElementById('payment-method-type-form'),
         tableBody: document.getElementById('payment-methods-table-body'),
         addBtn: document.getElementById('add-payment-method-btn'),
         endpoint: 'payment-methods',
