@@ -2510,20 +2510,20 @@ const renderCashFlowChart = (data) => {
             filteredProducts.forEach(p => {
                 const isOutOfStock = p.stock <= 0;
                 const card = document.createElement('div');
-                card.className = `product-card border rounded-lg p-2 flex flex-col text-center cursor-pointer hover:shadow-lg transition-shadow ${isOutOfStock ? 'opacity-50 cursor-not-allowed' : ''}`;
+                card.className = `product-card border rounded-lg flex flex-col text-center cursor-pointer hover:shadow-lg transition-shadow ${isOutOfStock ? 'opacity-50 cursor-not-allowed' : ''}`;
                 card.dataset.productId = p.id;
 
                 let imageUrl = 'https://placehold.co/150x150?text=No+Image';
                 if (p.image_url) {
                     // Periksa apakah URL sudah lengkap atau hanya path
-                    imageUrl = p.image_url.startsWith('http') 
-                        ? p.image_url 
+                    imageUrl = p.image_url.startsWith('http')
+                        ? p.image_url
                         : `${API_URL.replace('/api', '')}${p.image_url}`;
                 }
 
                 card.innerHTML = `
-                    <div class="relative">
-                        <img src="${imageUrl}" alt="${p.name}" class="w-full h-24 object-cover rounded-md mb-2">
+                    <div class="relative p-2">
+                        <img src="${imageUrl}" alt="${p.name}" class="w-full h-24 object-cover rounded-md">
                         ${isOutOfStock ? '<div class="absolute top-1 right-1 bg-red-600 text-white text-xs font-bold px-2 py-0.5 rounded-full">Stok Habis</div>' : ''}
                     </div>
                     <div class="flex flex-col flex-grow p-1">
