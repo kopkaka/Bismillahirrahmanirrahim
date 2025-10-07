@@ -1745,10 +1745,13 @@ const updatePaymentMethod = async (req, res) => {
     if (!name?.trim()) {
         return res.status(400).json({ error: 'Nama metode pembayaran wajib diisi.' });
     }
+    // Konversi eksplisit dari string "true" atau "false" ke boolean
+    const isActiveBoolean = is_active === 'true' || is_active === true;
+
     try {
         const result = await pool.query(
             'UPDATE payment_methods SET name = $1, is_active = $2 WHERE id = $3 RETURNING *',
-            [name.trim(), is_active, id]
+            [name.trim(), isActiveBoolean, id]
         );
         if (result.rowCount === 0) {
             return res.status(404).json({ error: 'Metode pembayaran tidak ditemukan.' });
