@@ -3832,6 +3832,31 @@ const renderCashFlowChart = (data) => {
         typeIdField: 'id'
     });
 
+    // --- FUNGSI UNTUK TAB DI HALAMAN KELOLA METODE PEMBAYARAN ---
+    const paymentSettingsTabBtns = document.querySelectorAll('.payment-method-tab-btn');
+    const paymentSettingsTabContents = document.querySelectorAll('.payment-method-tab-content');
+
+    paymentSettingsTabBtns.forEach(btn => {
+        btn.addEventListener('click', (e) => {
+            e.preventDefault();
+            const targetId = btn.dataset.target;
+
+            // Update button styles
+            paymentSettingsTabBtns.forEach(b => {
+                b.classList.remove('border-red-500', 'text-red-600');
+                b.classList.add('border-transparent', 'text-gray-500', 'hover:text-gray-700', 'hover:border-gray-300');
+            });
+            btn.classList.add('border-red-500', 'text-red-600');
+
+            // Show/hide content
+            paymentSettingsTabContents.forEach(content => content.classList.toggle('hidden', content.id !== targetId));
+
+            // Load data for the active tab
+            if (targetId === 'payment-methods-list-tab') loadPaymentMethods();
+            else if (targetId === 'payment-method-mapping-tab') loadPaymentMethodMapping();
+        });
+    });
+
     // --- FUNGSI UNTUK KARTU STOK BARANG ---
     const loadStockCard = async () => {
         const productSelect = document.getElementById('stock-card-product-select');
