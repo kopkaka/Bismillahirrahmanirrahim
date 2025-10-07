@@ -2635,14 +2635,13 @@ const renderCashFlowChart = (data) => {
         const changeAmountEl = document.getElementById('direct-cashier-change-amount');
         const paymentErrorEl = document.getElementById('direct-cashier-payment-error');
         const paymentMethodRadios = document.querySelectorAll('input[name="direct-payment-method"]');
+        const paymentMethodsContainer = document.getElementById('direct-cashier-payment-methods-container');
         const ledgerDetailsContainer = document.getElementById('direct-cashier-ledger-details');
         const coopNumberInput = document.getElementById('direct-cashier-coop-number');
         const memberNameDisplay = document.getElementById('direct-cashier-member-name-display');
         let validatedMemberId = null; // Untuk menyimpan ID anggota yang tervalidasi
 
         if (paymentModal) {
-            closePaymentModalBtn.addEventListener('click', () => paymentModal.classList.add('hidden'));
-            cancelPaymentModalBtn.addEventListener('click', () => paymentModal.classList.add('hidden'));
 
             // Tampilkan/sembunyikan input berdasarkan metode pembayaran
             paymentMethodRadios.forEach(radio => {
@@ -2659,7 +2658,7 @@ const renderCashFlowChart = (data) => {
 
                     if (!isCash) {
                         paymentAmountInput.value = ''; // Reset input uang bayar
-                        confirmPaymentBtn.disabled = false; // Aktifkan tombol konfirmasi untuk metode non-tunai
+                        confirmPaymentBtn.disabled = isLedger; // Nonaktifkan jika ledger sampai nomor divalidasi
                         validatedMemberId = null; // Reset ID anggota jika metode lain dipilih
                     }
                 });
@@ -2683,6 +2682,7 @@ const renderCashFlowChart = (data) => {
                     memberNameDisplay.textContent = `Anggota ditemukan: ${validationData.user.name}`;
                     memberNameDisplay.className = 'p-2 bg-green-100 rounded-md text-sm text-green-800';
                     validatedMemberId = validationData.user.id;
+                    confirmPaymentBtn.disabled = false; // Aktifkan tombol konfirmasi setelah validasi berhasil
                 } catch (error) { memberNameDisplay.textContent = error.message; memberNameDisplay.className = 'p-2 bg-red-100 rounded-md text-sm text-red-800';
                 } finally { memberNameDisplay.classList.remove('hidden'); }
             });
@@ -2711,18 +2711,51 @@ const renderCashFlowChart = (data) => {
                 }
             };
 
-            completeBtn.addEventListener('click', () => {
+            const showPaymentModal = async () => {
                 if (directCart.length === 0) return;
                 const total = directCart.reduce((sum, item) => sum + (parseFloat(item.price) * item.quantity), 0);
                 paymentTotalEl.textContent = formatCurrency(total);
                 paymentTotalEl.dataset.total = total; // Simpan nilai total mentah
                 paymentAmountInput.value = ''; // Reset input
                 changeContainer.classList.add('hidden'); // Sembunyikan kembalian
+                paymentErrorEl.classList.add('hidden');
                 ledgerDetailsContainer.classList.add('hidden'); // Sembunyikan detail ledger
                 paymentAmountContainer.classList.remove('hidden'); // Tampilkan lagi input uang bayar (default)
-                document.getElementById('payment-cash-direct').checked = true; // Reset ke Cash
+
+                // --- LOGIKA BARU: Ambil dan render metode pembayaran ---
+                paymentMethodsContainer.innerHTML = '<p class="text-sm text-gray-500">Memuat metode pembayaran...</p>';
+                try {
+                    const methods = await apiFetch(`${ADMIN_API_URL}/payment-methods`);
+                    const activeMethods = methods.filter(m => m.is_active);
+                    paymentMethodsContainer.innerHTML = '';
+                    activeMethods.forEach((method, index) => {
+                        const isCash = method.name === 'Cash';
+                        const isLedger = method.name === 'Employee Ledger';
+                        const radioId = `direct-payment-${method.id}`;
+                        const radioHtml = `
+                            <div class="flex items-center">
+                                <input id="${radioId}" name="direct-payment-method" type="radio" value="${method.name}" ${index === 0 ? 'checked' : ''} class="focus:ring-red-500 h-4 w-4 text-red-600 border-gray-300">
+                                <label for="${radioId}" class="ml-3 block text-sm font-medium text-gray-700">${method.name}</label>
+                            </div>
+                        `;
+                        paymentMethodsContainer.insertAdjacentHTML('beforeend', radioHtml);
+                        
+                        document.getElementById(radioId).addEventListener('change', () => {
+                            paymentAmountContainer.classList.toggle('hidden', !isCash);
+                            ledgerDetailsContainer.classList.toggle('hidden', !isLedger);
+                            if (!isCash) paymentAmountInput.value = '';
+                            if (isLedger) confirmPaymentBtn.disabled = true; else confirmPaymentBtn.disabled = false;
+                        });
+                    });
+                    if (activeMethods.length > 0) {
+                        document.getElementById(`direct-payment-${activeMethods[0].id}`).dispatchEvent(new Event('change'));
+                    }
+                } catch (error) {
+                    paymentMethodsContainer.innerHTML = `<p class="text-sm text-red-500">${error.message}</p>`;
+                }
+
                 paymentModal.classList.remove('hidden');
-            });
+            };
 
             confirmPaymentBtn.addEventListener('click', async () => {
                 const selectedPaymentMethod = document.querySelector('input[name="direct-payment-method"]:checked').value;
@@ -2771,6 +2804,9 @@ const renderCashFlowChart = (data) => {
             });
 
             // Tambahkan event listener untuk input jumlah bayar
+            closePaymentModalBtn.addEventListener('click', () => paymentModal.classList.add('hidden'));
+            cancelPaymentModalBtn.addEventListener('click', () => paymentModal.classList.add('hidden'));
+            completeBtn.addEventListener('click', showPaymentModal);
             paymentAmountInput.addEventListener('input', calculateChange);
         } else {
             console.error("Direct cashier payment modal not found in HTML.");

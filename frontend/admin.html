@@ -2935,13 +2935,8 @@
                 </div>
                 <fieldset>
                     <legend class="text-base font-medium text-gray-900">Pilih Metode Pembayaran</legend>
-                    <div class="mt-4 space-y-4">
-                        <div class="flex items-center"><input id="payment-cash-direct" name="direct-payment-method" type="radio" value="Cash" checked class="focus:ring-red-500 h-4 w-4 text-red-600 border-gray-300"><label for="payment-cash-direct" class="ml-3 block text-sm font-medium text-gray-700">Tunai (Cash)</label></div>
-                        <div class="flex items-center"><input id="payment-transfer-direct" name="direct-payment-method" type="radio" value="Bank Transfer" class="focus:ring-red-500 h-4 w-4 text-red-600 border-gray-300"><label for="payment-transfer-direct" class="ml-3 block text-sm font-medium text-gray-700">Bank Transfer</label></div>
-                        <div class="flex items-center"><input id="payment-qris-direct" name="direct-payment-method" type="radio" value="QRIS" class="focus:ring-red-500 h-4 w-4 text-red-600 border-gray-300"><label for="payment-qris-direct" class="ml-3 block text-sm font-medium text-gray-700">QRIS</label></div>
-                        <div class="flex items-center"><input id="payment-cc-direct" name="direct-payment-method" type="radio" value="Credit Card" class="focus:ring-red-500 h-4 w-4 text-red-600 border-gray-300"><label for="payment-cc-direct" class="ml-3 block text-sm font-medium text-gray-700">Kartu Kredit</label></div>
-                        <div class="flex items-center"><input id="payment-ledger-direct" name="direct-payment-method" type="radio" value="Employee Ledger" class="focus:ring-red-500 h-4 w-4 text-red-600 border-gray-300"><label for="payment-ledger-direct" class="ml-3 block text-sm font-medium text-gray-700">Potong Gaji (Employee Ledger)</label></div>
-                    </div>
+                    <!-- Container untuk metode pembayaran dinamis -->
+                    <div id="direct-cashier-payment-methods-container" class="mt-4 space-y-4"></div>
                 </fieldset>
 
                 <!-- Employee Ledger Details - Hidden by default -->
