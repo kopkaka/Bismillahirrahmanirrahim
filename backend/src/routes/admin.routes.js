@@ -113,6 +113,7 @@ router.get('/logistics-products/:shopType', protect, authorize(productManagement
 router.get('/sales/pending', protect, authorize(['viewUsahaKoperasi']), adminController.getPendingSales);
 // Rute baru untuk mengambil detail item dari sebuah pesanan
 router.get('/sales/:orderId/items', protect, authorize(['viewUsahaKoperasi']), adminController.getSaleItemsByOrderId);
+router.post('/sales/:id/cancel', protect, authorize(['admin', 'akunting']), adminController.cancelSale);
 // Rute baru untuk verifikasi pesanan oleh kasir
 router.get('/sales/order/:orderId', protect, authorize(['viewUsahaKoperasi']), adminController.getSaleDetailsByOrderId);
 
