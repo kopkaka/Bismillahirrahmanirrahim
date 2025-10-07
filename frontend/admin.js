@@ -2522,8 +2522,8 @@ const renderCashFlowChart = (data) => {
                 }
 
                 card.innerHTML = `
-                    <div class="relative p-2">
-                        <img src="${imageUrl}" alt="${p.name}" class="w-full h-24 object-cover rounded-md">
+                    <div class="relative h-32 w-full overflow-hidden rounded-t-lg">
+                        <img src="${imageUrl}" alt="${p.name}" class="w-full h-full object-cover">
                         ${isOutOfStock ? '<div class="absolute top-1 right-1 bg-red-600 text-white text-xs font-bold px-2 py-0.5 rounded-full">Stok Habis</div>' : ''}
                     </div>
                     <div class="flex flex-col flex-grow p-1">
