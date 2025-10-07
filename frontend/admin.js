@@ -3060,7 +3060,8 @@ const renderCashFlowChart = (data) => {
 
                 if (element) {
                     if (element.type === 'checkbox') {
-                        body[field] = element.checked; // Kirim sebagai boolean, bukan string
+                        // FIX: Konversi boolean ke string untuk kompatibilitas backend yang lebih baik.
+                        body[field] = String(element.checked);
                     } else if (element.type === 'number') {
                         // Sanitize number input: replace comma with dot for decimal values
                         // This handles locales where comma is used as a decimal separator.
