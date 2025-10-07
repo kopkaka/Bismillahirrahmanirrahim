@@ -1530,6 +1530,17 @@ const getLoanTerms = async (req, res) => {
     }
 };
 
+const getPaymentMethods = async (req, res) => {
+    try {
+        // Ambil semua kolom yang relevan, termasuk is_active dan account_id
+        const result = await pool.query('SELECT id, name, is_active, account_id FROM payment_methods ORDER BY name ASC');
+        res.json(result.rows);
+    } catch (err) {
+        console.error('Error fetching payment methods:', err.message);
+        res.status(500).json({ error: 'Gagal mengambil data metode pembayaran.' });
+    }
+};
+
 /**
  * @desc    Get loan type ID by its name
  * @route   GET /api/admin/loantype-id-by-name
