@@ -4138,7 +4138,6 @@ module.exports = {
     updateTestimonial,
     deleteTestimonial,
     mapSavingAccount,
-    getPaymentMethods,
     mapPaymentMethodAccount,
     mapLoanAccount,
     getReceivableLogistics,
