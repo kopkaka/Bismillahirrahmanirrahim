@@ -6441,10 +6441,10 @@ const renderCashFlowChart = (data) => {
                 'manage-employers': loadEmployers, 'manage-positions': loadPositions, 'manage-saving-types': loadSavingTypes, 
                 'manage-loan-types': loadLoanTypes, 'manage-loan-terms': loadLoanTerms, 
                 'manage-accounts': () => { loadAccounts(); loadAccountTypes(); },
-                'manage-suppliers': () => { loadSuppliers(); loadMasterProducts(); masterProductOptionsCache = null; }, // Load both and clear cache
+                'manage-suppliers': () => { loadSuppliers(); loadMasterProducts(); masterProductOptionsCache = null; },
                 'manage-cooperative-profile': loadCooperativeProfile, 'manage-saving-account-mapping': loadSavingAccountMapping, 
                 'manage-loan-account-mapping': loadLoanAccountMapping, 
-                'manage-payment-method-mapping': () => { loadPaymentMethodMapping(); loadPaymentMethods(); }, 
+                'manage-payment-methods-main': () => { document.querySelector('.payment-method-tab-btn[data-target="payment-methods-list-tab"]').click(); },
                 'manage-shu-rules': loadShuRules, 
                 'manage-announcements': loadAnnouncements, 
                 'manage-partners': setupPartnerManagement, 
