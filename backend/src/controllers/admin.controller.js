@@ -4192,6 +4192,7 @@ module.exports = {
     cancelLoanPayment,
     createPaymentMethod,
     updatePaymentMethod,
+    mapPaymentMethodAccount,
     saveLoanCommitment,
     getLoanTypeIdByName,
 };
