@@ -3835,7 +3835,7 @@ const renderCashFlowChart = (data) => {
     const loadPaymentMethodMapping = () => createMappingTable({
         tableBodyId: 'payment-method-mapping-table-body',
         typeEndpoint: 'payment-methods',
-        mappingEndpoint: 'payment-methods', // Endpoint PUT akan menjadi /api/admin/payment-methods/:id
+        mappingEndpoint: 'map-payment-method-account', // Endpoint PUT akan menjadi /api/admin/map-payment-method-account/:id
         typeNameField: 'name',
         typeIdField: 'id'
     });
