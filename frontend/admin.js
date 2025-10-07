@@ -6369,12 +6369,12 @@ const renderCashFlowChart = (data) => {
     // --- FUNGSI UNTUK LAPORAN KASIR ---
     const setupCashierReport = () => {
         const form = document.getElementById('cashier-report-filter-form');
-        const tableBody = document.getElementById('cashier-report-table-body');
+        const tableBody = document.getElementById('cashier-history-table-body');
         const userFilterSelect = document.getElementById('cashier-report-user-filter');
         const paymentMethodFilterSelect = document.getElementById('cashier-report-payment-method-filter');
 
         if (!form || !tableBody) return;
-
+ 
         // Hanya muat dropdown kasir jika pengguna memiliki izin untuk mengelola pengguna.
         // Jika tidak, sembunyikan filternya.
         if (userPermissions.has('manageUsers')) {
@@ -6383,7 +6383,7 @@ const renderCashFlowChart = (data) => {
             // Sembunyikan filter kasir untuk role seperti 'kasir'
             userFilterSelect.parentElement.classList.add('hidden');
         }
-
+ 
         // Set default dates to the current month
         const today = new Date();
         const firstDay = new Date(today.getFullYear(), today.getMonth(), 1);
@@ -6396,42 +6396,60 @@ const renderCashFlowChart = (data) => {
             const userId = userFilterSelect.value;
             const paymentMethod = paymentMethodFilterSelect.value;
 
-            if (!startDate || !endDate) {
-                alert('Silakan pilih periode tanggal.');
-                return;
-            }
+            if (!startDate || !endDate) { alert('Silakan pilih periode tanggal.'); return; }
 
-            tableBody.innerHTML = `<tr><td colspan="5" class="text-center py-4 text-gray-500">Memuat laporan...</td></tr>`;
+            tableBody.innerHTML = `<tr><td colspan="7" class="text-center py-4 text-gray-500">Memuat laporan...</td></tr>`;
 
             try {
                 const params = new URLSearchParams({ startDate, endDate });
                 if (userId) params.append('userId', userId);
                 if (paymentMethod) params.append('paymentMethod', paymentMethod);
-
+ 
                 const data = await apiFetch(`${ADMIN_API_URL}/reports/cashier?${params.toString()}`);
 
                 tableBody.innerHTML = '';
                 if (data.length === 0) {
-                    tableBody.innerHTML = `<tr><td colspan="5" class="text-center py-4 text-gray-500">Tidak ada data penjualan untuk filter yang dipilih.</td></tr>`;
+                    tableBody.innerHTML = `<tr><td colspan="7" class="text-center py-4 text-gray-500">Tidak ada data penjualan untuk filter yang dipilih.</td></tr>`;
                     return;
                 }
 
                 data.forEach(row => {
+                    const statusClass = { 'Selesai': 'bg-green-100 text-green-800', 'Dibatalkan': 'bg-red-100 text-red-800' }[row.status] || 'bg-gray-100 text-gray-800';
+                    
+                    let actionButton = '-';
+                    if (row.status === 'Selesai' && ['admin', 'akunting'].includes(userRole)) {
+                        actionButton = `<button class="cancel-sale-btn text-red-600 hover:underline" data-id="${row.id}">Batalkan</button>`;
+                    }
+
                     tableBody.innerHTML += `
                         <tr>
+                            <td class="px-6 py-4 text-sm text-gray-500">${formatDate(row.sale_date)}</td>
                             <td class="px-6 py-4 text-sm font-medium text-gray-900">${row.cashier_name}</td>
-                            <td class="px-6 py-4 text-sm text-gray-500 text-right">${row.transaction_count}</td>
-                            <td class="px-6 py-4 text-sm text-gray-500 text-right">${formatCurrency(row.total_cash)}</td>
-                            <td class="px-6 py-4 text-sm text-gray-500 text-right">${formatCurrency(row.total_payroll_deduction)}</td>
-                            <td class="px-6 py-4 text-sm text-gray-500 text-right">${formatCurrency(row.total_transfer)}</td>
-                            <td class="px-6 py-4 text-sm font-bold text-gray-800 text-right">${formatCurrency(row.total_revenue)}</td>
+                            <td class="px-6 py-4 text-sm text-gray-500">${row.member_name || 'Pelanggan Umum'}</td>
+                            <td class="px-6 py-4 text-sm text-gray-500 text-right">${formatCurrency(row.total_amount)}</td>
+                            <td class="px-6 py-4 text-sm text-gray-500">${row.payment_method}</td>
+                            <td class="px-6 py-4 text-center"><span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${statusClass}">${row.status}</span></td>
+                            <td class="px-6 py-4 text-center text-sm">${actionButton}</td>
                         </tr>`;
                 });
-            } catch (error) { tableBody.innerHTML = `<tr><td colspan="5" class="text-center py-4 text-red-500">${error.message}</td></tr>`; }
+            } catch (error) { tableBody.innerHTML = `<tr><td colspan="7" class="text-center py-4 text-red-500">${error.message}</td></tr>`; }
         };
 
         form.addEventListener('submit', (e) => { e.preventDefault(); loadReport(); });
         document.getElementById('cashier-report-reset-btn').addEventListener('click', () => { form.reset(); loadReport(); });
+
+        tableBody.addEventListener('click', async (e) => {
+            if (e.target.matches('.cancel-sale-btn')) {
+                const saleId = e.target.dataset.id;
+                if (confirm('Anda yakin ingin membatalkan transaksi ini? Stok akan dikembalikan dan jurnal akan dihapus.')) {
+                    try {
+                        await apiFetch(`${ADMIN_API_URL}/sales/${saleId}/cancel`, { method: 'POST' });
+                        alert('Transaksi berhasil dibatalkan.');
+                        loadReport(); // Muat ulang laporan
+                    } catch (error) { alert(`Gagal membatalkan: ${error.message}`); }
+                }
+            }
+        });
     };
 
     // --- FUNGSI UNTUK NAVIGASI KONTEN UTAMA ---
