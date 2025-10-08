@@ -27,6 +27,22 @@ document.addEventListener('DOMContentLoaded', () => {
 
     let directCashierProducts = [];
     let directCart = [];
+
+    // --- GLOBAL LOADER ---
+    let activeApiCount = 0;
+    const showLoader = () => {
+        const loader = document.getElementById('global-loader');
+        if (loader) loader.classList.remove('hidden');
+    };
+    const hideLoader = () => {
+        const loader = document.getElementById('global-loader');
+        if (loader) loader.classList.add('hidden');
+    };
+    const updateLoaderVisibility = () => {
+        if (activeApiCount > 0) showLoader();
+        else hideLoader();
+    };
+
     const applyUIPermissions = () => {
         const hasPerm = (key) => userPermissions.has(key);
 
