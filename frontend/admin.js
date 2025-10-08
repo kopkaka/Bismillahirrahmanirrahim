@@ -101,12 +101,17 @@ document.addEventListener('DOMContentLoaded', () => {
             headers['Content-Type'] = 'application/json';
         }
 
+        activeApiCount++;
+        updateLoaderVisibility();
+
         try {
             const response = await fetch(endpoint, { ...options, headers });
 
             // Handle critical auth errors first (session expired, etc.)
             if (response.status === 401 || response.status === 403) { // Unauthorized or Forbidden
                 alert('Sesi Anda telah berakhir atau tidak valid. Silakan masuk kembali.');
+                activeApiCount = 0; // Reset count before redirecting
+                updateLoaderVisibility();
                 localStorage.clear();
                 window.location.href = 'login.html';
                 throw new Error('Unauthorized'); // Stop further execution
@@ -138,6 +143,9 @@ document.addEventListener('DOMContentLoaded', () => {
             }
             // If it's not a network error or retries are exhausted, throw the error
             throw error;
+        } finally {
+            activeApiCount--;
+            updateLoaderVisibility();
         }
     };
 
@@ -2400,15 +2408,16 @@ const renderCashFlowChart = (data) => {
                 startScanBtn.disabled = true; startScanBtn.textContent = 'Mengaktifkan kamera...';
                 const qrCodeSuccessCallback = async (decodedText) => {
                     html5QrCode.stop();
-                    startScanBtn.textContent = 'Mulai Pindai Kamera';
-                    startScanBtn.disabled = false;
                     try {
                         const { orderId } = JSON.parse(decodedText);
                         if (!orderId) throw new Error("QR Code tidak berisi ID Pesanan.");
 
-                        // Panggil API untuk mendapatkan detail pesanan lengkap
+                        // Sembunyikan modal verifikasi saat data sedang diambil
+                        document.getElementById('cashier-verification-modal').classList.add('hidden');
+
+                        // Panggil API untuk mendapatkan detail pesanan lengkap dan langsung tampilkan modal pembayaran
                         const fullOrderData = await apiFetch(`${ADMIN_API_URL}/sales/order/${orderId}`);
-                        populateCashierUI(fullOrderData);
+                        showPaymentModalForOrder(fullOrderData);
 
                     } catch (error) {
                         showCashierError(error.message || 'QR Code tidak valid atau format data salah.');
@@ -2484,8 +2493,26 @@ const renderCashFlowChart = (data) => {
         try {
             const methods = await apiFetch(`${ADMIN_API_URL}/payment-methods`);
             const activeMethods = methods.filter(m => m.is_active);
-            // Logika untuk merender radio button (sama seperti di setupDirectCashier)
-            // ... (kode ini akan dipindahkan ke dalam setupDirectCashier untuk menghindari duplikasi)
+            paymentMethodsContainer.innerHTML = ''; // Kosongkan kontainer
+            activeMethods.forEach((method, index) => {
+                const isCash = method.name === 'Cash';
+                const isLedger = method.name.toLowerCase().includes('gaji') || method.name.toLowerCase().includes('ledger');
+                const radioId = `direct-payment-order-${method.id}`; // Gunakan ID unik untuk modal ini
+                const radioHtml = `
+                    <div class="flex items-center">
+                        <input id="${radioId}" name="direct-payment-method-order" type="radio" value="${method.name}" ${index === 0 ? 'checked' : ''} class="focus:ring-red-500 h-4 w-4 text-red-600 border-gray-300">
+                        <label for="${radioId}" class="ml-3 block text-sm font-medium text-gray-700">${method.name}</label>
+                    </div>
+                `;
+                paymentMethodsContainer.insertAdjacentHTML('beforeend', radioHtml);
+
+                document.getElementById(radioId).addEventListener('change', () => {
+                    paymentAmountContainer.classList.toggle('hidden', !isCash);
+                    ledgerDetailsContainer.classList.toggle('hidden', !isLedger);
+                    if (!isCash) paymentAmountInput.value = '';
+                    confirmPaymentBtn.disabled = isLedger; // Nonaktifkan jika ledger sampai divalidasi
+                });
+            });
         } catch (error) {
             paymentMethodsContainer.innerHTML = `<p class="text-sm text-red-500">${error.message}</p>`;
         }
