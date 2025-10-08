@@ -7469,7 +7469,8 @@ const renderCashFlowChart = (data) => {
             const initialPage = userRole === 'kasir' ? 'usaha-koperasi' : 'dashboard';
             switchContent(initialPage, {}, document.querySelector(`.sidebar-link[data-target="${initialPage}"]`));
         }
-        
+    };
 
-    initializeApp();    
+    // Panggil fungsi inisialisasi utama setelah semua fungsi didefinisikan
+    initializeApp();
 });
