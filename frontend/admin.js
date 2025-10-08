@@ -5779,12 +5779,21 @@ const renderCashFlowChart = (data) => {
             const linesBody = document.getElementById('logistics-lines-body');
             linesBody.innerHTML = '';
             for (const product of products) {
-                await addLogisticsLine();
+                await addLogisticsLine(); // Tambahkan baris baru
                 const lastRow = linesBody.lastElementChild;
-                lastRow.querySelector('.logistics-product-name').value = product.productName;
-                lastRow.querySelector('.logistics-quantity').value = product.quantity;
-                lastRow.querySelector('.logistics-unit').value = product.unit;
-                lastRow.querySelector('.logistics-purchase-price').value = product.purchasePrice;
+                
+                // FIX: Cari elemen <select> dan temukan <option> yang sesuai dengan nama produk
+                const productSelect = lastRow.querySelector('.logistics-product-select');
+                const optionToSelect = Array.from(productSelect.options).find(opt => opt.textContent.includes(product.productName));
+                
+                if (optionToSelect) {
+                    productSelect.value = optionToSelect.value;
+                }
+
+                // Isi sisa field
+                lastRow.querySelector('.logistics-quantity').value = product.quantity || '';
+                lastRow.querySelector('.logistics-unit').value = product.unit || '';
+                lastRow.querySelector('.logistics-purchase-price').value = product.purchasePrice || '';
             }
         } catch (error) {
             alert(`Terjadi kesalahan: ${error.message}`);
