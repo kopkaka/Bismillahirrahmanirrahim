@@ -2766,9 +2766,13 @@ const renderCashFlowChart = (data) => {
 
                     // --- LOGIKA BARU: Muat tenor setelah validasi berhasil ---
                     try {
-                        // Asumsi tipe pinjaman untuk kasir adalah "Pinjaman Karyawan"
-                        const loanTypeRes = await apiFetch(`${ADMIN_API_URL}/loantype-id-by-name?name=Pinjaman Karyawan`);
-                        const loanTypeId = loanTypeRes.id;
+                        // FIX: Daripada mencari nama spesifik, cari tipe pinjaman yang mengandung kata "karyawan".
+                        // Ini lebih fleksibel jika nama di database sedikit berbeda (misal: "Pinjaman Khusus Karyawan").
+                        const allLoanTypes = await apiFetch(`${ADMIN_API_URL}/loantypes`);
+                        const employeeLoanType = allLoanTypes.find(lt => lt.name.toLowerCase().includes('karyawan'));
+
+                        if (!employeeLoanType) throw new Error('Tipe pinjaman untuk "Karyawan" tidak ditemukan. Harap buat di Pengaturan > Kelola Tipe Pinjaman.');
+                        const loanTypeId = employeeLoanType.id;
 
                         const allTerms = await apiFetch(`${ADMIN_API_URL}/loanterms`);
                         const applicableTerms = allTerms.filter(term => term.loan_type_id === loanTypeId);
