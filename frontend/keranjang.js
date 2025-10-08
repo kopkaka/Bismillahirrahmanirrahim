@@ -168,12 +168,14 @@ document.addEventListener('DOMContentLoaded', () => {
                 const memberId = validationData.user.id;
 
                 // 2. Siapkan payload untuk membuat pesanan
+                const shopType = cart.length > 0 ? cart[0].shopType : null;
+                if (!shopType) throw new Error('Tipe toko tidak terdefinisi di keranjang.');
+
                 const orderPayload = {
                     memberId,
-                    // Backend mengharapkan 'productId', bukan 'id'
                     items: cart.map(item => ({ productId: item.id, quantity: item.quantity })),
-                    // Tambahkan paymentMethod default
-                    paymentMethod: 'Potong Gaji'
+                    paymentMethod: 'Potong Gaji',
+                    shopType: shopType
                 };
 
                 // 3. Panggil API untuk membuat pesanan
