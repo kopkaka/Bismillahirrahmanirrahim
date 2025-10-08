@@ -2379,56 +2379,42 @@ const renderCashFlowChart = (data) => {
         }
     };
 
-    // Event listener untuk tombol "Verifikasi" di tabel pesanan masuk
-    document.getElementById('pending-orders-table-body')?.addEventListener('click', (e) => {
-        if (e.target.matches('.view-order-details-btn')) {
-            e.preventDefault();
-            showOrderDetailsModal(e.target.dataset.orderId);
-        } else if (e.target.matches('.verify-order-btn')) { // Baris ini yang menyebabkan error
-            e.preventDefault();
-            showCashierVerificationModal(e.target.dataset.orderId); // Ganti dengan fungsi yang benar
-        }
-    });
+     // --- QR SCANNER LOGIC ---
+        const startScanBtn = document.getElementById('start-scan-btn');
+        if (startScanBtn) {
+            startScanBtn.addEventListener('click', () => {
+                if (!html5QrCode) {
+                    html5QrCode = new Html5Qrcode("qr-reader");
+                }
 
-    const setupCashierVerificationModalListeners = () => {
-        const modal = document.getElementById('cashier-verification-modal');
-        if (!modal) return;
-        document.getElementById('close-cashier-verification-modal').addEventListener('click', () => modal.classList.add('hidden'));
-
-        if (cashierVerifyBtn) {
-            cashierVerifyBtn.addEventListener('click', () => {
-                const barcodeData = cashierBarcodeInp.value.trim();
-                cashierResultContainer.classList.add('hidden');
-                cashierErrorContainer.classList.add('hidden');
-                orderToComplete = null; // Reset pada verifikasi baru
-
-                if (!barcodeData) {
-                    showCashierError('Input barcode tidak boleh kosong.');
+                if (html5QrCode.isScanning) {
+                    html5QrCode.stop().then(() => {
+                        startScanBtn.textContent = 'Mulai Pindai Kamera';
+                        startScanBtn.disabled = false;
+                    }).catch(err => console.error("Gagal menghentikan scanner:", err));
                     return;
                 }
 
-                try {
-                    const orderData = JSON.parse(barcodeData);
-                    populateCashierUI(orderData);
-                    cashierBarcodeInp.value = ''; // Kosongkan input setelah verifikasi berhasil
-                } catch (error) {
-                    console.error("Barcode verification error:", error);
-                    currentVerifiedOrder = null; // Reset jika terjadi error
-                    showCashierError('Gagal memverifikasi barcode. Pastikan data benar dan lengkap.');
-                }
-            });
-        }
+                startScanBtn.disabled = true;
+                startScanBtn.textContent = 'Mengaktifkan kamera...';
 
-        if (cashierCompleteBtn) {
-            cashierCompleteBtn.addEventListener('click', () => {
-                if (!orderToComplete) {
-                    alert('Tidak ada data pesanan yang terverifikasi untuk diselesaikan.');
-                    return;
-                }
-                showPaymentModalForOrder(orderToComplete);
+                const qrCodeSuccessCallback = (decodedText, decodedResult) => {
+                    html5QrCode.stop();
+                    startScanBtn.textContent = 'Mulai Pindai Kamera';
+                    startScanBtn.disabled = false;
+                    try {
+                        const orderData = JSON.parse(decodedText);
+                        populateCashierUI(orderData);
+                    } catch (error) {
+                        showCashierError('QR Code tidak valid atau format data salah.');
+                    }
+                };
+
+                const config = { fps: 10, qrbox: { width: 250, height: 250 } };
+                html5QrCode.start({ facingMode: "environment" }, config, qrCodeSuccessCallback)
+                    .then(() => { startScanBtn.textContent = 'Hentikan Pindai'; startScanBtn.disabled = false; });
             });
         }
-    };
 
     document.getElementById('cancel-cashier-verification-btn')?.addEventListener('click', () => {
         document.getElementById('cashier-verification-modal').classList.add('hidden');
