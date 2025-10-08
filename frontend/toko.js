@@ -10,6 +10,9 @@ document.addEventListener('DOMContentLoaded', () => {
     const coopNumberInput = document.getElementById('coop-number-input');
     const saveCoopNumberBtn = document.getElementById('save-coop-number-btn');
     const cancelCoopNumberBtn = document.getElementById('cancel-coop-number-btn');
+    const coopNumberError = document.getElementById('coop-number-error');
+    const creditModal = document.getElementById('credit-application-modal');
+    const creditForm = document.getElementById('credit-application-form');
 
     let productToAdd = null; // Variable to hold the product when modal is shown
     
