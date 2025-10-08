@@ -2726,7 +2726,8 @@ const renderCashFlowChart = (data) => {
                     const isLedger = radio.value === 'Employee Ledger';
 
                     // Tampilkan/sembunyikan field yang berhubungan dengan pembayaran tunai
-                    paymentAmountContainer.classList.toggle('hidden', !isCash);
+                    // FIX: Logika yang benar adalah menyembunyikan input uang jika BUKAN cash.
+                    paymentAmountContainer.classList.toggle('hidden', radio.value !== 'Cash');
                     changeContainer.classList.toggle('hidden', !isCash);
 
                     // Tampilkan/sembunyikan field untuk potong gaji
@@ -2836,7 +2837,8 @@ const renderCashFlowChart = (data) => {
                     paymentMethodsContainer.innerHTML = '';
                     activeMethods.forEach((method, index) => {
                         const isCash = method.name === 'Cash';
-                        const isLedger = method.name === 'Employee Ledger';
+                        // FIX: Pengecekan harus lebih fleksibel, tidak hardcoded ke "Employee Ledger".
+                        const isLedger = method.name.toLowerCase().includes('gaji') || method.name.toLowerCase().includes('ledger');
                         const radioId = `direct-payment-${method.id}`;
                         const radioHtml = `
                             <div class="flex items-center">
