@@ -2341,6 +2341,70 @@ const renderCashFlowChart = (data) => {
         }
     };
 
+    const setupCashierVerificationModalListeners = () => {
+        const modal = document.getElementById('cashier-verification-modal');
+        if (!modal) return;
+
+        const closeBtn = document.getElementById('close-cashier-verification-modal');
+        const completeBtn = document.getElementById('cashier-complete-btn');
+        const barcodeInput = document.getElementById('cashier-barcode-input');
+
+        // Close modal
+        closeBtn?.addEventListener('click', () => {
+            modal.classList.add('hidden');
+            if (html5QrCode && html5QrCode.isScanning) {
+                html5QrCode.stop().catch(err => console.log("QR scanner stop failed on modal close, likely already stopped."));
+            }
+            document.getElementById('start-scan-btn').textContent = 'Mulai Pindai Kamera';
+            document.getElementById('start-scan-btn').disabled = false;
+        });
+
+        // Handle manual barcode input
+        barcodeInput?.addEventListener('paste', async (e) => {
+            e.preventDefault();
+            const pastedText = (e.clipboardData || window.clipboardData).getData('text');
+            barcodeInput.value = pastedText;
+            
+            // Reset UI
+            cashierResultContainer.classList.add('hidden');
+            showCashierError(''); // Hide error
+
+            try {
+                const orderData = JSON.parse(pastedText);
+                populateCashierUI(orderData);
+            } catch (error) {
+                showCashierError('Data barcode tidak valid atau format salah.');
+            }
+        });
+
+        // Handle "Selesaikan Transaksi" button
+        completeBtn?.addEventListener('click', async () => {
+            if (!orderToComplete || !orderToComplete.orderId) {
+                alert('Tidak ada pesanan yang terverifikasi untuk diselesaikan.');
+                return;
+            }
+
+            // Show payment modal
+            showPaymentModalForOrder(orderToComplete);
+        });
+
+        // QR Scanner Logic
+        const startScanBtn = document.getElementById('start-scan-btn');
+        if (startScanBtn) {
+            startScanBtn.addEventListener('click', () => {
+                if (!html5QrCode) html5QrCode = new Html5Qrcode("qr-reader");
+                if (html5QrCode.isScanning) {
+                    html5QrCode.stop().then(() => { startScanBtn.textContent = 'Mulai Pindai Kamera'; startScanBtn.disabled = false; }).catch(err => console.error("Gagal menghentikan scanner:", err));
+                    return;
+                }
+                startScanBtn.disabled = true; startScanBtn.textContent = 'Mengaktifkan kamera...';
+                const qrCodeSuccessCallback = (decodedText) => { html5QrCode.stop(); startScanBtn.textContent = 'Mulai Pindai Kamera'; startScanBtn.disabled = false; try { const orderData = JSON.parse(decodedText); populateCashierUI(orderData); } catch (error) { showCashierError('QR Code tidak valid atau format data salah.'); } };
+                const config = { fps: 10, qrbox: { width: 250, height: 250 } };
+                html5QrCode.start({ facingMode: "environment" }, config, qrCodeSuccessCallback).then(() => { startScanBtn.textContent = 'Hentikan Pindai'; startScanBtn.disabled = false; });
+            });
+        }
+    };
+
     const showCashierVerificationModal = async (orderId = null) => {
         const modal = document.getElementById('cashier-verification-modal');
         if (!modal) return;
@@ -2379,43 +2443,6 @@ const renderCashFlowChart = (data) => {
         }
     };
 
-     // --- QR SCANNER LOGIC ---
-        const startScanBtn = document.getElementById('start-scan-btn');
-        if (startScanBtn) {
-            startScanBtn.addEventListener('click', () => {
-                if (!html5QrCode) {
-                    html5QrCode = new Html5Qrcode("qr-reader");
-                }
-
-                if (html5QrCode.isScanning) {
-                    html5QrCode.stop().then(() => {
-                        startScanBtn.textContent = 'Mulai Pindai Kamera';
-                        startScanBtn.disabled = false;
-                    }).catch(err => console.error("Gagal menghentikan scanner:", err));
-                    return;
-                }
-
-                startScanBtn.disabled = true;
-                startScanBtn.textContent = 'Mengaktifkan kamera...';
-
-                const qrCodeSuccessCallback = (decodedText, decodedResult) => {
-                    html5QrCode.stop();
-                    startScanBtn.textContent = 'Mulai Pindai Kamera';
-                    startScanBtn.disabled = false;
-                    try {
-                        const orderData = JSON.parse(decodedText);
-                        populateCashierUI(orderData);
-                    } catch (error) {
-                        showCashierError('QR Code tidak valid atau format data salah.');
-                    }
-                };
-
-                const config = { fps: 10, qrbox: { width: 250, height: 250 } };
-                html5QrCode.start({ facingMode: "environment" }, config, qrCodeSuccessCallback)
-                    .then(() => { startScanBtn.textContent = 'Hentikan Pindai'; startScanBtn.disabled = false; });
-            });
-        } 
-           
     // Fungsi baru untuk menampilkan modal pembayaran untuk pesanan yang sudah ada
     const showPaymentModalForOrder = async (orderData) => {
         const paymentModal = document.getElementById('direct-cashier-payment-modal');
@@ -2450,16 +2477,6 @@ const renderCashFlowChart = (data) => {
         paymentModal.classList.remove('hidden');
     };
 
-    document.getElementById('cancel-cashier-verification-btn')?.addEventListener('click', () => {
-        document.getElementById('cashier-verification-modal').classList.add('hidden');
-        // Hentikan scanner jika sedang berjalan saat modal ditutup
-        if (html5QrCode && html5QrCode.isScanning) {
-            html5QrCode.stop().catch(err => console.log("QR scanner stop failed on modal close, likely already stopped."));
-        }
-        document.getElementById('start-scan-btn').textContent = 'Mulai Pindai Kamera'; // Reset text tombol
-        document.getElementById('start-scan-btn').disabled = false;
-    });
-  
     // --- FUNGSI UNTUK KASIR UMUM (NON-ANGGOTA) ---
     const setupDirectCashier = () => {
         const productGrid = document.getElementById('direct-cashier-product-grid');
