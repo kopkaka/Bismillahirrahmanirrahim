@@ -165,9 +165,19 @@ document.addEventListener('DOMContentLoaded', () => {
                 const shopType = cart.length > 0 ? cart[0].shopType : null;
                 if (!shopType) throw new Error('Tipe toko tidak terdefinisi di keranjang.');
 
+                // --- FIX: Ambil metode pembayaran kredit secara dinamis ---
+                const paymentMethods = await fetch(`${API_URL}/admin/payment-methods`).then(res => res.json());
+                const creditPaymentMethod = paymentMethods.find(
+                    method => method.is_active && (method.name.toLowerCase().includes('gaji') || method.name.toLowerCase().includes('ledger'))
+                );
+
+                if (!creditPaymentMethod) {
+                    throw new Error('Metode pembayaran potong gaji tidak ditemukan atau tidak aktif. Hubungi admin.');
+                }
+
                 const orderPayload = {
                     items: cart.map(item => ({ productId: item.id, quantity: item.quantity })),
-                    paymentMethod: 'Potong Gaji',
+                    paymentMethod: creditPaymentMethod.name, // Gunakan nama yang valid dari database
                     shopType: shopType
                 };
 
