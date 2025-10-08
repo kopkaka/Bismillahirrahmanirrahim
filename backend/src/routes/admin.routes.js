@@ -121,6 +121,8 @@ router.post('/sales/:id/cancel', protect, authorize(['admin', 'akunting']), admi
 router.get('/public/sales/:orderId', adminController.getSaleDetailsByOrderId);
 // Rute baru untuk verifikasi pesanan oleh kasir
 router.get('/sales/order/:orderId', protect, authorize(['viewUsahaKoperasi']), adminController.getSaleDetailsByOrderId);
+router.post('/sales/complete', protect, authorize(['viewUsahaKoperasi']), adminController.completeOrder);
+
 
 // Rute baru untuk mengambil permintaan pengunduran diri
 router.get('/pending-resignations', protect, authorize(['admin']), adminController.getPendingResignations);
