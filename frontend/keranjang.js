@@ -157,31 +157,24 @@ document.addEventListener('DOMContentLoaded', () => {
             checkoutBtn.textContent = 'Memproses...';
 
             try {
-                // 1. Dapatkan memberId dari nomor koperasi
-                const validationResponse = await fetch(`${API_URL}/auth/validate-coop-number`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ cooperativeNumber: coopNumber })
-                });
-                const validationData = await validationResponse.json();
-                if (!validationResponse.ok) throw new Error(validationData.error || 'Gagal memvalidasi anggota.');
-                const memberId = validationData.user.id;
+                // 1. Dapatkan token dari localStorage
+                const token = localStorage.getItem('token');
+                if (!token) throw new Error('Sesi tidak valid. Silakan login kembali.');
 
                 // 2. Siapkan payload untuk membuat pesanan
                 const shopType = cart.length > 0 ? cart[0].shopType : null;
                 if (!shopType) throw new Error('Tipe toko tidak terdefinisi di keranjang.');
 
                 const orderPayload = {
-                    memberId,
                     items: cart.map(item => ({ productId: item.id, quantity: item.quantity })),
                     paymentMethod: 'Potong Gaji',
                     shopType: shopType
                 };
 
                 // 3. Panggil API untuk membuat pesanan
-                const response = await fetch(`${API_URL}/public/sales`, {
+                const response = await fetch(`${API_URL}/member/sales`, { // Menggunakan endpoint member yang aman
                     method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
+                    headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
                     body: JSON.stringify(orderPayload)
                 });
 
