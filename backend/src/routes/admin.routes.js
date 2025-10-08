@@ -113,8 +113,8 @@ router.get('/logistics-products/:shopType', protect, authorize(productManagement
 router.get('/sales/pending', protect, authorize(['viewUsahaKoperasi']), adminController.getPendingSales);
 // Rute baru untuk mengambil detail item dari sebuah pesanan
 router.post('/sales', protect, authorize(productManagementPermission), adminController.createSale);
-// Rute baru untuk checkout dari toko publik (keranjang.js)
-router.post('/public/sales', adminController.createSale);
+// Rute baru untuk checkout dari toko anggota (keranjang.js)
+router.post('/member/sales', protect, authorize(['member']), adminController.createSale);
 router.get('/sales/:orderId/items', protect, authorize(['viewUsahaKoperasi']), adminController.getSaleItemsByOrderId);
 router.post('/sales/:id/cancel', protect, authorize(['admin', 'akunting']), adminController.cancelSale);
 // Rute baru untuk halaman checkout.html
