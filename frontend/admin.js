@@ -2398,7 +2398,22 @@ const renderCashFlowChart = (data) => {
                     return;
                 }
                 startScanBtn.disabled = true; startScanBtn.textContent = 'Mengaktifkan kamera...';
-                const qrCodeSuccessCallback = (decodedText) => { html5QrCode.stop(); startScanBtn.textContent = 'Mulai Pindai Kamera'; startScanBtn.disabled = false; try { const orderData = JSON.parse(decodedText); populateCashierUI(orderData); } catch (error) { showCashierError('QR Code tidak valid atau format data salah.'); } };
+                const qrCodeSuccessCallback = async (decodedText) => {
+                    html5QrCode.stop();
+                    startScanBtn.textContent = 'Mulai Pindai Kamera';
+                    startScanBtn.disabled = false;
+                    try {
+                        const { orderId } = JSON.parse(decodedText);
+                        if (!orderId) throw new Error("QR Code tidak berisi ID Pesanan.");
+
+                        // Panggil API untuk mendapatkan detail pesanan lengkap
+                        const fullOrderData = await apiFetch(`${ADMIN_API_URL}/sales/order/${orderId}`);
+                        populateCashierUI(fullOrderData);
+
+                    } catch (error) {
+                        showCashierError(error.message || 'QR Code tidak valid atau format data salah.');
+                    }
+                };
                 const config = { fps: 10, qrbox: { width: 250, height: 250 } };
                 html5QrCode.start({ facingMode: "environment" }, config, qrCodeSuccessCallback).then(() => { startScanBtn.textContent = 'Hentikan Pindai'; startScanBtn.disabled = false; });
             });
