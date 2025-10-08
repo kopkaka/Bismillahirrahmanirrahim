@@ -81,24 +81,18 @@ document.addEventListener('DOMContentLoaded', () => {
         return new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0 }).format(amount);
     };
     const formatDate = (dateString) => {
-        if (!dateString) return '-';
-        return new Date(dateString).toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric' });
+        if (!dateString) return '-'; return new Date(dateString).toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric' });
     };
 
     const formatRelativeTime = (dateString) => {
         if (!dateString) return '';
         const now = new Date();
         const past = new Date(dateString);
-        const seconds = Math.floor((now - past) / 1000);
-        let interval = seconds / 31536000;
-        if (interval > 1) return Math.floor(interval) + " tahun lalu";
-        interval = seconds / 2592000;
-        if (interval > 1) return Math.floor(interval) + " bulan lalu";
-        interval = seconds / 86400; if (interval > 1) return Math.floor(interval) + " hari lalu"; interval = seconds / 3600; if (interval > 1) return Math.floor(interval) + " jam lalu"; interval = seconds / 60; if (interval > 1) return Math.floor(interval) + " menit lalu";
+        const seconds = Math.floor((now - past) / 1000); let interval = seconds / 31536000; if (interval > 1) return Math.floor(interval) + " tahun lalu"; interval = seconds / 2592000; if (interval > 1) return Math.floor(interval) + " bulan lalu"; interval = seconds / 86400; if (interval > 1) return Math.floor(interval) + " hari lalu"; interval = seconds / 3600; if (interval > 1) return Math.floor(interval) + " jam lalu"; interval = seconds / 60; if (interval > 1) return Math.floor(interval) + " menit lalu";
         return "Baru saja";
     };
 
-    const apiFetch = async (endpoint, options = {}) => {
+    const apiFetch = async (endpoint, options = {}, retries = 1) => {
         const currentToken = localStorage.getItem('token');
         const headers = { 'Authorization': `Bearer ${currentToken}`, ...options.headers };
 
@@ -106,33 +100,45 @@ document.addEventListener('DOMContentLoaded', () => {
         if (!(options.body instanceof FormData)) {
             headers['Content-Type'] = 'application/json';
         }
-        
-        const response = await fetch(endpoint, { ...options, headers });
 
-        // Handle critical auth errors first (session expired, etc.)
-        if (response.status === 401 || response.status === 403) { // Unauthorized or Forbidden
-            alert('Sesi Anda telah berakhir atau tidak valid. Silakan masuk kembali.');
-            localStorage.clear();
-            window.location.href = 'login.html';
-            throw new Error('Unauthorized'); // Stop further execution
+        try {
+            const response = await fetch(endpoint, { ...options, headers });
+
+            // Handle critical auth errors first (session expired, etc.)
+            if (response.status === 401 || response.status === 403) { // Unauthorized or Forbidden
+                alert('Sesi Anda telah berakhir atau tidak valid. Silakan masuk kembali.');
+                localStorage.clear();
+                window.location.href = 'login.html';
+                throw new Error('Unauthorized'); // Stop further execution
+            }
+
+            // Handle 204 No Content response for successful DELETE requests
+            if (response.status === 204) {
+                return; // Return nothing, indicating success without a body
+            }
+
+            // Automatically parse JSON and handle other errors generically.
+            const responseData = await response.json().catch(() => {
+                throw new Error(`Gagal memproses respons dari server. Status: ${response.status}`);
+            });
+
+            if (!response.ok) {
+                // Throw an error with the message from the backend API.
+                throw new Error(responseData.error || 'Terjadi kesalahan yang tidak diketahui.');
+            }
+
+            return responseData; // Return the parsed JSON data directly.
+        } catch (error) {
+            // Check if it's a network error and if we have retries left
+            if (error instanceof TypeError && error.message === 'Failed to fetch' && retries > 0) {
+                console.warn(`Network error detected. Retrying... (${retries} attempts left)`);
+                // Wait for a short period before retrying
+                await new Promise(res => setTimeout(res, 1000));
+                return apiFetch(endpoint, options, retries - 1);
+            }
+            // If it's not a network error or retries are exhausted, throw the error
+            throw error;
         }
-
-        // Handle 204 No Content response for successful DELETE requests
-        if (response.status === 204) {
-            return; // Return nothing, indicating success without a body
-        }
-
-        // Automatically parse JSON and handle other errors generically.
-        const responseData = await response.json().catch(() => {
-            throw new Error(`Gagal memproses respons dari server. Status: ${response.status}`);
-        });
-
-        if (!response.ok) {
-            // Throw an error with the message from the backend API.
-            throw new Error(responseData.error || 'Terjadi kesalahan yang tidak diketahui.');
-        }
-
-        return responseData; // Return the parsed JSON data directly.
     };
 
     // Generic Dropdown Populator
