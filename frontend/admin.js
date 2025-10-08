@@ -6435,11 +6435,15 @@ const renderCashFlowChart = (data) => {
     };
 
     // Event delegation untuk tombol "Lihat Detail" pesanan
-    document.getElementById('pending-orders-table-body')?.addEventListener('click', (e) => {
+    document.getElementById('pending-orders-table-body')?.addEventListener('click', async (e) => {
         if (e.target.matches('.view-order-details-btn')) {
             showOrderDetailsModal(e.target.dataset.orderId);
         } else if (e.target.matches('.verify-order-btn')) {
-            showCashierVerificationModal(e.target.dataset.orderId);
+            // FIX: Langsung tampilkan modal pembayaran, samakan dengan alur kasir umum.
+            // Hapus langkah modal verifikasi perantara. Fungsi ini harus async untuk menggunakan await.
+            const orderId = e.target.dataset.orderId;
+            const orderData = await apiFetch(`${ADMIN_API_URL}/sales/order/${orderId}`);
+            showPaymentModalForOrder(orderData);
         } else if (e.target.matches('.cancel-order-btn')) {
             const orderId = e.target.dataset.orderId;
             if (confirm(`Anda yakin ingin membatalkan pesanan #${orderId}? Stok barang akan dikembalikan.`)) {
@@ -7367,6 +7371,7 @@ const renderCashFlowChart = (data) => {
         setupDashboardFilters(); // Siapkan filter untuk grafik dasbor
         handleBulkSavingsUpload();
         handleDownloadSavingsTemplate();
+        setupResignationModal();
         setupJournalModal();
         setupCashierVerificationModalListeners();
         setupLogisticsModal();
