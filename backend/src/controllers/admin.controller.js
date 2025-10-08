@@ -3189,13 +3189,13 @@ const cancelSale = async (req, res) => {
 };
 
 const createCashSale = async (req, res) => {
-    const { items, paymentMethod, memberId } = req.body; // items: [{ productId, quantity }], memberId is optional
+    const { items, paymentMethod, memberId, loanTermId } = req.body; // Tambahkan loanTermId
     const createdByUserId = req.user.id;
 
     if (!Array.isArray(items) || items.length === 0) {
         return res.status(400).json({ error: 'Keranjang belanja kosong.' });
     }
-
+    const isLedgerPayment = paymentMethod.toLowerCase().includes('gaji') || paymentMethod.toLowerCase().includes('ledger');
     const client = await pool.connect();
     try {
         await client.query('BEGIN');
@@ -3261,31 +3261,44 @@ const createCashSale = async (req, res) => {
         
         await client.query(`INSERT INTO sale_items (sale_id, product_id, quantity, price, cost_per_item) VALUES ${saleItemsQueryParts}`, saleItemsValues);
 
-        // --- DYNAMIC ACCOUNT MAPPING FOR PAYMENT ---
-        const paymentMethodRes = await client.query('SELECT account_id FROM payment_methods WHERE name = $1', [paymentMethod]);
-        if (paymentMethodRes.rows.length === 0 || !paymentMethodRes.rows[0].account_id) {
-            throw new Error(`Metode pembayaran "${paymentMethod}" tidak valid atau belum terhubung ke akun COA.`);
+        let journalId;
+        if (isLedgerPayment) {
+            // --- LOGIKA BARU: Buat Pinjaman Otomatis ---
+            if (!loanTermId) throw new Error('Tenor pinjaman wajib dipilih untuk pembayaran potong gaji.');
+
+            const termRes = await client.query('SELECT loan_type_id FROM loan_terms WHERE id = $1', [loanTermId]);
+            if (termRes.rows.length === 0) throw new Error('Tenor pinjaman tidak valid.');
+            const loanTypeId = termRes.rows[0].loan_type_id;
+
+            const loanInsertQuery = `
+                INSERT INTO loans (member_id, loan_type_id, loan_term_id, amount, date, status, remaining_principal)
+                VALUES ($1, $2, $3, $4, NOW(), 'Approved', $4) RETURNING id
+            `;
+            const newLoanRes = await client.query(loanInsertQuery, [memberId, loanTypeId, loanTermId, totalSaleAmount]);
+            const newLoanId = newLoanRes.rows[0].id;
+
+            // Kaitkan penjualan dengan pinjaman yang baru dibuat
+            await client.query('UPDATE sales SET loan_id = $1 WHERE id = $2', [newLoanId, saleId]);
+
+        } else {
+            // --- LOGIKA LAMA: Buat Jurnal Penjualan Tunai/Transfer ---
+            const paymentMethodRes = await client.query('SELECT account_id FROM payment_methods WHERE name = $1', [paymentMethod]);
+            if (paymentMethodRes.rows.length === 0 || !paymentMethodRes.rows[0].account_id) {
+                throw new Error(`Metode pembayaran "${paymentMethod}" tidak valid atau belum terhubung ke akun COA.`);
+            }
+            const debitAccountId = paymentMethodRes.rows[0].account_id;
+
+            const inventoryAccountId = 8; const salesRevenueAccountId = 12; const cogsAccountId = 13;
+            const description = `Penjualan Tunai Toko (Kasir Umum) Struk #${saleId}`;
+            const journalHeaderRes = await client.query('INSERT INTO general_journal (entry_date, description, reference_number) VALUES (NOW(), $1, $2) RETURNING id', [description, `CASH-SALE-${saleId}`]);
+            journalId = journalHeaderRes.rows[0].id;
+
+            const journalEntriesQuery = `
+                INSERT INTO journal_entries (journal_id, account_id, debit, credit) VALUES
+                ($1, $2, $3, 0), ($1, $4, 0, $3), ($1, $5, $6, 0), ($1, $7, 0, $6)
+            `;
+            await client.query(journalEntriesQuery, [journalId, debitAccountId, totalSaleAmount, salesRevenueAccountId, cogsAccountId, totalCostOfGoodsSold, inventoryAccountId]);
         }
-        const debitAccountId = paymentMethodRes.rows[0].account_id;
-        // --- END DYNAMIC MAPPING ---
-
-        const inventoryAccountId = 8;
-        const salesRevenueAccountId = 12;
-        const cogsAccountId = 13;
-
-        const description = `Penjualan Tunai Toko (Kasir Umum) Struk #${saleId}`;
-
-        const journalHeaderRes = await client.query('INSERT INTO general_journal (entry_date, description, reference_number) VALUES (NOW(), $1, $2) RETURNING id', [description, `CASH-SALE-${saleId}`]);
-        const journalId = journalHeaderRes.rows[0].id;
-
-        const journalEntriesQuery = `
-            INSERT INTO journal_entries (journal_id, account_id, debit, credit) VALUES
-            ($1, $2, $3, 0),      -- Debit Akun Pembayaran (Kas/Bank/Piutang)
-            ($1, $4, 0, $3),      -- Kredit Pendapatan Penjualan
-            ($1, $5, $6, 0),      -- Debit HPP
-            ($1, $7, 0, $6)       -- Kredit Persediaan
-        `;
-        await client.query(journalEntriesQuery, [journalId, debitAccountId, totalSaleAmount, salesRevenueAccountId, cogsAccountId, totalCostOfGoodsSold, inventoryAccountId]);
 
         // Simpan journal_id ke tabel sales untuk referensi pembatalan
         await client.query('UPDATE sales SET journal_id = $1 WHERE id = $2', [journalId, saleId]);
