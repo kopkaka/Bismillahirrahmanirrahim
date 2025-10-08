@@ -2586,8 +2586,11 @@ const getSalesReport = async (req, res) => {
 };
 
 const createSale = async (req, res) => {
-    const { items, paymentMethod, memberId } = req.body; // items: [{ productId, quantity }], memberId is optional
-    const createdByUserId = req.user.id;
+    // Jika request datang dari anggota (tanpa token admin), req.user akan undefined.
+    // Jika dari admin, kita gunakan ID admin. Jika dari anggota, kita gunakan memberId dari body.
+    const { items, paymentMethod, memberId } = req.body;
+    const createdByUserId = req.user ? req.user.id : memberId;
+    const status = req.user ? 'Selesai' : 'Menunggu Pengambilan'; // Jika dibuat oleh admin/kasir, langsung Selesai.
 
     if (!Array.isArray(items) || items.length === 0) {
         return res.status(400).json({ error: 'Keranjang belanja kosong.' });
@@ -2651,9 +2654,10 @@ const createSale = async (req, res) => {
         }
 
         // 5. Create sales header
+        const orderId = `KOP-${Date.now()}`;
         const saleRes = await client.query(
-            'INSERT INTO sales (total_amount, payment_method, created_by_user_id, member_id, sale_date, shop_type) VALUES ($1, $2, $3, $4, NOW(), $5) RETURNING id',
-            [totalSaleAmount, paymentMethod, createdByUserId, memberId || null, shopType]
+            'INSERT INTO sales (order_id, total_amount, payment_method, created_by_user_id, member_id, sale_date, status, shop_type) VALUES ($1, $2, $3, $4, $5, NOW(), $6, $7) RETURNING id, order_id',
+            [orderId, totalSaleAmount, paymentMethod, createdByUserId, memberId || null, status, shopType]
         );
         const saleId = saleRes.rows[0].id;
 
@@ -2689,7 +2693,7 @@ const createSale = async (req, res) => {
         await client.query(journalEntriesQuery, [journalId, cashAccountId, totalSaleAmount, salesRevenueAccountId, cogsAccountId, totalCostOfGoodsSold, inventoryAccountId]);
 
         await client.query('COMMIT');
-        res.status(201).json({ message: 'Penjualan berhasil dicatat.', saleId: saleId });
+        res.status(201).json({ message: 'Penjualan berhasil dicatat.', saleId: saleId, orderId: saleRes.rows[0].order_id });
 
     } catch (err) {
         await client.query('ROLLBACK');
