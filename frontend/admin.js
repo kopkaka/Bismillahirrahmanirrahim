@@ -2282,11 +2282,11 @@ const renderCashFlowChart = (data) => {
     const cashierResultContainer = document.getElementById('cashier-result-container');
     const cashierErrorContainer = document.getElementById('cashier-error-container');
     const cashierCompleteBtn = document.getElementById('cashier-complete-btn');
-    let currentVerifiedOrder = null; // Variabel untuk menyimpan data pesanan terverifikasi
+    let currentVerifiedOrder = null;
 
 
     // --- NEW PAYMENT MODAL ELEMENTS ---
-    const paymentModal = document.getElementById('payment-method-modal');
+    const paymentModal = document.getElementById('direct-cashier-payment-modal'); // Menggunakan modal yang sudah ada
     const closePaymentModalBtn = document.getElementById('close-payment-modal-btn');
     const cancelPaymentModalBtn = document.getElementById('cancel-payment-modal-btn');
     const confirmPaymentBtn = document.getElementById('confirm-payment-btn');
@@ -2294,6 +2294,7 @@ const renderCashFlowChart = (data) => {
     const tenorOptionsContainer = document.getElementById('tenor-options-container');
     const paymentTenorBtns = document.querySelectorAll('.payment-tenor-btn');
     const paymentTenorInput = document.getElementById('payment-tenor-input');
+    let orderToComplete = null; // Menyimpan orderId yang akan diselesaikan
 
     const populateCashierUI = (orderData) => {
         // Validasi dasar untuk memastikan objek pesanan sesuai
@@ -2302,7 +2303,7 @@ const renderCashFlowChart = (data) => {
         }
     
         // Simpan data pesanan yang valid untuk diselesaikan nanti
-        currentVerifiedOrder = orderData;
+        orderToComplete = orderData;
     
         // Tampilkan data ke elemen HTML
         document.getElementById('cashier-order-id').textContent = orderData.orderId;
@@ -2343,7 +2344,7 @@ const renderCashFlowChart = (data) => {
         cashierBarcodeInp.disabled = false;
         cashierResultContainer.classList.add('hidden');
         cashierErrorContainer.classList.add('hidden');
-        currentVerifiedOrder = null;
+        orderToComplete = null;
 
         // Hentikan scanner jika sedang berjalan saat modal ditutup
         if (html5QrCode && html5QrCode.isScanning) {
@@ -2393,7 +2394,7 @@ const renderCashFlowChart = (data) => {
                 const barcodeData = cashierBarcodeInp.value.trim();
                 cashierResultContainer.classList.add('hidden');
                 cashierErrorContainer.classList.add('hidden');
-                currentVerifiedOrder = null; // Reset pada verifikasi baru
+                orderToComplete = null; // Reset pada verifikasi baru
 
                 if (!barcodeData) {
                     showCashierError('Input barcode tidak boleh kosong.');
@@ -2414,79 +2415,25 @@ const renderCashFlowChart = (data) => {
 
         if (cashierCompleteBtn) {
             cashierCompleteBtn.addEventListener('click', () => {
-                if (!currentVerifiedOrder) {
+                if (!orderToComplete) {
                     alert('Tidak ada data pesanan yang terverifikasi untuk diselesaikan.');
                     return;
                 }
-
-                if (paymentModal) {
-                    document.getElementById('payment-cash').checked = true;
-                    tenorOptionsContainer.classList.add('hidden');
-                    paymentTenorBtns.forEach(btn => btn.classList.remove('active'));
-                    document.querySelector('.payment-tenor-btn[data-tenor="1"]').classList.add('active');
-                    paymentTenorInput.value = '1';
-                    paymentModal.classList.remove('hidden');
-                } else {
-                    alert('Error: Modal pembayaran tidak ditemukan.');
-                }
+                showPaymentModalForOrder(orderToComplete);
             });
         }
     };
 
-    if (paymentModal) {
-        closePaymentModalBtn.addEventListener('click', () => paymentModal.classList.add('hidden'));
-        cancelPaymentModalBtn.addEventListener('click', () => paymentModal.classList.add('hidden'));
-
-        paymentMethodRadios.forEach(radio => {
-            radio.addEventListener('change', (e) => {
-                if (e.target.value === 'Potong Gaji') {
-                    tenorOptionsContainer.classList.remove('hidden');
-                } else {
-                    tenorOptionsContainer.classList.add('hidden');
-                }
-            });
-        });
-
-        paymentTenorBtns.forEach(button => {
-            button.addEventListener('click', (e) => {
-                e.preventDefault();
-                paymentTenorBtns.forEach(btn => btn.classList.remove('active'));
-                button.classList.add('active');
-                paymentTenorInput.value = button.dataset.tenor;
-            });
-        });
-
-        confirmPaymentBtn.addEventListener('click', async () => {
-            const selectedPaymentMethod = document.querySelector('input[name="payment-method"]:checked').value;
-            let paymentDetails = { method: selectedPaymentMethod };
-
-            if (selectedPaymentMethod === 'Potong Gaji') {
-                paymentDetails.tenor = parseInt(paymentTenorInput.value, 10);
-            }
-
-            const orderPayload = { ...currentVerifiedOrder, payment: paymentDetails };
-
-            const originalButtonText = confirmPaymentBtn.textContent;
-            confirmPaymentBtn.disabled = true;
-            confirmPaymentBtn.textContent = 'Memproses...';
-
-            try {
-                const result = await apiFetch(`${ADMIN_API_URL}/sales`, { method: 'POST', body: JSON.stringify(orderPayload) });
-                alert(result.message || 'Transaksi berhasil diselesaikan.');
-                
-                paymentModal.classList.add('hidden');
-                document.getElementById('cashier-verification-modal').classList.add('hidden'); // Close verification modal too
-                currentVerifiedOrder = null;
-                loadPendingOrders(); // Muat ulang daftar pesanan yang menunggu
-            } catch (error) {
-                alert(`Terjadi kesalahan: ${error.message}`);
-            } finally {
-                confirmPaymentBtn.disabled = false;
-                confirmPaymentBtn.textContent = 'Konfirmasi Pembayaran';
-            }
-        });
-    }
-
+    document.getElementById('cancel-cashier-verification-btn')?.addEventListener('click', () => {
+        document.getElementById('cashier-verification-modal').classList.add('hidden');
+        // Hentikan scanner jika sedang berjalan saat modal ditutup
+        if (html5QrCode && html5QrCode.isScanning) {
+            html5QrCode.stop().catch(err => console.log("QR scanner stop failed on modal close, likely already stopped."));
+        }
+        document.getElementById('start-scan-btn').textContent = 'Mulai Pindai Kamera'; // Reset text tombol
+        document.getElementById('start-scan-btn').disabled = false;
+    });
+  
     // --- FUNGSI UNTUK KASIR UMUM (NON-ANGGOTA) ---
     const setupDirectCashier = () => {
         const productGrid = document.getElementById('direct-cashier-product-grid');
@@ -2640,6 +2587,7 @@ const renderCashFlowChart = (data) => {
         const coopNumberInput = document.getElementById('direct-cashier-coop-number');
         const memberNameDisplay = document.getElementById('direct-cashier-member-name-display');
         let validatedMemberId = null; // Untuk menyimpan ID anggota yang tervalidasi
+        let orderIdToComplete = null; // Menyimpan orderId jika ini penyelesaian pesanan
 
         if (paymentModal) {
 
@@ -2712,6 +2660,7 @@ const renderCashFlowChart = (data) => {
             };
 
             const showPaymentModal = async () => {
+                orderIdToComplete = null; // Reset orderId, ini untuk penjualan langsung
                 if (directCart.length === 0) return;
                 const total = directCart.reduce((sum, item) => sum + (parseFloat(item.price) * item.quantity), 0);
                 paymentTotalEl.textContent = formatCurrency(total);
@@ -2757,6 +2706,42 @@ const renderCashFlowChart = (data) => {
                 paymentModal.classList.remove('hidden');
             };
 
+            // Fungsi baru untuk menampilkan modal pembayaran untuk pesanan yang sudah ada
+            const showPaymentModalForOrder = async (orderData) => {
+                orderIdToComplete = orderData.orderId; // Set orderId
+                paymentTotalEl.textContent = formatCurrency(orderData.total);
+                paymentTotalEl.dataset.total = orderData.total;
+                paymentAmountInput.value = '';
+                changeContainer.classList.add('hidden');
+                paymentErrorEl.classList.add('hidden');
+                ledgerDetailsContainer.classList.add('hidden');
+                paymentAmountContainer.classList.remove('hidden');
+
+                // Ambil dan render metode pembayaran
+                paymentMethodsContainer.innerHTML = '<p class="text-sm text-gray-500">Memuat metode pembayaran...</p>';
+                try {
+                    const methods = await apiFetch(`${ADMIN_API_URL}/payment-methods`);
+                    const activeMethods = methods.filter(m => m.is_active);
+                    paymentMethodsContainer.innerHTML = '';
+                    activeMethods.forEach((method, index) => {
+                        const isCash = method.name === 'Cash';
+                        const isLedger = method.name.toLowerCase().includes('gaji') || method.name.toLowerCase().includes('ledger');
+                        const radioId = `direct-payment-${method.id}`;
+                        const radioHtml = `<div class="flex items-center"><input id="${radioId}" name="direct-payment-method" type="radio" value="${method.name}" ${index === 0 ? 'checked' : ''} class="focus:ring-red-500 h-4 w-4 text-red-600 border-gray-300"><label for="${radioId}" class="ml-3 block text-sm font-medium text-gray-700">${method.name}</label></div>`;
+                        paymentMethodsContainer.insertAdjacentHTML('beforeend', radioHtml);
+                        document.getElementById(radioId).addEventListener('change', () => {
+                            paymentAmountContainer.classList.toggle('hidden', !isCash);
+                            ledgerDetailsContainer.classList.toggle('hidden', !isLedger);
+                            if (!isCash) paymentAmountInput.value = '';
+                            confirmPaymentBtn.disabled = isLedger; // Untuk pesanan, ledger harus divalidasi ulang
+                        });
+                    });
+                    if (activeMethods.length > 0) document.getElementById(`direct-payment-${activeMethods[0].id}`).dispatchEvent(new Event('change'));
+                } catch (error) { paymentMethodsContainer.innerHTML = `<p class="text-sm text-red-500">${error.message}</p>`; }
+
+                paymentModal.classList.remove('hidden');
+            };
+
             confirmPaymentBtn.addEventListener('click', async () => {
                 const selectedPaymentMethod = document.querySelector('input[name="direct-payment-method"]:checked').value;
                 
@@ -2772,29 +2757,40 @@ const renderCashFlowChart = (data) => {
                         confirmPaymentBtn.disabled = false; confirmPaymentBtn.textContent = 'Konfirmasi Pembayaran'; return;
                     }
                 }
-                // Validasi tambahan untuk Potong Gaji
-                if (selectedPaymentMethod === 'Employee Ledger' && !validatedMemberId) {
+                const isLedger = selectedPaymentMethod.toLowerCase().includes('gaji') || selectedPaymentMethod.toLowerCase().includes('ledger');
+                if (isLedger && !validatedMemberId) {
                     alert('Nomor koperasi anggota belum divalidasi atau tidak valid.');
                     confirmPaymentBtn.disabled = false; confirmPaymentBtn.textContent = 'Konfirmasi Pembayaran'; return;
                 }
 
-                const payload = {
-                    items: directCart,
-                    paymentMethod: selectedPaymentMethod,
-                };
-
-                if (selectedPaymentMethod === 'Employee Ledger') {
-                    payload.memberId = validatedMemberId;
-                }
-
                 try {
-                    await apiFetch(`${ADMIN_API_URL}/cash-sale`, { 
-                        method: 'POST', body: JSON.stringify(payload) 
-                    });
-                    alert('Penjualan berhasil dicatat.');
-                    directCart = [];
-                    renderDirectCart();
-                    paymentModal.classList.add('hidden');
+                    if (orderIdToComplete) {
+                        // --- Logika untuk menyelesaikan pesanan yang sudah ada ---
+                        const payload = { orderId: orderIdToComplete, paymentMethod: selectedPaymentMethod };
+                        await apiFetch(`${ADMIN_API_URL}/sales/complete`, { method: 'POST', body: JSON.stringify(payload) });
+                        alert('Pesanan berhasil diselesaikan.');
+                        paymentModal.classList.add('hidden');
+                        document.getElementById('cashier-verification-modal').classList.add('hidden');
+                        loadPendingOrders(); // Muat ulang daftar pesanan
+                    } else {
+                        // --- Logika untuk penjualan langsung (kasir umum) ---
+                        const payload = {
+                            items: directCart,
+                            paymentMethod: selectedPaymentMethod,
+                        };
+
+                        if (isLedger) {
+                            payload.memberId = validatedMemberId;
+                        }
+
+                        await apiFetch(`${ADMIN_API_URL}/cash-sale`, { 
+                            method: 'POST', body: JSON.stringify(payload) 
+                        });
+                        alert('Penjualan berhasil dicatat.');
+                        directCart = [];
+                        renderDirectCart();
+                        paymentModal.classList.add('hidden');
+                    }
                 } catch (error) {
                     alert(`Error: ${error.message}`);
                 } finally {

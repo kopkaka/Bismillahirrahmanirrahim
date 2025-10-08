@@ -165,23 +165,10 @@ document.addEventListener('DOMContentLoaded', () => {
                 const shopType = cart.length > 0 ? cart[0].shopType : null;
                 if (!shopType) throw new Error('Tipe toko tidak terdefinisi di keranjang.');
 
-                // --- FIX: Ambil metode pembayaran kredit secara dinamis ---
-                const paymentMethodsResponse = await fetch(`${API_URL}/admin/member/payment-methods`, {
-                    headers: { 'Authorization': `Bearer ${token}` }
-                });
-                if (!paymentMethodsResponse.ok) throw new Error('Gagal memuat metode pembayaran.');
-                const paymentMethods = await paymentMethodsResponse.json();
-                const creditPaymentMethod = paymentMethods.find(
-                    method => method.is_active && (method.name.toLowerCase().includes('gaji') || method.name.toLowerCase().includes('ledger'))
-                );
-
-                if (!creditPaymentMethod) {
-                    throw new Error('Metode pembayaran potong gaji tidak ditemukan atau tidak aktif. Hubungi admin.');
-                }
-
                 const orderPayload = {
                     items: cart.map(item => ({ productId: item.id, quantity: item.quantity })),
-                    paymentMethod: creditPaymentMethod.name, // Gunakan nama yang valid dari database
+                    // Metode pembayaran akan ditentukan oleh kasir, jadi kita kirim null.
+                    paymentMethod: null, 
                     shopType: shopType
                 };
 
