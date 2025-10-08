@@ -441,7 +441,8 @@ const createWithdrawalApplication = async (req, res) => {
 const _getInstallmentDetails = (loan, installmentNumber) => {
     const principal = parseFloat(loan.amount);
     const tenor = parseInt(loan.tenor_months, 10);
-    const monthlyInterestRate = parseFloat(loan.interest_rate) / 100;
+    // FIX: Bunga tahunan harus dibagi 12 untuk mendapatkan bunga bulanan.
+    const monthlyInterestRate = (parseFloat(loan.interest_rate) / 100) / 12;
 
     if (tenor <= 0) {
         return { principalComponent: 0, interestComponent: 0, total: 0 };
