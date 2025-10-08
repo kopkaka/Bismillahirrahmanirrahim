@@ -2559,12 +2559,9 @@ const renderCashFlowChart = (data) => {
                         window.validatedMemberId = null; // Reset ID anggota jika metode lain dipilih
                     }
                     updatePaymentButtonState('direct'); // Gunakan state updater yang sama dengan kasir umum
-                }); // FIX: Use correct function name
+                });
             });
-            // FIX: Pindahkan if statement ini ke dalam blok try setelah forEach selesai.
-            if (activeMethods.length > 0) {
-                document.getElementById(`direct-payment-${activeMethods[0].id}`).dispatchEvent(new Event('change'));
-            }
+            if (activeMethods.length > 0) { document.getElementById(`direct-payment-${activeMethods[0].id}`).dispatchEvent(new Event('change')); }
         } catch (error) {
             paymentMethodsContainer.innerHTML = `<p class="text-sm text-red-500">${error.message}</p>`;
         }
@@ -7480,10 +7477,7 @@ const renderCashFlowChart = (data) => {
             const initialPage = userRole === 'kasir' ? 'usaha-koperasi' : 'dashboard';
             switchContent(initialPage, {}, document.querySelector(`.sidebar-link[data-target="${initialPage}"]`));
         }
+        
 
-        // Setup laporan jasa pinjaman
-        setupLoanInterestReport();  
-    };
-
-    initializeApp();
+    initializeApp();    
 });
