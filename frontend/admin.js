@@ -5415,10 +5415,6 @@ const renderCashFlowChart = (data) => {
 
             products.forEach(product => {
                 const isOutOfStock = parseInt(product.stock, 10) <= 0;
-                const row = tableBody.insertRow();
-                if (isOutOfStock) {
-                    row.classList.add('opacity-60', 'bg-gray-50');
-                }
                 let imageUrl = 'https://placehold.co/100x100?text=No+Image';
                 if (product.image_url) {
                     // Check if it's an external URL or a local path
@@ -5426,17 +5422,41 @@ const renderCashFlowChart = (data) => {
                         ? product.image_url 
                         : `${API_URL.replace('/api', '')}${product.image_url}`;
                 }
-                row.innerHTML = `
-                    <td class="px-6 py-4"><img src="${imageUrl}" alt="${product.name}" class="h-12 w-12 object-cover rounded"></td>
-                    <td class="px-6 py-4 text-sm font-medium text-gray-900">${product.name}</td>
-                    <td class="px-6 py-4 text-sm text-gray-500 max-w-xs truncate" title="${product.description}">${product.description || '-'}</td>
-                    <td class="px-6 py-4 text-sm text-gray-500">${formatCurrency(product.price)}</td>
-                    <td class="px-6 py-4 text-sm ${isOutOfStock ? 'text-red-600 font-bold' : 'text-gray-500'}">${product.stock}</td>
-                    <td class="px-6 py-4 text-sm font-medium space-x-2">
-                        <button class="edit-product-btn text-indigo-600 hover:text-indigo-900" data-id="${product.id}" data-shop-type="${shopType}">Ubah</button>
-                        <button class="delete-product-btn text-red-600 hover:text-red-900" data-id="${product.id}" data-shop-type="${shopType}">Hapus</button>
-                    </td>
+
+                const row = document.createElement('tr');
+                if (isOutOfStock) row.classList.add('opacity-60', 'bg-gray-50');
+
+                // Gunakan textContent untuk data dinamis untuk mencegah XSS
+                const cellImage = document.createElement('td');
+                cellImage.className = 'px-6 py-4';
+                cellImage.innerHTML = `<img src="${imageUrl}" alt="" class="h-12 w-12 object-cover rounded">`; // alt dikosongkan karena nama produk ada di sel berikutnya
+
+                const cellName = document.createElement('td');
+                cellName.className = 'px-6 py-4 text-sm font-medium text-gray-900';
+                cellName.textContent = product.name;
+
+                const cellDesc = document.createElement('td');
+                cellDesc.className = 'px-6 py-4 text-sm text-gray-500 max-w-xs truncate';
+                cellDesc.textContent = product.description || '-';
+                cellDesc.title = product.description;
+
+                const cellPrice = document.createElement('td');
+                cellPrice.className = 'px-6 py-4 text-sm text-gray-500';
+                cellPrice.textContent = formatCurrency(product.price);
+
+                const cellStock = document.createElement('td');
+                cellStock.className = `px-6 py-4 text-sm ${isOutOfStock ? 'text-red-600 font-bold' : 'text-gray-500'}`;
+                cellStock.textContent = product.stock;
+
+                const cellActions = document.createElement('td');
+                cellActions.className = 'px-6 py-4 text-sm font-medium space-x-2';
+                cellActions.innerHTML = `
+                    <button class="edit-product-btn text-indigo-600 hover:text-indigo-900" data-id="${product.id}" data-shop-type="${shopType}">Ubah</button>
+                    <button class="delete-product-btn text-red-600 hover:text-red-900" data-id="${product.id}" data-shop-type="${shopType}">Hapus</button>
                 `;
+
+                row.append(cellImage, cellName, cellDesc, cellPrice, cellStock, cellActions);
+                tableBody.appendChild(row);
             });
 
         } catch (error) {
