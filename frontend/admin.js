@@ -2500,11 +2500,13 @@ const renderCashFlowChart = (data) => {
                 `;
                 paymentMethodsContainer.insertAdjacentHTML('beforeend', radioHtml);
 
+                // Tambahkan listener untuk setiap radio button
                 document.getElementById(radioId).addEventListener('change', () => {
+                    const isCash = method.name === 'Cash';
+                    const isLedger = method.name.toLowerCase().includes('gaji') || method.name.toLowerCase().includes('ledger');
                     paymentAmountContainer.classList.toggle('hidden', !isCash);
                     ledgerDetailsContainer.classList.toggle('hidden', !isLedger);
-                    if (!isCash) paymentAmountInput.value = '';
-                    confirmPaymentBtn.disabled = isLedger; // Nonaktifkan jika ledger sampai divalidasi
+                    updatePaymentButtonState(); // Panggil fungsi utama untuk update tombol
                 });
             });
         } catch (error) {
