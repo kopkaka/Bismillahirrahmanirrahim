@@ -2589,10 +2589,10 @@ const createSale = async (req, res) => {
     // Jika request datang dari anggota (tanpa token admin), req.user akan undefined.
     // Jika dari admin, kita gunakan ID admin. Jika dari anggota, kita gunakan memberId dari body.
     const { items, paymentMethod, memberId, shopType } = req.body;
-    const createdByUserId = req.user.id; // Selalu ambil dari token karena rute ini dilindungi
-    const saleMemberId = req.user.role === 'member' ? req.user.id : (memberId || null);
+    const createdByUserId = req.user.id; // Selalu ambil dari token karena rute ini dilindungi.
+    const saleMemberId = req.user.role === 'member' ? req.user.id : (memberId || null); // Jika member, ID-nya sendiri. Jika kasir, ambil dari body.
     // Jika role adalah 'member', statusnya 'Menunggu Pengambilan'. Jika bukan (admin/kasir), statusnya 'Selesai'.
-    const status = req.user.role === 'member' ? 'Menunggu Pengambilan' : 'Selesai';
+    const status = req.user.role === 'member' ? 'Menunggu Pengambilan' : 'Selesai'; 
 
     if (!Array.isArray(items) || items.length === 0) {
         return res.status(400).json({ error: 'Keranjang belanja kosong.' });
@@ -2606,9 +2606,9 @@ const createSale = async (req, res) => {
     try {
         await client.query('BEGIN');
 
-        // If a member is associated with the sale, validate them.
+        // If a member is associated with the sale (either as buyer or creator), validate them.
         if (saleMemberId) {
-            const memberRes = await client.query('SELECT id FROM members WHERE id = $1 AND status = \'Active\'', [memberId]);
+            const memberRes = await client.query('SELECT id FROM members WHERE id = $1 AND status = \'Active\'', [saleMemberId]);
             if (memberRes.rows.length === 0) {
                 throw new Error(`Anggota dengan ID ${memberId} tidak ditemukan atau tidak aktif.`);
             }
@@ -2678,7 +2678,7 @@ const createSale = async (req, res) => {
         // 7. Create journal entries ONLY if the sale is completed by a cashier/admin
         if (status === 'Selesai') {
             const paymentMethodRes = await client.query('SELECT account_id FROM payment_methods WHERE name = $1', [paymentMethod]);
-            if (paymentMethodRes.rows.length === 0 || !paymentMethodRes.rows[0].account_id) {
+            if (!paymentMethod || paymentMethodRes.rows.length === 0 || !paymentMethodRes.rows[0].account_id) {
                 throw new Error(`Metode pembayaran "${paymentMethod}" tidak valid atau belum terhubung ke akun COA.`);
             }
             const debitAccountId = paymentMethodRes.rows[0].account_id;
@@ -2707,27 +2707,78 @@ const createSale = async (req, res) => {
     }
 };
 
-const completeSale = async (req, res) => {
-    const { orderId, payment } = req.body;
+const completeOrder = async (req, res) => {
+    const { orderId, paymentMethod } = req.body;
     const { id: cashierId } = req.user;
 
-    if (!orderId || !payment || !payment.method) {
+    if (!orderId || !paymentMethod) {
         return res.status(400).json({ error: 'ID Pesanan dan metode pembayaran diperlukan.' });
     }
 
+    const client = await pool.connect();
     try {
-        // This logic is complex and involves stock reduction, journaling, etc.
-        // It seems the logic is missing from the provided `createSale` function.
-        // For now, let's assume the main goal is to update the payment method and cashier on an existing sale.
-        const result = await pool.query(
-            "UPDATE sales SET status = 'Selesai', payment_method = $1, created_by_user_id = $2 WHERE order_id = $3 RETURNING *", 
-            [payment.method, cashierId, orderId]
+        await client.query('BEGIN');
+
+        // 1. Get sale details and lock the row
+        const saleRes = await client.query("SELECT * FROM sales WHERE order_id = $1 AND status = 'Menunggu Pengambilan' FOR UPDATE", [orderId]);
+        if (saleRes.rows.length === 0) {
+            throw new Error('Pesanan tidak ditemukan atau sudah diproses.');
+        }
+        const sale = saleRes.rows[0];
+
+        // 2. Get payment method account ID
+        const paymentMethodRes = await client.query('SELECT account_id FROM payment_methods WHERE name = $1', [paymentMethod]);
+        if (paymentMethodRes.rows.length === 0 || !paymentMethodRes.rows[0].account_id) {
+            throw new Error(`Metode pembayaran "${paymentMethod}" tidak valid atau belum terhubung ke akun COA.`);
+        }
+        const debitAccountId = paymentMethodRes.rows[0].account_id;
+
+        // 3. Get total COGS from sale_items
+        const itemsRes = await client.query('SELECT SUM(cost_per_item * quantity) as total_cogs FROM sale_items WHERE sale_id = $1', [sale.id]);
+        const totalCostOfGoodsSold = parseFloat(itemsRes.rows[0].total_cogs || 0);
+
+        // 4. Create Journal Entries
+        const inventoryAccountId = 8; // Persediaan Barang Dagang
+        const salesRevenueAccountId = 12; // Pendapatan Penjualan
+        const cogsAccountId = 13; // HPP
+        const description = `Penyelesaian pesanan #${orderId}`;
+
+        const journalHeaderRes = await client.query('INSERT INTO general_journal (entry_date, description, reference_number) VALUES (NOW(), $1, $2) RETURNING id', [description, `SALE-${sale.id}`]);
+        const journalId = journalHeaderRes.rows[0].id;
+
+        const journalEntriesQuery = `
+            INSERT INTO journal_entries (journal_id, account_id, debit, credit) VALUES
+            ($1, $2, $3, 0),      -- Debit Akun Pembayaran (Kas/Bank/Piutang)
+            ($1, $4, 0, $3),      -- Kredit Pendapatan Penjualan
+            ($1, $5, $6, 0),      -- Debit HPP
+            ($1, $7, 0, $6)       -- Kredit Persediaan
+        `;
+        await client.query(journalEntriesQuery, [journalId, debitAccountId, sale.total_amount, salesRevenueAccountId, cogsAccountId, totalCostOfGoodsSold, inventoryAccountId]);
+
+        // 5. Update the sale record
+        await client.query(
+            "UPDATE sales SET status = 'Selesai', payment_method = $1, created_by_user_id = $2, journal_id = $3 WHERE id = $4",
+            [paymentMethod, cashierId, journalId, sale.id]
         );
-        if (result.rowCount === 0) return res.status(404).json({ error: 'Pesanan tidak ditemukan.' });
+
+        // 6. Notify the member
+        if (sale.member_id) {
+            createNotification(
+                sale.member_id,
+                `Pesanan Anda #${orderId} telah selesai diproses di kasir.`,
+                'transactions'
+            ).catch(err => console.error(`Gagal membuat notifikasi penyelesaian pesanan untuk user ${sale.member_id}:`, err));
+        }
+
+        await client.query('COMMIT');
         res.json({ message: 'Transaksi berhasil diselesaikan.' });
+
     } catch (err) {
-        console.error('Error completing sale:', err.message);
-        res.status(500).json({ error: 'Gagal menyelesaikan transaksi.' });
+        await client.query('ROLLBACK');
+        console.error('Error completing order:', err.message);
+        res.status(400).json({ error: err.message || 'Gagal menyelesaikan transaksi.' });
+    } finally {
+        client.release();
     }
 };
 
@@ -4285,5 +4336,6 @@ module.exports = {
     getPaymentMethods,
     getLoanTypeIdByName,
     deletePaymentMethod,
-    cancelSale
+    cancelSale,
+    completeOrder
 };
