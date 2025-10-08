@@ -3275,7 +3275,7 @@ const createCashSale = async (req, res) => {
         
         await client.query(`INSERT INTO sale_items (sale_id, product_id, quantity, price, cost_per_item) VALUES ${saleItemsQueryParts}`, saleItemsValues);
 
-        let journalId;
+        let journalId = null; // Initialize as null
         if (isLedgerPayment) {
             // --- LOGIKA BARU: Buat Pinjaman Otomatis ---
             if (!loanTermId) throw new Error('Tenor pinjaman wajib dipilih untuk pembayaran potong gaji.');
@@ -3314,8 +3314,10 @@ const createCashSale = async (req, res) => {
             await client.query(journalEntriesQuery, [journalId, debitAccountId, totalSaleAmount, salesRevenueAccountId, cogsAccountId, totalCostOfGoodsSold, inventoryAccountId]);
         }
 
-        // Simpan journal_id ke tabel sales untuk referensi pembatalan
-        await client.query('UPDATE sales SET journal_id = $1 WHERE id = $2', [journalId, saleId]);
+        // Simpan journal_id ke tabel sales untuk referensi pembatalan, jika ada.
+        if (journalId) {
+            await client.query('UPDATE sales SET journal_id = $1 WHERE id = $2', [journalId, saleId]);
+        }
 
         await client.query('COMMIT');
         res.status(201).json({ message: 'Penjualan tunai berhasil dicatat.', saleId: saleId });
