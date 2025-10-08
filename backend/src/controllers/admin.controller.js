@@ -3910,6 +3910,11 @@ const createAnnouncement = async (req, res) => {
         return res.status(400).json({ error: 'Judul dan isi pengumuman wajib diisi.' });
     }
     try {
+        // Validasi tambahan
+        if (typeof title !== 'string' || typeof content !== 'string') {
+            return res.status(400).json({ error: 'Format data tidak valid.' });
+        }
+
         const query = `
             INSERT INTO announcements (title, content, is_published)
             VALUES ($1, $2, $3)
