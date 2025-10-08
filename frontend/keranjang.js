@@ -166,7 +166,11 @@ document.addEventListener('DOMContentLoaded', () => {
                 if (!shopType) throw new Error('Tipe toko tidak terdefinisi di keranjang.');
 
                 // --- FIX: Ambil metode pembayaran kredit secara dinamis ---
-                const paymentMethods = await fetch(`${API_URL}/admin/payment-methods`).then(res => res.json());
+                const paymentMethodsResponse = await fetch(`${API_URL}/admin/member/payment-methods`, {
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+                if (!paymentMethodsResponse.ok) throw new Error('Gagal memuat metode pembayaran.');
+                const paymentMethods = await paymentMethodsResponse.json();
                 const creditPaymentMethod = paymentMethods.find(
                     method => method.is_active && (method.name.toLowerCase().includes('gaji') || method.name.toLowerCase().includes('ledger'))
                 );
