@@ -2460,6 +2460,39 @@ const renderCashFlowChart = (data) => {
         }
     };
 
+    // --- REFACTOR: Pindahkan fungsi ini ke scope yang lebih tinggi ---
+    const updatePaymentButtonState = (modalType) => {
+        const radioName = modalType === 'direct' ? 'direct-payment-method' : 'direct-payment-method-order';
+        const confirmBtn = document.getElementById('confirm-direct-cashier-payment-btn');
+        const paymentTotalEl = document.getElementById('direct-cashier-payment-total');
+        const paymentAmountInput = document.getElementById('direct-cashier-payment-amount');
+        const paymentErrorEl = document.getElementById('direct-cashier-payment-error');
+        const changeContainer = document.getElementById('direct-cashier-change-container');
+        const changeAmountEl = document.getElementById('direct-cashier-change-amount');
+
+        const selectedMethodRadio = document.querySelector(`input[name="${radioName}"]:checked`);
+        if (!selectedMethodRadio) return;
+
+        const selectedMethod = selectedMethodRadio.value;
+        const isCash = selectedMethod === 'Cash';
+        const isLedger = selectedMethod.toLowerCase().includes('gaji') || selectedMethod.toLowerCase().includes('ledger');
+        
+        const total = parseFloat(paymentTotalEl.dataset.total || 0);
+        const paidAmount = parseFloat(paymentAmountInput.value) || 0;
+        
+        if (isCash) {
+            const change = paidAmount - total;
+            paymentErrorEl.classList.toggle('hidden', change >= 0);
+            confirmPaymentBtn.disabled = change < 0;
+            changeAmountEl.textContent = formatCurrency(Math.max(0, change));
+            changeContainer.classList.toggle('hidden', paidAmount <= 0);
+        } else if (isLedger) {
+            confirmPaymentBtn.disabled = true; // Dinonaktifkan sampai nomor koperasi divalidasi
+        } else {
+            confirmPaymentBtn.disabled = false;
+        }
+    };
+
     // Fungsi baru untuk menampilkan modal pembayaran untuk pesanan yang sudah ada
     const showPaymentModalForOrder = async (orderData) => {
         const paymentModal = document.getElementById('direct-cashier-payment-modal');
@@ -2506,7 +2539,7 @@ const renderCashFlowChart = (data) => {
                     const isLedger = method.name.toLowerCase().includes('gaji') || method.name.toLowerCase().includes('ledger');
                     paymentAmountContainer.classList.toggle('hidden', !isCash);
                     ledgerDetailsContainer.classList.toggle('hidden', !isLedger);
-                    updatePaymentButtonState(); // Panggil fungsi utama untuk update tombol
+                    updatePaymentButtonState('order'); // Panggil fungsi utama untuk update tombol
                 });
             });
         } catch (error) {
@@ -2775,7 +2808,7 @@ const renderCashFlowChart = (data) => {
                             paymentAmountContainer.classList.toggle('hidden', !isCash);
                             ledgerDetailsContainer.classList.toggle('hidden', !isLedger);
                             if (!isCash) paymentAmountInput.value = '';
-                            if (isLedger) confirmPaymentBtn.disabled = true; else confirmPaymentBtn.disabled = false;
+                    updatePaymentButtonState('direct'); // Panggil fungsi utama untuk update tombol
                         });
                     });
                     if (activeMethods.length > 0) {
