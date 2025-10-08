@@ -2673,24 +2673,25 @@ const createSale = async (req, res) => {
         const saleItemsQuery = `INSERT INTO sale_items (sale_id, product_id, quantity, price, cost_per_item) VALUES ${saleItemsQueryParts}`;
         await client.query(saleItemsQuery, saleItemsValues);
 
-        // 7. Create journal entries
-        const cashAccountId = 3;
-        const inventoryAccountId = 8;
-        const salesRevenueAccountId = 12;
-        const cogsAccountId = 13;
-        const description = `Penjualan Tunai Toko Struk #${saleId}`;
+        // 7. Create journal entries ONLY if the sale is completed by a cashier/admin
+        if (status === 'Selesai') {
+            const paymentMethodRes = await client.query('SELECT account_id FROM payment_methods WHERE name = $1', [paymentMethod]);
+            if (paymentMethodRes.rows.length === 0 || !paymentMethodRes.rows[0].account_id) {
+                throw new Error(`Metode pembayaran "${paymentMethod}" tidak valid atau belum terhubung ke akun COA.`);
+            }
+            const debitAccountId = paymentMethodRes.rows[0].account_id;
 
-        const journalHeaderRes = await client.query('INSERT INTO general_journal (entry_date, description, reference_number) VALUES (NOW(), $1, $2) RETURNING id', [description, `SALE-${saleId}`]);
-        const journalId = journalHeaderRes.rows[0].id;
+            const inventoryAccountId = 8; // Persediaan Barang Dagang
+            const salesRevenueAccountId = 12; // Pendapatan Penjualan
+            const cogsAccountId = 13; // HPP
+            const description = `Penjualan Toko Struk #${saleId}`;
 
-        const journalEntriesQuery = `
-            INSERT INTO journal_entries (journal_id, account_id, debit, credit) VALUES
-            ($1, $2, $3, 0),      -- Debit Kas
-            ($1, $4, 0, $3),      -- Kredit Pendapatan Penjualan
-            ($1, $5, $6, 0),      -- Debit HPP
-            ($1, $7, 0, $6)       -- Kredit Persediaan
-        `;
-        await client.query(journalEntriesQuery, [journalId, cashAccountId, totalSaleAmount, salesRevenueAccountId, cogsAccountId, totalCostOfGoodsSold, inventoryAccountId]);
+            const journalHeaderRes = await client.query('INSERT INTO general_journal (entry_date, description, reference_number) VALUES (NOW(), $1, $2) RETURNING id', [description, `SALE-${saleId}`]);
+            const journalId = journalHeaderRes.rows[0].id;
+
+            const journalEntriesQuery = `INSERT INTO journal_entries (journal_id, account_id, debit, credit) VALUES ($1, $2, $3, 0), ($1, $4, 0, $3), ($1, $5, $6, 0), ($1, $7, 0, $6)`;
+            await client.query(journalEntriesQuery, [journalId, debitAccountId, totalSaleAmount, salesRevenueAccountId, cogsAccountId, totalCostOfGoodsSold, inventoryAccountId]);
+        }
 
         await client.query('COMMIT');
         res.status(201).json({ message: 'Penjualan berhasil dicatat.', saleId: saleId, orderId: saleRes.rows[0].order_id });
