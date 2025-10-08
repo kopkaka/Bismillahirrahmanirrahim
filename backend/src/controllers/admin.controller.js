@@ -2796,6 +2796,41 @@ const completeOrder = async (req, res) => {
     }
 };
 
+/**
+ * @desc    Delete a pending sale order. This is used when moving an order to the general cashier.
+ *          It does NOT affect stock, as the new sale from the cashier will handle stock reduction.
+ * @route   DELETE /api/admin/sales/:id
+ * @access  Private (Kasir, Akunting, Admin)
+ */
+const deleteSale = async (req, res) => {
+    const { id: saleId } = req.params;
+    const { role: userRole } = req.user;
+
+    if (!['admin', 'akunting', 'kasir'].includes(userRole)) {
+        return res.status(403).json({ error: 'Anda tidak memiliki izin untuk tindakan ini.' });
+    }
+    
+    const client = await pool.connect();
+    try {
+        await client.query('BEGIN');
+
+        // 1. Get sale details to ensure it's in a deletable state
+        const saleRes = await client.query("SELECT id, status FROM sales WHERE id = $1 FOR UPDATE", [saleId]);
+        if (saleRes.rows.length === 0) {
+            throw new Error('Pesanan tidak ditemukan.');
+        }
+        if (saleRes.rows[0].status !== 'Menunggu Pengambilan') {
+            throw new Error(`Hanya pesanan dengan status "Menunggu Pengambilan" yang dapat dihapus.`);
+        }
+
+        // 2. Delete the sale. The 'ON DELETE CASCADE' on sale_items will handle the items.
+        await client.query('DELETE FROM sales WHERE id = $1', [saleId]);
+
+        await client.query('COMMIT');
+        res.status(204).send(); // 204 No Content for successful deletion
+    } catch (err) { await client.query('ROLLBACK'); console.error('Error deleting sale:', err.message); res.status(400).json({ error: err.message || 'Gagal menghapus pesanan.' }); } finally { client.release(); }
+};
+
 const createManualSaving = async (req, res) => {
     const { memberId, savingTypeId, amount, date, description } = req.body;
     const { id: adminUserId } = req.user;
@@ -4366,5 +4401,6 @@ module.exports = {
     getLoanTypeIdByName,
     deletePaymentMethod,
     cancelSale,
-    completeOrder
+    completeOrder,
+    confirmTakeawayOrder
 };
