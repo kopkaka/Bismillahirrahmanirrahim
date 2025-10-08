@@ -2507,6 +2507,10 @@ const renderCashFlowChart = (data) => {
         const paymentMethodsContainer = document.getElementById('direct-cashier-payment-methods-container');
         const confirmPaymentBtn = document.getElementById('confirm-direct-cashier-payment-btn');
         const changeAmountEl = document.getElementById('direct-cashier-change-amount');
+        const coopNumberInput = document.getElementById('direct-cashier-coop-number');
+        const memberNameDisplay = document.getElementById('direct-cashier-member-name-display');
+        const tenorDetailsContainer = document.getElementById('direct-cashier-tenor-details');
+        const tenorSelect = document.getElementById('direct-cashier-tenor-select');
 
         // Set orderId di scope yang lebih tinggi jika perlu, atau di window
         window.orderIdToComplete = orderData.orderId;
@@ -2517,6 +2521,10 @@ const renderCashFlowChart = (data) => {
         paymentErrorEl.classList.add('hidden');
         ledgerDetailsContainer.classList.add('hidden');
         paymentAmountContainer.classList.remove('hidden');
+        coopNumberInput.value = '';
+        memberNameDisplay.classList.add('hidden');
+        tenorDetailsContainer.classList.add('hidden');
+        window.validatedMemberId = null; // Reset validated member ID
 
         paymentMethodsContainer.innerHTML = '<p class="text-sm text-gray-500">Memuat metode pembayaran...</p>';
         try {
@@ -2526,16 +2534,16 @@ const renderCashFlowChart = (data) => {
             activeMethods.forEach((method, index) => {
                 const isCash = method.name === 'Cash';
                 const isLedger = method.name.toLowerCase().includes('gaji') || method.name.toLowerCase().includes('ledger');
-                const radioId = `direct-payment-order-${method.id}`; // Gunakan ID unik untuk modal ini
+                const radioId = `direct-payment-${method.id}`; // Gunakan ID dan nama yang sama dengan kasir umum
                 const radioHtml = `
                     <div class="flex items-center">
-                        <input id="${radioId}" name="direct-payment-method-order" type="radio" value="${method.name}" ${index === 0 ? 'checked' : ''} class="focus:ring-red-500 h-4 w-4 text-red-600 border-gray-300">
+                        <input id="${radioId}" name="direct-payment-method" type="radio" value="${method.name}" ${index === 0 ? 'checked' : ''} class="focus:ring-red-500 h-4 w-4 text-red-600 border-gray-300">
                         <label for="${radioId}" class="ml-3 block text-sm font-medium text-gray-700">${method.name}</label>
                     </div>
                 `;
                 paymentMethodsContainer.insertAdjacentHTML('beforeend', radioHtml);
 
-                // Tambahkan listener untuk setiap radio button
+                // Tambahkan listener untuk setiap radio button (logika ini sekarang sama dengan di kasir umum)
                 document.getElementById(radioId).addEventListener('change', () => {
                     const isCash = method.name === 'Cash';
                     const isLedger = method.name.toLowerCase().includes('gaji') || method.name.toLowerCase().includes('ledger');
@@ -2543,7 +2551,7 @@ const renderCashFlowChart = (data) => {
                     ledgerDetailsContainer.classList.toggle('hidden', !isLedger);
                     updatePaymentButtonState('order'); // Panggil fungsi utama untuk update tombol
                 }); // FIX: Use correct function name
-            });
+            }); if (activeMethods.length > 0) { document.getElementById(`direct-payment-${activeMethods[0].id}`).dispatchEvent(new Event('change')); }
         } catch (error) {
             paymentMethodsContainer.innerHTML = `<p class="text-sm text-red-500">${error.message}</p>`;
         }
@@ -2880,7 +2888,12 @@ const renderCashFlowChart = (data) => {
                     orderIdToComplete = window.orderIdToComplete; // Ambil dari scope global
                     if (orderIdToComplete) {
                         // --- Logika untuk menyelesaikan pesanan yang sudah ada ---
-                        const payload = { orderId: orderIdToComplete, paymentMethod: selectedPaymentMethod };
+                        const payload = { 
+                            orderId: orderIdToComplete, 
+                            paymentMethod: selectedPaymentMethod,
+                            memberId: validatedMemberId, // Kirim memberId yang tervalidasi
+                            loanTermId: tenorSelect.value // Kirim tenor yang dipilih
+                        };
                         await apiFetch(`${ADMIN_API_URL}/sales/complete`, { method: 'POST', body: JSON.stringify(payload) });
                         alert('Pesanan berhasil diselesaikan.');
                         paymentModal.classList.add('hidden');
