@@ -167,6 +167,8 @@ router.delete('/payment-methods/:id', protect, authorize(['viewSettings']), admi
 // Route specific for account mapping
 router.put('/map-payment-method-account/:id', protect, authorize(['viewSettings']), adminController.mapPaymentMethodAccount);
 
+// Rute baru untuk anggota (hanya perlu login)
+router.get('/member/payment-methods', protect, adminController.getPaymentMethods);
 // Goods Receipt & Accounts Payable
 const accountingPermission = ['viewAccounting'];
 router.get('/logistics/receivable', protect, authorize(accountingPermission), adminController.getReceivableLogistics);
