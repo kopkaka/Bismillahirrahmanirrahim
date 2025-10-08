@@ -2543,13 +2543,22 @@ const renderCashFlowChart = (data) => {
                 `;
                 paymentMethodsContainer.insertAdjacentHTML('beforeend', radioHtml);
 
-                // Tambahkan listener untuk setiap radio button (logika ini sekarang sama dengan di kasir umum)
+                // Tambahkan listener untuk setiap radio button
                 document.getElementById(radioId).addEventListener('change', () => {
                     const isCash = method.name === 'Cash';
                     const isLedger = method.name.toLowerCase().includes('gaji') || method.name.toLowerCase().includes('ledger');
                     paymentAmountContainer.classList.toggle('hidden', !isCash);
                     ledgerDetailsContainer.classList.toggle('hidden', !isLedger);
-                    updatePaymentButtonState('order'); // Panggil fungsi utama untuk update tombol
+                    tenorDetailsContainer.classList.add('hidden'); // Selalu sembunyikan tenor saat metode berubah
+
+                    if (!isCash) {
+                        paymentAmountInput.value = ''; // Reset input uang bayar
+                        // FIX: Nonaktifkan tombol jika ledger sampai nomor divalidasi.
+                        // Untuk pesanan masuk, member sudah diketahui, jadi kita bisa langsung validasi.
+                        confirmPaymentBtn.disabled = isLedger; 
+                        window.validatedMemberId = null; // Reset ID anggota jika metode lain dipilih
+                    }
+                    updatePaymentButtonState('direct'); // Gunakan state updater yang sama dengan kasir umum
                 }); // FIX: Use correct function name
             }); if (activeMethods.length > 0) { document.getElementById(`direct-payment-${activeMethods[0].id}`).dispatchEvent(new Event('change')); }
         } catch (error) {
@@ -2557,6 +2566,14 @@ const renderCashFlowChart = (data) => {
         }
         paymentModal.classList.remove('hidden');
     };
+
+    // --- FUNGSI UNTUK KASIR UMUM (NON-ANGGOTA) ---
+    const setupDirectCashier = () => {
+        const productGrid = document.getElementById('direct-cashier-product-grid'); // FIX: Use correct element ID
+        const cartBody = document.getElementById('direct-cashier-items-body');
+        const totalEl = document.getElementById('direct-cashier-total');
+        const completeBtn = document.getElementById('direct-cashier-complete-btn');
+        const searchInput = document.getElementById('direct-cashier-search');
 
     // --- FUNGSI UNTUK KASIR UMUM (NON-ANGGOTA) ---
     const setupDirectCashier = () => {
