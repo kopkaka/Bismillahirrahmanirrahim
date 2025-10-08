@@ -2346,6 +2346,7 @@ const renderCashFlowChart = (data) => {
         const modal = document.getElementById('cashier-verification-modal');
         if (!modal) return;
     
+        const cashierProceedToPaymentBtn = document.getElementById('cashier-proceed-to-payment-btn');
         const closeBtn = document.getElementById('close-cashier-verification-modal');
         const barcodeInput = document.getElementById('cashier-barcode-input');
     
