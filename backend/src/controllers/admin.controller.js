@@ -2589,8 +2589,10 @@ const createSale = async (req, res) => {
     // Jika request datang dari anggota (tanpa token admin), req.user akan undefined.
     // Jika dari admin, kita gunakan ID admin. Jika dari anggota, kita gunakan memberId dari body.
     const { items, paymentMethod, memberId, shopType } = req.body;
-    const createdByUserId = req.user ? req.user.id : memberId;
-    const status = req.user ? 'Selesai' : 'Menunggu Pengambilan'; // Jika dibuat oleh admin/kasir, langsung Selesai.
+    const createdByUserId = req.user.id; // Selalu ambil dari token karena rute ini dilindungi
+    const saleMemberId = req.user.role === 'member' ? req.user.id : (memberId || null);
+    // Jika role adalah 'member', statusnya 'Menunggu Pengambilan'. Jika bukan (admin/kasir), statusnya 'Selesai'.
+    const status = req.user.role === 'member' ? 'Menunggu Pengambilan' : 'Selesai';
 
     if (!Array.isArray(items) || items.length === 0) {
         return res.status(400).json({ error: 'Keranjang belanja kosong.' });
@@ -2604,8 +2606,8 @@ const createSale = async (req, res) => {
     try {
         await client.query('BEGIN');
 
-        // If memberId is provided, validate that it belongs to an active member.
-        if (memberId) {
+        // If a member is associated with the sale, validate them.
+        if (saleMemberId) {
             const memberRes = await client.query('SELECT id FROM members WHERE id = $1 AND status = \'Active\'', [memberId]);
             if (memberRes.rows.length === 0) {
                 throw new Error(`Anggota dengan ID ${memberId} tidak ditemukan atau tidak aktif.`);
@@ -2657,7 +2659,7 @@ const createSale = async (req, res) => {
         const orderId = `KOP-${Date.now()}`;
         const saleRes = await client.query(
             'INSERT INTO sales (order_id, total_amount, payment_method, created_by_user_id, member_id, sale_date, status, shop_type) VALUES ($1, $2, $3, $4, $5, NOW(), $6, $7) RETURNING id, order_id',
-            [orderId, totalSaleAmount, paymentMethod, createdByUserId, memberId || null, status, shopType]
+            [orderId, totalSaleAmount, paymentMethod, createdByUserId, saleMemberId, status, shopType]
         );
         const saleId = saleRes.rows[0].id;
 
