@@ -117,6 +117,8 @@ router.post('/sales', protect, authorize(productManagementPermission), adminCont
 router.post('/public/sales', adminController.createSale);
 router.get('/sales/:orderId/items', protect, authorize(['viewUsahaKoperasi']), adminController.getSaleItemsByOrderId);
 router.post('/sales/:id/cancel', protect, authorize(['admin', 'akunting']), adminController.cancelSale);
+// Rute baru untuk halaman checkout.html
+router.get('/public/sales/:orderId', adminController.getSaleDetailsByOrderId);
 // Rute baru untuk verifikasi pesanan oleh kasir
 router.get('/sales/order/:orderId', protect, authorize(['viewUsahaKoperasi']), adminController.getSaleDetailsByOrderId);
 
