@@ -2702,6 +2702,9 @@ const renderCashFlowChart = (data) => {
         const ledgerDetailsContainer = document.getElementById('direct-cashier-ledger-details');
         const coopNumberInput = document.getElementById('direct-cashier-coop-number');
         const memberNameDisplay = document.getElementById('direct-cashier-member-name-display');
+        const tenorDetailsContainer = document.getElementById('direct-cashier-tenor-details');
+        const tenorSelect = document.getElementById('direct-cashier-tenor-select');
+
         let validatedMemberId = null; // Untuk menyimpan ID anggota yang tervalidasi
         // Pindahkan orderIdToComplete ke scope yang lebih tinggi (window)
         let orderIdToComplete = null; // Menyimpan orderId jika ini penyelesaian pesanan
@@ -2720,12 +2723,14 @@ const renderCashFlowChart = (data) => {
 
                     // Tampilkan/sembunyikan field untuk potong gaji
                     ledgerDetailsContainer.classList.toggle('hidden', !isLedger);
+                    tenorDetailsContainer.classList.add('hidden'); // Selalu sembunyikan tenor saat metode berubah
 
                     if (!isCash) {
                         paymentAmountInput.value = ''; // Reset input uang bayar
                         confirmPaymentBtn.disabled = isLedger; // Nonaktifkan jika ledger sampai nomor divalidasi
                         validatedMemberId = null; // Reset ID anggota jika metode lain dipilih
                     }
+                    updatePaymentButtonState('direct');
                 });
             });
 
@@ -2733,6 +2738,8 @@ const renderCashFlowChart = (data) => {
             coopNumberInput.addEventListener('blur', async () => {
                 const coopNumber = coopNumberInput.value.trim();
                 memberNameDisplay.classList.add('hidden');
+                tenorDetailsContainer.classList.add('hidden'); // Sembunyikan tenor saat validasi ulang
+                confirmPaymentBtn.disabled = true; // Nonaktifkan tombol saat validasi ulang
                 validatedMemberId = null;
 
                 if (!coopNumber) return;
@@ -2747,11 +2754,36 @@ const renderCashFlowChart = (data) => {
                     memberNameDisplay.textContent = `Anggota ditemukan: ${validationData.user.name}`;
                     memberNameDisplay.className = 'p-2 bg-green-100 rounded-md text-sm text-green-800';
                     validatedMemberId = validationData.user.id;
-                    confirmPaymentBtn.disabled = false; // Aktifkan tombol konfirmasi setelah validasi berhasil
+
+                    // --- LOGIKA BARU: Muat tenor setelah validasi berhasil ---
+                    try {
+                        // Asumsi tipe pinjaman untuk kasir adalah "Pinjaman Karyawan"
+                        const loanTypeRes = await apiFetch(`${ADMIN_API_URL}/loantype-id-by-name?name=Pinjaman Karyawan`);
+                        const loanTypeId = loanTypeRes.id;
+
+                        const allTerms = await apiFetch(`${ADMIN_API_URL}/loanterms`);
+                        const applicableTerms = allTerms.filter(term => term.loan_type_id === loanTypeId);
+
+                        if (applicableTerms.length > 0) {
+                            tenorSelect.innerHTML = '<option value="">-- Pilih Tenor --</option>';
+                            applicableTerms.forEach(term => {
+                                tenorSelect.innerHTML += `<option value="${term.id}">${term.tenor_months} bulan</option>`;
+                            });
+                            tenorDetailsContainer.classList.remove('hidden');
+                        } else {
+                            throw new Error('Tidak ada opsi tenor yang tersedia untuk Pinjaman Karyawan.');
+                        }
+                    } catch (termError) {
+                        memberNameDisplay.textContent = termError.message;
+                        memberNameDisplay.className = 'p-2 bg-red-100 rounded-md text-sm text-red-800';
+                    }
+
                 } catch (error) { memberNameDisplay.textContent = error.message; memberNameDisplay.className = 'p-2 bg-red-100 rounded-md text-sm text-red-800';
                 } finally { memberNameDisplay.classList.remove('hidden'); }
             });
 
+            // Aktifkan tombol konfirmasi hanya jika tenor sudah dipilih
+            tenorSelect.addEventListener('change', () => { confirmPaymentBtn.disabled = !tenorSelect.value; });
             // Fungsi untuk menghitung kembalian
             const calculateChange = () => {
                 const total = parseFloat(paymentTotalEl.dataset.total || 0);
@@ -2860,6 +2892,7 @@ const renderCashFlowChart = (data) => {
                         const payload = {
                             items: directCart,
                             paymentMethod: selectedPaymentMethod,
+                            loanTermId: tenorSelect.value, // Kirim ID tenor yang dipilih
                         };
 
                         if (isLedger) {
