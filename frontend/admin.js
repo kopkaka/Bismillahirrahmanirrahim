@@ -2414,9 +2414,8 @@ const renderCashFlowChart = (data) => {
                 html5QrCode.start({ facingMode: "environment" }, config, qrCodeSuccessCallback)
                     .then(() => { startScanBtn.textContent = 'Hentikan Pindai'; startScanBtn.disabled = false; });
             });
-        }
-    };
-
+        } 
+           
     // Fungsi baru untuk menampilkan modal pembayaran untuk pesanan yang sudah ada
     const showPaymentModalForOrder = async (orderData) => {
         const paymentModal = document.getElementById('direct-cashier-payment-modal');
