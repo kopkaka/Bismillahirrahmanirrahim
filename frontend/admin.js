@@ -2931,34 +2931,36 @@ const renderCashFlowChart = (data) => {
     });
 
     // --- RESIGNATION MODAL LOGIC ---
-    const resignationModal = document.getElementById('resignation-modal');
-    if (resignationModal) {
-        document.getElementById('close-resignation-modal').addEventListener('click', () => resignationModal.classList.add('hidden'));
-        document.getElementById('cancel-resignation-modal').addEventListener('click', () => resignationModal.classList.add('hidden'));
-
-        document.getElementById('confirm-resignation-btn').addEventListener('click', async (e) => {
-            const button = e.target;
-            const memberId = document.getElementById('resignation-member-id-input').value;
-
-            button.disabled = true;
-            button.textContent = 'Memproses...';
-
-            try {
-                // This endpoint needs to be created in the backend.
-                // It will change member status to 'Inactive', and create the journal entries.
-                const result = await apiFetch(`${ADMIN_API_URL}/process-resignation`, {
-                    method: 'POST',
-                    body: JSON.stringify({ memberId: memberId }),
-                });
-                alert(result.message);
-
-                resignationModal.classList.add('hidden');
-                loadPendingResignations(); // Refresh the list
-
-            } catch (error) { alert(`Terjadi kesalahan: ${error.message}`);
-            } finally { button.disabled = false; button.textContent = 'Konfirmasi & Proses'; }
-        });
-    }
+    const setupResignationModal = () => {
+        const resignationModal = document.getElementById('resignation-modal');
+        if (resignationModal) {
+            document.getElementById('close-resignation-modal').addEventListener('click', () => resignationModal.classList.add('hidden'));
+            document.getElementById('cancel-resignation-modal').addEventListener('click', () => resignationModal.classList.add('hidden'));
+    
+            document.getElementById('confirm-resignation-btn').addEventListener('click', async (e) => {
+                const button = e.target;
+                const memberId = document.getElementById('resignation-member-id-input').value;
+    
+                button.disabled = true;
+                button.textContent = 'Memproses...';
+    
+                try {
+                    // This endpoint needs to be created in the backend.
+                    // It will change member status to 'Inactive', and create the journal entries.
+                    const result = await apiFetch(`${ADMIN_API_URL}/process-resignation`, {
+                        method: 'POST',
+                        body: JSON.stringify({ memberId: memberId }),
+                    });
+                    alert(result.message);
+    
+                    resignationModal.classList.add('hidden');
+                    loadPendingResignations(); // Refresh the list
+    
+                } catch (error) { alert(`Terjadi kesalahan: ${error.message}`);
+                } finally { button.disabled = false; button.textContent = 'Konfirmasi & Proses'; }
+            });
+        }
+    };
 
     // --- FUNGSI UNTUK PROFIL ADMIN ---
     function setupAdminPhotoUpload(profile) {
