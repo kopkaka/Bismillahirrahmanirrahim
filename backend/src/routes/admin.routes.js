@@ -122,6 +122,7 @@ router.get('/public/sales/:orderId', adminController.getSaleDetailsByOrderId);
 // Rute baru untuk verifikasi pesanan oleh kasir
 router.get('/sales/order/:orderId', protect, authorize(['viewUsahaKoperasi']), adminController.getSaleDetailsByOrderId);
 router.post('/sales/complete', protect, authorize(['viewUsahaKoperasi']), adminController.completeOrder);
+router.delete('/sales/:id', protect, authorize(['viewUsahaKoperasi']), adminController.deleteSale);
 
 
 // Rute baru untuk mengambil permintaan pengunduran diri
