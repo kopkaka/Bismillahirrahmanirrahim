@@ -2576,14 +2576,6 @@ const renderCashFlowChart = (data) => {
         const completeBtn = document.getElementById('direct-cashier-complete-btn');
         const searchInput = document.getElementById('direct-cashier-search');
 
-    // --- FUNGSI UNTUK KASIR UMUM (NON-ANGGOTA) ---
-    const setupDirectCashier = () => {
-        const productGrid = document.getElementById('direct-cashier-product-grid'); // FIX: Use correct element ID
-        const cartBody = document.getElementById('direct-cashier-items-body');
-        const totalEl = document.getElementById('direct-cashier-total');
-        const completeBtn = document.getElementById('direct-cashier-complete-btn');
-        const searchInput = document.getElementById('direct-cashier-search');
-
         if (!productGrid) return; // Only run if the UI exists
 
         const renderProductGrid = () => {
