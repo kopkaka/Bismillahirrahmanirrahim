@@ -172,7 +172,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 };
 
                 // 3. Panggil API untuk membuat pesanan
-                const response = await fetch(`${API_URL}/member/sales`, { // Menggunakan endpoint member yang aman
+                const response = await fetch(`${API_URL}/admin/member/sales`, { // FIX: Menggunakan endpoint admin yang benar
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
                     body: JSON.stringify(orderPayload)
