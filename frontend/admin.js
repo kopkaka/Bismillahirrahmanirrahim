@@ -2172,7 +2172,7 @@ const renderCashFlowChart = (data) => {
             orders.forEach(order => {
                 let actionButtons = `
                     <button class="view-order-details-btn text-blue-600 hover:underline" data-order-id="${order.order_id}">Detail</button>
-                    <button class="verify-order-btn text-green-600 hover:underline" data-order-id="${order.order_id}">Proses Pembayaran</button>
+                    <button class="confirm-takeaway-btn text-green-600 hover:underline" data-order-id="${order.order_id}" data-sale-id="${order.id}">Proses di Kasir</button>
                 `;
 
                 if (userRole === 'admin') {
@@ -2274,7 +2274,8 @@ const renderCashFlowChart = (data) => {
             if (targetContent) {
                 if (targetId === 'sembako-orders-tab') {
                     loadPendingOrders();
-                } else if (targetId === 'sembako-direct-cashier-tab') {
+                } else if (targetId === 'sembako-direct-cashier-tab') { // Jika tab kasir diklik
+                    renderDirectCart(); // Panggil renderDirectCart untuk menampilkan item yang mungkin baru ditambahkan
                     setupDirectCashier(); // Panggil fungsi yang benar untuk memuat produk
                 }
                 targetContent.classList.remove('hidden');
@@ -2652,7 +2653,7 @@ const renderCashFlowChart = (data) => {
                 cartBody.appendChild(itemEl);
             });
             totalEl.textContent = formatCurrency(total);
-            completeBtn.disabled = false;
+            completeBtn.parentElement.classList.remove('hidden'); // Tampilkan container tombol
         };
 
         const addToCart = (productId, quantity = 1) => {
@@ -6504,8 +6505,41 @@ const renderCashFlowChart = (data) => {
     document.getElementById('pending-orders-table-body')?.addEventListener('click', async (e) => {
         if (e.target.matches('.view-order-details-btn')) {
             showOrderDetailsModal(e.target.dataset.orderId);
-        } else if (e.target.matches('.verify-order-btn')) {
-            showCashierVerificationModal(e.target.dataset.orderId);
+        } else if (e.target.matches('.confirm-takeaway-btn')) { // Diubah menjadi "Proses di Kasir"
+            const orderId = e.target.dataset.orderId;
+            const saleId = e.target.dataset.saleId;
+            if (confirm(`Proses pesanan #${orderId} di Kasir Umum? Pesanan ini akan dihapus dari daftar tunggu dan item akan ditambahkan ke keranjang kasir.`)) {
+                const button = e.target;
+                button.disabled = true;
+                button.textContent = 'Memproses...';
+                try {
+                    // 1. Ambil item dari pesanan yang ada
+                    const items = await apiFetch(`${ADMIN_API_URL}/sales/${orderId}/items`);
+
+                    // 2. Isi keranjang kasir umum (directCart)
+                    directCart = items.map(item => ({
+                        productId: item.product_id,
+                        name: item.product_name,
+                        price: item.price,
+                        quantity: item.quantity
+                    }));
+
+                    // 3. Hapus pesanan lama dari database
+                    await apiFetch(`${ADMIN_API_URL}/sales/${saleId}`, { method: 'DELETE' });
+
+                    // 4. Pindah ke tab Kasir Umum dan render keranjang
+                    const cashierTabButton = document.querySelector('.sembako-tab-btn[data-target="sembako-direct-cashier-tab"]');
+                    if (cashierTabButton) {
+                        cashierTabButton.click(); // Ini akan memicu render ulang UI kasir
+                    }
+                    // Fungsi renderDirectCart akan dipanggil oleh event click di atas
+
+                } catch (error) {
+                    alert(`Gagal memproses ke kasir: ${error.message}`);
+                    button.disabled = false;
+                    button.textContent = 'Proses di Kasir';
+                }
+            }
         } else if (e.target.matches('.cancel-order-btn')) {
             const orderId = e.target.dataset.orderId;
             if (confirm(`Anda yakin ingin membatalkan pesanan #${orderId}? Stok barang akan dikembalikan.`)) {
