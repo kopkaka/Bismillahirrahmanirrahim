@@ -1,95 +1,95 @@
 import { API_URL } from './config.js';
 
 document.addEventListener('DOMContentLoaded', () => {
-    const checkoutSuccessEl = document.getElementById('checkout-success');
-    const checkoutFailEl = document.getElementById('checkout-fail');
-
-    // Elements for success case
-    const orderIdEl = document.getElementById('order-id');
-    const orderDateEl = document.getElementById('order-date');
-    const orderMemberNameEl = document.getElementById('order-member-name');
-    const orderCoopNumberEl = document.getElementById('order-coop-number');
-    const orderItemsTableEl = document.getElementById('order-items-table');
-    const orderTotalEl = document.getElementById('order-total');
-    const qrcodeContainer = document.getElementById('qrcode-container');
+    const successContainer = document.getElementById('checkout-success');
+    const failContainer = document.getElementById('checkout-fail');
     const printBtn = document.getElementById('print-btn');
-    const finishBtn = document.getElementById('finish-btn');
 
     const formatCurrency = (amount) => {
+        if (amount === null || amount === undefined) return 'Rp 0';
         return new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0 }).format(amount);
     };
 
-    const loadOrderData = async () => {
+    const formatDate = (dateString) => {
+        if (!dateString) return '-';
+        return new Date(dateString).toLocaleDateString('id-ID', { day: '2-digit', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit' });
+    };
+
+    const loadOrderDetails = async () => {
         const orderId = sessionStorage.getItem('checkoutOrderId');
+
         if (!orderId) {
-            checkoutFailEl.classList.remove('hidden');
-            checkoutSuccessEl.classList.add('hidden');
+            successContainer.classList.add('hidden');
+            failContainer.classList.remove('hidden');
             return;
         }
 
         try {
-            // Ambil detail pesanan lengkap dari backend menggunakan orderId
+            // Menggunakan endpoint baru yang lebih sesuai untuk publik
             const response = await fetch(`${API_URL}/public/sales/${orderId}`);
-            const orderData = await response.json();
-            if (!response.ok) throw new Error(orderData.error || 'Gagal memuat detail pesanan.');
+            const orderDetails = await response.json();
 
-            checkoutFailEl.classList.add('hidden');
-            checkoutSuccessEl.classList.remove('hidden');
+            if (!response.ok) {
+                throw new Error(orderDetails.error || 'Gagal memuat detail pesanan.');
+            }
 
-            // Isi detail pesanan
-            orderIdEl.textContent = orderData.orderId;
-            orderDateEl.textContent = new Date(orderData.timestamp).toLocaleString('id-ID', { dateStyle: 'long', timeStyle: 'short' });
-            orderMemberNameEl.textContent = orderData.user.name;
-            orderCoopNumberEl.textContent = orderData.user.coopNumber;
+            // Validasi data yang diterima
+            if (!orderDetails.orderId || !orderDetails.user || !orderDetails.items) {
+                throw new Error('Data pesanan tidak lengkap.');
+            }
 
-            // Isi rincian barang
-            orderItemsTableEl.innerHTML = '';
-            orderData.items.forEach(item => {
-                const row = document.createElement('tr');
-                const itemSubtotal = item.price * item.quantity;
-                row.innerHTML = `
-                    <td class="py-2 text-left">${item.name}</td>
-                    <td class="py-2 text-center">${item.quantity}</td>
-                    <td class="py-2 text-right">${formatCurrency(itemSubtotal)}</td>
+            // Tampilkan data ke elemen HTML
+            document.getElementById('order-id').textContent = orderDetails.orderId;
+            document.getElementById('order-date').textContent = formatDate(orderDetails.timestamp);
+            document.getElementById('order-member-name').textContent = orderDetails.user.name;
+            document.getElementById('order-coop-number').textContent = orderDetails.user.coopNumber;
+            document.getElementById('order-total').textContent = formatCurrency(orderDetails.total);
+
+            const itemsTableBody = document.getElementById('order-items-table');
+            itemsTableBody.innerHTML = '';
+            orderDetails.items.forEach(item => {
+                const row = `
+                    <tr>
+                        <td class="py-2 text-left">${item.name}</td>
+                        <td class="py-2 text-center">${item.quantity}</td>
+                        <td class="py-2 text-right">${formatCurrency(item.price * item.quantity)}</td>
+                    </tr>
                 `;
-                orderItemsTableEl.appendChild(row);
+                itemsTableBody.innerHTML += row;
             });
 
-            // Isi total
-            orderTotalEl.textContent = formatCurrency(orderData.total);
-
-            // Buat QR Code dari seluruh objek data pesanan
+            // Generate QR Code
+            const qrcodeContainer = document.getElementById('qrcode-container');
             qrcodeContainer.innerHTML = ''; // Hapus QR code sebelumnya
             new QRCode(qrcodeContainer, {
-                text: JSON.stringify(orderData),
-                width: 200,
-                height: 200,
-                colorDark: "#000000",
+                text: JSON.stringify({ orderId: orderDetails.orderId }), // Hanya sertakan orderId di QR
+                width: 180,
+                height: 180,
+                colorDark: "#7f1d1d", // Warna merah KOPKAKA
                 colorLight: "#ffffff",
                 correctLevel: QRCode.CorrectLevel.H
             });
 
+            successContainer.classList.remove('hidden');
+            failContainer.classList.add('hidden');
+
+            // Hapus orderId dari session storage setelah berhasil ditampilkan
+            // agar halaman tidak bisa di-refresh dengan data yang sama.
+            sessionStorage.removeItem('checkoutOrderId');
+
         } catch (error) {
-            console.error('Error loading order data:', error);
-            checkoutFailEl.querySelector('p').textContent = error.message;
-            checkoutFailEl.classList.remove('hidden');
-            checkoutSuccessEl.classList.add('hidden');
+            console.error('Error loading order details:', error);
+            successContainer.classList.add('hidden');
+            failContainer.classList.remove('hidden');
+            failContainer.querySelector('p').textContent = error.message;
         }
     };
 
-    // Event Listeners
     if (printBtn) {
         printBtn.addEventListener('click', () => {
             window.print();
         });
     }
 
-    if (finishBtn) {
-        finishBtn.addEventListener('click', () => {
-            sessionStorage.removeItem('checkoutOrderId');
-        });
-    }
-
-    // Initial load
-    loadOrderData();
+    loadOrderDetails();
 });
