@@ -1,5 +1,21 @@
 const pool = require('../../db');
 
+// Helper function to calculate monthly installment for a flat-principal loan
+const calculateInstallment = (principal, tenor, annualInterestRate) => {
+    if (tenor <= 0) return 0;
+
+    // FIX: Annual interest rate must be divided by 12 to get the monthly rate.
+    const monthlyInterestRate = (parseFloat(annualInterestRate) / 100) / 12;
+    const principalComponent = parseFloat(principal) / tenor;
+
+    // For a flat principal loan, the first month's interest is the highest,
+    // and it's often used as the representative "Angsuran/Bln" value.
+    // Interest is calculated on the full principal for the first month.
+    const interestComponent = parseFloat(principal) * monthlyInterestRate;
+
+    return principalComponent + interestComponent;
+};
+
 // GET semua tenor pinjaman
 const getLoanTerms = async (req, res) => {
     try {
@@ -11,7 +27,16 @@ const getLoanTerms = async (req, res) => {
             JOIN loan_types l_types ON lt.loan_type_id = l_types.id
             ORDER BY l_types.name, lt.tenor_months
         `;
-        const result = await pool.query(query);
+        const result = await pool.query(query); // This is for the settings page, no calculation needed here.
+        res.json(result.rows);
+    } catch (err) {
+        console.error('Error fetching loan terms:', err.message);
+        res.status(500).json({ error: 'Gagal mengambil data tenor pinjaman.' });
+    }
+};
+
+const getLoanTermsForPublic = async (req, res) => {
+    try {
         res.json(result.rows);
     } catch (err) {
         console.error('Error fetching loan terms:', err.message);
