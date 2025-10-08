@@ -2588,12 +2588,16 @@ const getSalesReport = async (req, res) => {
 const createSale = async (req, res) => {
     // Jika request datang dari anggota (tanpa token admin), req.user akan undefined.
     // Jika dari admin, kita gunakan ID admin. Jika dari anggota, kita gunakan memberId dari body.
-    const { items, paymentMethod, memberId } = req.body;
+    const { items, paymentMethod, memberId, shopType } = req.body;
     const createdByUserId = req.user ? req.user.id : memberId;
     const status = req.user ? 'Selesai' : 'Menunggu Pengambilan'; // Jika dibuat oleh admin/kasir, langsung Selesai.
 
     if (!Array.isArray(items) || items.length === 0) {
         return res.status(400).json({ error: 'Keranjang belanja kosong.' });
+    }
+
+    if (!shopType) {
+        return res.status(400).json({ error: 'Tipe toko (shopType) diperlukan.' });
     }
 
     const client = await pool.connect();
@@ -2611,7 +2615,6 @@ const createSale = async (req, res) => {
         let totalSaleAmount = 0;
         let totalCostOfGoodsSold = 0;
         const processedItems = [];
-        let shopType = null;
 
         for (const item of items) {
             // 1. Get product details and lock the row for update
@@ -2619,9 +2622,6 @@ const createSale = async (req, res) => {
             if (productRes.rows.length === 0) throw new Error(`Produk dengan ID ${item.productId} tidak ditemukan.`);
             
             const product = productRes.rows[0];
-            if (!shopType) {
-                shopType = product.shop_type; // Get shop_type from the first product
-            }
             const requestedQty = parseInt(item.quantity, 10);
 
             // 2. Check stock
