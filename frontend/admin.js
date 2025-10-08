@@ -28,21 +28,6 @@ document.addEventListener('DOMContentLoaded', () => {
     let directCashierProducts = [];
     let directCart = [];
 
-    // --- GLOBAL LOADER ---
-    let activeApiCount = 0;
-    const showLoader = () => {
-        const loader = document.getElementById('global-loader');
-        if (loader) loader.classList.remove('hidden');
-    };
-    const hideLoader = () => {
-        const loader = document.getElementById('global-loader');
-        if (loader) loader.classList.add('hidden');
-    };
-    const updateLoaderVisibility = () => {
-        if (activeApiCount > 0) showLoader();
-        else hideLoader();
-    };
-
     const applyUIPermissions = () => {
         const hasPerm = (key) => userPermissions.has(key);
 
@@ -117,17 +102,12 @@ document.addEventListener('DOMContentLoaded', () => {
             headers['Content-Type'] = 'application/json';
         }
 
-        activeApiCount++;
-        updateLoaderVisibility();
-
         try {
             const response = await fetch(endpoint, { ...options, headers });
 
             // Handle critical auth errors first (session expired, etc.)
             if (response.status === 401 || response.status === 403) { // Unauthorized or Forbidden
                 alert('Sesi Anda telah berakhir atau tidak valid. Silakan masuk kembali.');
-                activeApiCount = 0; // Reset count before redirecting
-                updateLoaderVisibility();
                 localStorage.clear();
                 window.location.href = 'login.html';
                 throw new Error('Unauthorized'); // Stop further execution
@@ -135,7 +115,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
             // Handle 204 No Content response for successful DELETE requests
             if (response.status === 204) {
-                return; // Return nothing, indicating success without a body
+                return true; // Return a predictable value to indicate success
             }
 
             // Automatically parse JSON and handle other errors generically.
@@ -159,9 +139,6 @@ document.addEventListener('DOMContentLoaded', () => {
             }
             // If it's not a network error or retries are exhausted, throw the error
             throw error;
-        } finally {
-            activeApiCount--;
-            updateLoaderVisibility();
         }
     };
 
@@ -2494,6 +2471,7 @@ const renderCashFlowChart = (data) => {
         const paymentAmountContainer = document.getElementById('direct-cashier-payment-amount-container');
         const paymentMethodsContainer = document.getElementById('direct-cashier-payment-methods-container');
         const confirmPaymentBtn = document.getElementById('confirm-direct-cashier-payment-btn');
+        const changeAmountEl = document.getElementById('direct-cashier-change-amount');
 
         // Set orderId di scope yang lebih tinggi jika perlu, atau di window
         window.orderIdToComplete = orderData.orderId;
