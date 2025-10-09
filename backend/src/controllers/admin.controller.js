@@ -4,6 +4,9 @@ const path = require('path');
 const { createNotification } = require('../utils/notification.util');
 const { getApprovalCounts } = require('./approval.controller');
 const dashboardService = require('../services/dashboard.service');
+const accountController = require('./account.controller');
+const companyController = require('./company.controller');
+const accountTypeController = require('./accounttype.controller');
 
 const getDashboardStats = async (req, res) => {
     try {
@@ -1463,26 +1466,6 @@ const updateCompanyInfo = async (req, res) => {
         client.release();
     }
 };
-
-const getAccounts = async (req, res) => {
-    try {
-        const query = `
-            SELECT 
-                c.id, c.account_number, c.account_name, c.account_type, c.parent_id,
-                (p.id IS NOT NULL) as is_parent
-            FROM chart_of_accounts c
-            LEFT JOIN chart_of_accounts p ON c.id = p.parent_id
-            GROUP BY c.id, p.id
-            ORDER BY c.account_number
-        `;
-        const result = await pool.query(query);
-        res.json(result.rows);
-    } catch (err) {
-        console.error('Error fetching accounts:', err.message);
-        res.status(500).json({ error: 'Gagal mengambil data akun.' });
-    }
-};
-
 
 const getSavingTypes = async (req, res) => {
     try {
@@ -4330,9 +4313,9 @@ module.exports = {
     updateLoanStatus,
     recordLoanPayment,
     getLoanDetailsForAdmin,
-    getCompanyInfo,
-    updateCompanyInfo,
-    getAccounts,
+    getCompanyInfo: companyController.getCompanyInfo,
+    updateCompanyInfo: companyController.updateCompanyInfo,
+    getAccounts: accountController.getAccounts,
     getLoanById,
     updateLoan,
     deleteLoan,
@@ -4422,6 +4405,11 @@ module.exports = {
     getPaymentMethods,
     getLoanTypeIdByName,
     deletePaymentMethod,
-    cancelSale,
-    completeOrder
+    cancelSale, // Tetap di sini karena ini adalah aksi admin
+    completeOrder, // Tetap di sini karena ini adalah aksi admin
+    // Account Type CRUD
+    getAccountTypes: accountTypeController.getAccountTypes,
+    createAccountType: accountTypeController.createAccountType,
+    updateAccountType: accountTypeController.updateAccountType,
+    deleteAccountType: accountTypeController.deleteAccountType
 };
