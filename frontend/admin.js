@@ -2606,6 +2606,7 @@ const renderCashFlowChart = (data) => {
         const totalEl = document.getElementById('direct-cashier-total');
         const completeBtn = document.getElementById('direct-cashier-complete-btn');
         const searchInput = document.getElementById('direct-cashier-search');
+        const ledgerDetailsContainer = document.getElementById('direct-cashier-ledger-details'); // FIX: Define here
 
         if (!productGrid) return; // Only run if the UI exists
 
@@ -2747,7 +2748,7 @@ const renderCashFlowChart = (data) => {
                 paymentAmountInput.value = ''; // Reset input
                 changeContainer.classList.add('hidden'); // Sembunyikan kembalian
                 paymentErrorEl.classList.add('hidden');
-                ledgerDetailsContainer.classList.add('hidden'); // Sembunyikan detail ledger
+                ledgerDetailsContainer.classList.add('hidden'); // FIX: Now accessible
                 paymentAmountContainer.classList.remove('hidden'); // Tampilkan lagi input uang bayar (default)
 
                 // --- LOGIKA BARU: Ambil dan render metode pembayaran ---
@@ -2768,7 +2769,7 @@ const renderCashFlowChart = (data) => {
                         `;
                         paymentMethodsContainer.insertAdjacentHTML('beforeend', radioHtml);
                         
-                        const ledgerDetailsContainer = document.getElementById('direct-cashier-ledger-details');
+                        // const ledgerDetailsContainer is now defined at a higher scope
                         document.getElementById(radioId).addEventListener('change', () => {
                             paymentAmountContainer.classList.toggle('hidden', !isCash);
                             ledgerDetailsContainer.classList.toggle('hidden', !isLedger); // Show/hide member input
