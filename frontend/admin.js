@@ -6552,7 +6552,7 @@ const renderCashFlowChart = (data) => {
             const loadFunction = { 
                 'manage-employers': loadEmployers, 'manage-positions': loadPositions, 'manage-saving-types': loadSavingTypes, 
                 'manage-loan-types': loadLoanTypes, 'manage-loan-terms': loadLoanTerms, 
-                'manage-accounts': () => { document.querySelector('.coa-tab-btn[data-target="coa-list-tab"]').click(); },
+                'manage-accounts': () => { loadAccounts(); loadAccountTypes(); },
                 'manage-suppliers': () => { loadSuppliers(); loadMasterProducts(); masterProductOptionsCache = null; },
                 'manage-cooperative-profile': loadCooperativeProfile, 'manage-saving-account-mapping': loadSavingAccountMapping, 
                 'manage-loan-account-mapping': loadLoanAccountMapping, 
