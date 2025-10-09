@@ -3,10 +3,10 @@ const pool = require('../../db');
 // Get company info
 const getCompanyInfo = async (req, res) => {
     try {
-        const result = await pool.query('SELECT name, address, phone FROM company_info WHERE id = 1');
+        const result = await pool.query('SELECT name, address, phone, logo_url FROM company_info WHERE id = 1');
         if (result.rows.length === 0) {
             // Provide default if not found, to prevent errors on a fresh DB
-            return res.json({ name: 'Koperasi Anda', address: '', phone: '' });
+            return res.json({ name: 'Koperasi Anda', address: '', phone: '', logo_url: null });
         }
         res.json(result.rows[0]);
     } catch (error) {
