@@ -7235,8 +7235,8 @@ const renderCashFlowChart = (data) => {
                 window.validatedMemberId = validationData.user.id;
 
                 // 2. Dapatkan ID tipe pinjaman untuk "Potong Gaji"
-                // Asumsi nama tipe pinjaman di DB adalah 'Employee Ledger' atau mengandung 'Gaji'
-                const loanTypeRes = await apiFetch(`${ADMIN_API_URL}/loantype-id-by-name?name=Employee Ledger`);
+                // FIX: Cari tipe pinjaman dengan nama yang sama persis dengan metode pembayaran yang dipilih.
+                const loanTypeRes = await apiFetch(`${ADMIN_API_URL}/loantype-id-by-name?name=Potong Gaji`);
                 const employeeLoanTypeId = loanTypeRes.id;
 
                 // 3. Dapatkan semua tenor dan filter yang sesuai
