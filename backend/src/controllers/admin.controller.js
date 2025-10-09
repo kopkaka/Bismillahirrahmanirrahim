@@ -3297,7 +3297,7 @@ const createCashSale = async (req, res) => {
         const orderId = `CASH-${Date.now()}`;
 
         const saleRes = await client.query(
-            'INSERT INTO sales (order_id, total_amount, payment_method, created_by_user_id, member_id, sale_date, status, shop_type) VALUES ($1, $2, $3, $4, $5, NOW(), \'Selesai\', $6) RETURNING id',
+            'INSERT INTO sales (order_id, total_amount, payment_method, created_by_user_id, member_id, sale_date, status, shop_type) VALUES ($1, $2, $3, $4, $5, NOW(), \'Selesai\', $6) RETURNING id, order_id, sale_date',
             [orderId, totalSaleAmount, paymentMethod, createdByUserId, memberId || null, shopType]
         );
         const saleId = saleRes.rows[0].id;
@@ -3355,8 +3355,22 @@ const createCashSale = async (req, res) => {
         }
 
         await client.query('COMMIT');
-        res.status(201).json({ message: 'Penjualan tunai berhasil dicatat.', saleId: saleId });
+        
+        // Siapkan data untuk struk
+        const receiptData = {
+            saleId: saleId,
+            orderId: saleRes.rows[0].order_id,
+            saleDate: saleRes.rows[0].sale_date,
+            totalAmount: totalSaleAmount,
+            paymentMethod: paymentMethod,
+            items: processedItems.map(p => ({ name: p.name, quantity: p.quantity, price: p.pricePerItem, subtotal: p.quantity * p.pricePerItem })),
+            cashierName: req.user.name
+        };
 
+        res.status(201).json({ 
+            message: 'Penjualan tunai berhasil dicatat.', 
+            receiptData: receiptData 
+        });
     } catch (err) {
         await client.query('ROLLBACK');
         console.error('Error creating cash sale:', err.message);
