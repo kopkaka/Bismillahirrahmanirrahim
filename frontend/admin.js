@@ -6549,6 +6549,8 @@ const renderCashFlowChart = (data) => {
 
         // Load data for settings pages
         if (targetId.startsWith('manage-')) {
+            // Hapus akhiran '-content' jika ada, untuk mencocokkan kunci di objek loadFunction
+            const cleanTargetId = targetId.replace('-content', '');
             const loadFunction = { 
                 'manage-employers': loadEmployers, 
                 'manage-positions': loadPositions, 
@@ -6565,7 +6567,7 @@ const renderCashFlowChart = (data) => {
                 'manage-announcements': loadAnnouncements,
                 'manage-partners': setupPartnerManagement, 
                 'manage-products': () => { document.querySelector('.product-tab-btn[data-target="products-sembako-tab"]').click(); } 
-            }[targetId];
+            }[cleanTargetId];
             if (loadFunction) loadFunction();
         }
 
