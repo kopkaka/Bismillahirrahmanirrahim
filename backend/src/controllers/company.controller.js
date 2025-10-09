@@ -28,7 +28,8 @@ const updateCompanyInfo = async (req, res) => {
         const oldLogoPath = oldInfo.rows[0]?.logo_url;
 
         // Tentukan path logo baru, atau gunakan yang lama jika tidak ada file baru yang diunggah
-        const logoPath = logoFile ? logoFile.path.replace(/\\/g, '/') : oldLogoPath;
+        // FIX: Pastikan logoPath tidak undefined jika oldLogoPath juga tidak ada
+        const logoPath = logoFile ? logoFile.path.replace(/\\/g, '/') : (oldLogoPath || null);
 
         // Use UPSERT (INSERT ... ON CONFLICT) to handle both creation (if table is empty) and update.
         const result = await pool.query(
