@@ -6554,10 +6554,10 @@ const renderCashFlowChart = (data) => {
                 'manage-loan-types': loadLoanTypes, 'manage-loan-terms': loadLoanTerms, 
                 'manage-accounts': () => { loadAccounts(); loadAccountTypes(); },
                 'manage-suppliers': () => { loadSuppliers(); loadMasterProducts(); masterProductOptionsCache = null; },
-                'manage-cooperative-profile': loadCooperativeProfile, 'manage-saving-account-mapping': loadSavingAccountMapping, 
+                'manage-cooperative-profile-content': loadCooperativeProfile, 'manage-saving-account-mapping': loadSavingAccountMapping, 
                 'manage-loan-account-mapping': loadLoanAccountMapping, 
                 'manage-payment-methods-main': () => { document.querySelector('.payment-method-tab-btn[data-target="payment-methods-list-tab"]').click(); },
-                'manage-shu-rules': loadShuRules, 
+                'manage-shu-rules-content': loadShuRules, 
                 'manage-announcements': loadAnnouncements, 
                 'manage-partners': setupPartnerManagement, 
                 'manage-products': () => { document.querySelector('.product-tab-btn[data-target="products-sembako-tab"]').click(); } 
