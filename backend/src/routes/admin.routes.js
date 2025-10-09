@@ -42,7 +42,10 @@ router.get('/employers', protect, authorize(['viewSettings']), adminController.g
 router.get('/positions', protect, authorize(['viewSettings']), adminController.getPositions);
 router.get('/savingtypes', protect, authorize(['viewSettings']), adminController.getSavingTypes);
 router.get('/suppliers', protect, authorize(['viewSettings']), adminController.getSuppliers);
-router.get('/accounttypes', protect, authorize(['viewSettings']), accounttypeController.getAccountTypes); // Using specific controller
+router.get('/accounttypes', protect, authorize(['viewSettings']), adminController.getAccountTypes);
+router.post('/accounttypes', protect, authorize(['viewSettings']), adminController.createAccountType);
+router.put('/accounttypes/:id', protect, authorize(['viewSettings']), adminController.updateAccountType);
+router.delete('/accounttypes/:id', protect, authorize(['viewSettings', 'deleteData']), adminController.deleteAccountType);
 
 // Approvals
 router.get('/pending-loans', protect, authorize(['viewApprovals']), adminController.getPendingLoans);
@@ -145,8 +148,8 @@ router.delete('/logistics-by-ref/:ref', protect, authorize(logisticsPermission),
 
 // Company Profile Management
 // Endpoint ini dibuat lebih permisif agar semua role staf (admin, akunting, manager) bisa memuat info header.
-// Otorisasi spesifik (viewSettings) hanya diperlukan untuk mengubah data.
-router.get('/company-info', protect, adminController.getCompanyInfo);
+// Otorisasi spesifik (viewSettings) hanya diperlukan untuk mengubah data (PUT).
+router.get('/company-info', protect, adminController.getCompanyInfo); // Menggunakan adminController yang sudah di-refactor
 router.put('/company-info', protect, authorize(['viewSettings']), upload.single('logo'), adminController.updateCompanyInfo);
 
 // Testimonial Management
