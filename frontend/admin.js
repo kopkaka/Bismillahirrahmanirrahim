@@ -2637,16 +2637,15 @@ const renderCashFlowChart = (data) => {
                 }
 
                 card.innerHTML = `
-                    <div class="relative h-32 w-full overflow-hidden rounded-t-lg">
+                    <div class="relative h-24 w-full overflow-hidden rounded-t-lg">
                         <img src="${imageUrl}" alt="${p.name}" class="w-full h-full object-cover">
                         ${isOutOfStock ? '<div class="absolute top-1 right-1 bg-red-600 text-white text-xs font-bold px-2 py-0.5 rounded-full">Stok Habis</div>' : ''}
                     </div>
-                    <div class="flex flex-col flex-grow p-1">
-                        <p class="text-sm font-semibold flex-grow text-gray-800">${p.name}</p>
-                        <p class="text-xs text-gray-500">Stok: ${p.stock}</p>
-                        <div class="flex justify-between items-center mt-2">
-                            <p class="text-sm font-bold text-red-600">${formatCurrency(p.price)}</p>
-                            ${!isOutOfStock ? '<button class="add-to-direct-cart-btn bg-green-500 text-white rounded-full p-1.5 hover:bg-green-600"><svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" viewBox="0 0 20 20" fill="currentColor"><path d="M3 1a1 1 0 000 2h1.22l.305 1.222a.997.997 0 00.922.778h9.246a1 1 0 00.97-.743l1.455-5.433A1 1 0 0016.22 0H4.342a1 1 0 00-.97.743L3.07 2.175A.997.997 0 002.148 3H1a1 1 0 100 2h.382l1.438 5.752A3 3 0 007.14 13h5.72a3 3 0 002.92-2.248L17.62 5H7.14a1 1 0 00-.922-.778L5.915 3H4.78a1 1 0 00-.97.743L3.38 4.917l-.305-1.222H1a1 1 0 00-1-1H.5a1 1 0 000 2h.538l.305 1.222a2.99 2.99 0 002.764 2.356h9.246a3 3 0 002.92-2.248L18.38 3H19a1 1 0 100-2h-2.78a3 3 0 00-2.92-2.248L12.86 0H4.342A3 3 0 001.42 2.248L.382 6.752A1 1 0 001.304 8H1a1 1 0 100-2h.382l.305-1.222A1 1 0 002.609 4H3V1zM7 15a2 2 0 100 4 2 2 0 000-4zm8 0a2 2 0 100 4 2 2 0 000-4z" /></svg></button>' : ''}
+                    <div class="flex flex-col flex-grow p-2">
+                        <p class="text-xs font-semibold flex-grow text-gray-800 leading-tight">${p.name}</p>
+                        <div class="flex justify-between items-center mt-1">
+                            <p class="text-xs font-bold text-red-600">${formatCurrency(p.price)}</p>
+                            ${!isOutOfStock ? `<button class="add-to-direct-cart-btn bg-green-500 text-white rounded-full p-1 hover:bg-green-600"><svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" viewBox="0 0 20 20" fill="currentColor"><path d="M3 1a1 1 0 000 2h1.22l.305 1.222a.997.997 0 00.922.778h9.246a1 1 0 00.97-.743l1.455-5.433A1 1 0 0016.22 0H4.342a1 1 0 00-.97.743L3.07 2.175A.997.997 0 002.148 3H1a1 1 0 100 2h.382l1.438 5.752A3 3 0 007.14 13h5.72a3 3 0 002.92-2.248L17.62 5H7.14a1 1 0 00-.922-.778L5.915 3H4.78a1 1 0 00-.97.743L3.38 4.917l-.305-1.222H1a1 1 0 00-1-1H.5a1 1 0 000 2h.538l.305 1.222a2.99 2.99 0 002.764 2.356h9.246a3 3 0 002.92-2.248L18.38 3H19a1 1 0 100-2h-2.78a3 3 0 00-2.92-2.248L12.86 0H4.342A3 3 0 001.42 2.248L.382 6.752A1 1 0 001.304 8H1a1 1 0 100-2h.382l.305-1.222A1 1 0 002.609 4H3V1zM7 15a2 2 0 100 4 2 2 0 000-4zm8 0a2 2 0 100 4 2 2 0 000-4z" /></svg></button>` : `<span class="text-xs text-gray-400">Stok: ${p.stock}</span>`}
                         </div>
                     </div>
                 `;
@@ -2654,7 +2653,6 @@ const renderCashFlowChart = (data) => {
                 productGrid.appendChild(card);
             });
         };
-
         const addToCart = (productId, quantity = 1) => {
             const selectedProduct = directCashierProducts.find(p => p.id.toString() === productId);
             if (!selectedProduct) return;
