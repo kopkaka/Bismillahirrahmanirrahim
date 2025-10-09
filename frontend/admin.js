@@ -2283,6 +2283,39 @@ const renderCashFlowChart = (data) => {
         });
     });
 
+    const renderDirectCart = () => {
+        const cartBody = document.getElementById('direct-cashier-items-body');
+        const totalEl = document.getElementById('direct-cashier-total');
+        const completeBtn = document.getElementById('direct-cashier-complete-btn');
+
+        if (!cartBody || !totalEl || !completeBtn) return;
+
+        cartBody.innerHTML = '';
+        if (directCart.length === 0) {
+            cartBody.innerHTML = `<div class="text-center py-10 text-gray-500"><svg class="mx-auto h-12 w-12 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z" /></svg><p class="mt-2 text-sm">Keranjang kosong</p></div>`;
+            completeBtn.parentElement.classList.add('hidden');
+            totalEl.textContent = formatCurrency(0);
+            return;
+        }
+
+        let total = 0;
+        directCart.forEach((item, index) => {
+            const subtotal = parseFloat(item.price) * item.quantity;
+            total += subtotal;
+            const itemEl = document.createElement('div');
+            itemEl.className = 'flex items-center space-x-3 text-sm p-2 border-b';
+            itemEl.innerHTML = `
+                <div class="flex-grow">
+                    <p class="font-semibold">${item.name}</p>
+                    <p class="text-xs text-gray-500">${formatCurrency(item.price)}</p>
+                </div>
+                <div class="flex items-center space-x-2"><button class="cart-qty-btn" data-index="${index}" data-action="decrease">-</button><span>${item.quantity}</span><button class="cart-qty-btn" data-index="${index}" data-action="increase">+</button></div><p class="font-semibold w-20 text-right">${formatCurrency(subtotal)}</p><button class="remove-direct-cart-item-btn text-red-500 hover:text-red-700" data-index="${index}">&times;</button>
+            `;
+            cartBody.appendChild(itemEl);
+        });
+        totalEl.textContent = formatCurrency(total);
+        completeBtn.parentElement.classList.remove('hidden');
+    };
 
     // --- CASHIER FUNCTIONALITY ---
     const cashierVerifyBtn = document.getElementById('cashier-verify-btn');
@@ -2620,40 +2653,6 @@ const renderCashFlowChart = (data) => {
                 
                 productGrid.appendChild(card);
             });
-        };
-
-        const renderDirectCart = () => {
-            cartBody.innerHTML = '';
-            if (directCart.length === 0) {
-                cartBody.innerHTML = `<div class="text-center py-10 text-gray-500"><svg class="mx-auto h-12 w-12 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z" /></svg><p class="mt-2 text-sm">Keranjang kosong</p></div>`;
-                completeBtn.disabled = true;
-                totalEl.textContent = formatCurrency(0);
-                return;
-            }
-
-            let total = 0;
-            directCart.forEach((item, index) => {
-                const subtotal = parseFloat(item.price) * item.quantity;
-                total += subtotal;
-                const itemEl = document.createElement('div');
-                itemEl.className = 'flex items-center space-x-3 text-sm p-2 border-b';
-                itemEl.innerHTML = `
-                    <div class="flex-grow">
-                        <p class="font-semibold">${item.name}</p>
-                        <p class="text-xs text-gray-500">${formatCurrency(item.price)}</p>
-                    </div>
-                    <div class="flex items-center space-x-2">
-                        <button class="cart-qty-btn" data-index="${index}" data-action="decrease">-</button>
-                        <span>${item.quantity}</span>
-                        <button class="cart-qty-btn" data-index="${index}" data-action="increase">+</button>
-                    </div>
-                    <p class="font-semibold w-20 text-right">${formatCurrency(subtotal)}</p>
-                    <button class="remove-direct-cart-item-btn text-red-500 hover:text-red-700" data-index="${index}">&times;</button>
-                `;
-                cartBody.appendChild(itemEl);
-            });
-            totalEl.textContent = formatCurrency(total);
-            completeBtn.parentElement.classList.remove('hidden'); // Tampilkan container tombol
         };
 
         const addToCart = (productId, quantity = 1) => {
