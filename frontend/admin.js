@@ -6550,11 +6550,15 @@ const renderCashFlowChart = (data) => {
         // Load data for settings pages
         if (targetId.startsWith('manage-')) {
             const loadFunction = { 
-                'manage-employers': loadEmployers, 'manage-positions': loadPositions, 'manage-saving-types': loadSavingTypes, 
-                'manage-loan-types': loadLoanTypes, 'manage-loan-terms': loadLoanTerms, 
+                'manage-employers': loadEmployers, 
+                'manage-positions': loadPositions, 
+                'manage-saving-types': loadSavingTypes, 
+                'manage-loan-types': loadLoanTypes, 
+                'manage-loan-terms': loadLoanTerms, 
                 'manage-accounts': () => { loadAccounts(); loadAccountTypes(); },
                 'manage-suppliers': () => { loadSuppliers(); loadMasterProducts(); masterProductOptionsCache = null; },
-                'manage-cooperative-profile': loadCooperativeProfile, 'manage-saving-account-mapping': loadSavingAccountMapping, 
+                'manage-cooperative-profile': loadCooperativeProfile, 
+                'manage-saving-account-mapping': loadSavingAccountMapping, 
                 'manage-loan-account-mapping': loadLoanAccountMapping, 
                 'manage-payment-methods-main': () => { document.querySelector('.payment-method-tab-btn[data-target="payment-methods-list-tab"]').click(); },
                 'manage-shu-rules': loadShuRules, 
