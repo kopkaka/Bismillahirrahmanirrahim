@@ -3313,13 +3313,13 @@ const createCashSale = async (req, res) => {
         let journalId = null; // Initialize as null
         if (isLedgerPayment) {
             // --- LOGIKA BARU: Buat Pinjaman Otomatis ---
-            if (!loanTermId) throw new Error('Tenor pinjaman wajib dipilih untuk pembayaran potong gaji.');
+            if (!loanTermId) throw new Error('Tenor pinjaman wajib dipilih untuk pembayaran Potong Gaji.');
 
             const termRes = await client.query('SELECT loan_type_id FROM loan_terms WHERE id = $1', [loanTermId]);
             if (termRes.rows.length === 0) throw new Error('Tenor pinjaman tidak valid.');
             const loanTypeId = termRes.rows[0].loan_type_id;
 
-            const loanInsertQuery = `
+            const loanInsertQuery = ` 
                 INSERT INTO loans (member_id, loan_type_id, loan_term_id, amount, date, status, remaining_principal)
                 VALUES ($1, $2, $3, $4, NOW(), 'Approved', $4) RETURNING id
             `;
@@ -3330,11 +3330,11 @@ const createCashSale = async (req, res) => {
             await client.query('UPDATE sales SET loan_id = $1 WHERE id = $2', [newLoanId, saleId]);
 
         } else {
-            // --- LOGIKA LAMA: Buat Jurnal Penjualan Tunai/Transfer ---
+            // --- LOGIKA UNTUK PEMBAYARAN NON-GAJI (Cash, Transfer, dll) ---
             const paymentMethodRes = await client.query('SELECT account_id FROM payment_methods WHERE name = $1', [paymentMethod]);
             if (paymentMethodRes.rows.length === 0 || !paymentMethodRes.rows[0].account_id) {
                 throw new Error(`Metode pembayaran "${paymentMethod}" tidak valid atau belum terhubung ke akun COA.`);
-            }
+            } 
             const debitAccountId = paymentMethodRes.rows[0].account_id;
 
             const inventoryAccountId = 8; const salesRevenueAccountId = 12; const cogsAccountId = 13;
