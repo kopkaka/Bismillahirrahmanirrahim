@@ -4408,6 +4408,7 @@ module.exports = {
     deletePaymentMethod,
     cancelSale, // Tetap di sini karena ini adalah aksi admin
     completeOrder, // Tetap di sini karena ini adalah aksi admin
+    deleteSale,
     // Account Type CRUD
     getAccountTypes: accountTypeController.getAccountTypes,
     createAccountType: accountTypeController.createAccountType,
