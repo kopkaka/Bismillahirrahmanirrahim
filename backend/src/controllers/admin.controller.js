@@ -1572,18 +1572,6 @@ const getSuppliers = async (req, res) => {
     }
 };
 
-const getAccounts = async (req, res) => {
-    try {
-        // This query is simple and doesn't need pagination for a dropdown.
-        // It's used across the admin panel, especially for settings.
-        const result = await pool.query('SELECT id, account_number, account_name FROM chart_of_accounts ORDER BY account_number ASC');
-        res.json(result.rows);
-    } catch (err) {
-        console.error('Error fetching accounts:', err.message);
-        res.status(500).json({ error: 'Gagal mengambil data akun.' });
-    }
-};
-
 // Testimonial Management
 const getTestimonials = async (req, res) => {
     try {
