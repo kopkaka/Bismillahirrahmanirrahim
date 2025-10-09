@@ -2315,6 +2315,9 @@ const renderCashFlowChart = (data) => {
         });
         totalEl.textContent = formatCurrency(total);
         completeBtn.parentElement.classList.remove('hidden');
+
+        // FIX: Enable the button if the cart is not empty.
+        completeBtn.disabled = directCart.length === 0;
     };
 
     // --- CASHIER FUNCTIONALITY ---
