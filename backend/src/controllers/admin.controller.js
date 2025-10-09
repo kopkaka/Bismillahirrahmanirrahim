@@ -1464,6 +1464,26 @@ const updateCompanyInfo = async (req, res) => {
     }
 };
 
+const getAccounts = async (req, res) => {
+    try {
+        const query = `
+            SELECT 
+                c.id, c.account_number, c.account_name, c.account_type, c.parent_id,
+                (p.id IS NOT NULL) as is_parent
+            FROM chart_of_accounts c
+            LEFT JOIN chart_of_accounts p ON c.id = p.parent_id
+            GROUP BY c.id, p.id
+            ORDER BY c.account_number
+        `;
+        const result = await pool.query(query);
+        res.json(result.rows);
+    } catch (err) {
+        console.error('Error fetching accounts:', err.message);
+        res.status(500).json({ error: 'Gagal mengambil data akun.' });
+    }
+};
+
+
 const getSavingTypes = async (req, res) => {
     try {
         // This query is simple and doesn't need pagination for a dropdown.
@@ -4312,6 +4332,7 @@ module.exports = {
     getLoanDetailsForAdmin,
     getCompanyInfo,
     updateCompanyInfo,
+    getAccounts,
     getLoanById,
     updateLoan,
     deleteLoan,
