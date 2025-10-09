@@ -2681,6 +2681,13 @@ const renderCashFlowChart = (data) => {
             renderDirectCart();
         };
 
+        // FIX: Cek apakah event listener sudah pernah ditambahkan.
+        // Jika sudah, jangan tambahkan lagi untuk mencegah duplikasi.
+        if (productGrid.dataset.listenerAttached === 'true') {
+            return; // Hentikan eksekusi fungsi jika listener sudah ada.
+        }
+        productGrid.dataset.listenerAttached = 'true'; // Tandai bahwa listener sudah ditambahkan.
+
         productGrid.addEventListener('click', (e) => {
             const button = e.target.closest('.add-to-direct-cart-btn');
             if (button) {
