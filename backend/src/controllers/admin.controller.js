@@ -4318,7 +4318,6 @@ module.exports = {
     getAccounts: accountController.getAccounts,
     getLoanById,
     updateLoan,
-    deleteLoan,
     createItem,
     updateItem,
     updateUser,
