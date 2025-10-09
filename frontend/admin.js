@@ -2911,8 +2911,8 @@ const renderCashFlowChart = (data) => {
                     };
                     if (isLedger) payload.memberId = validatedMemberId;
 
-                    await apiFetch(`${ADMIN_API_URL}/cash-sale`, { method: 'POST', body: JSON.stringify(payload) });
-                    alert('Penjualan berhasil dicatat.');
+                    const result = await apiFetch(`${ADMIN_API_URL}/cash-sale`, { method: 'POST', body: JSON.stringify(payload) });
+                    showReceiptModal(result.receiptData); // Tampilkan modal struk
                     directCart = [];
                     renderDirectCart();
                     paymentModal.classList.add('hidden');
@@ -2924,6 +2924,74 @@ const renderCashFlowChart = (data) => {
                 confirmPaymentBtn.textContent = 'Konfirmasi Pembayaran';
             }
         });
+    };
+
+    const showReceiptModal = async (receiptData) => {
+        const modal = document.getElementById('receipt-modal');
+        const contentEl = document.getElementById('receipt-content');
+        const printBtn = document.getElementById('print-receipt-btn');
+        if (!modal || !contentEl || !printBtn) return;
+
+        try {
+            const companyInfo = await apiFetch(`${ADMIN_API_URL}/company-info`);
+            const { saleId, orderId, saleDate, totalAmount, paymentMethod, items, cashierName } = receiptData;
+
+            let itemsHtml = '';
+            items.forEach(item => {
+                itemsHtml += `
+                    <div class="receipt-item">
+                        <span>${item.name}</span>
+                        <span>${item.quantity} x ${formatCurrency(item.price)}</span>
+                        <span>${formatCurrency(item.subtotal)}</span>
+                    </div>
+                `;
+            });
+
+            contentEl.innerHTML = `
+                <div class="text-center mb-4">
+                    <h3 class="text-lg font-bold">${companyInfo.name || 'Koperasi'}</h3>
+                    <p class="text-xs">${companyInfo.address || ''}</p>
+                    <p class="text-xs">${companyInfo.phone || ''}</p>
+                </div>
+                <div class="border-t border-b border-dashed my-2 py-2 text-xs">
+                    <div class="flex justify-between"><span>No. Struk:</span><span>${orderId}</span></div>
+                    <div class="flex justify-between"><span>Tanggal:</span><span>${new Date(saleDate).toLocaleString('id-ID')}</span></div>
+                    <div class="flex justify-between"><span>Kasir:</span><span>${cashierName}</span></div>
+                </div>
+                <div class="receipt-items-container">${itemsHtml}</div>
+                <div class="border-t border-dashed mt-2 pt-2">
+                    <div class="flex justify-between font-bold">
+                        <span>TOTAL</span>
+                        <span>${formatCurrency(totalAmount)}</span>
+                    </div>
+                    <div class="flex justify-between text-xs">
+                        <span>Metode Bayar</span>
+                        <span>${paymentMethod}</span>
+                    </div>
+                </div>
+                <div class="text-center text-xs mt-6">
+                    <p>Terima kasih telah berbelanja!</p>
+                    <p>Barang yang sudah dibeli tidak dapat dikembalikan.</p>
+                </div>
+            `;
+
+            printBtn.onclick = () => {
+                const printableArea = contentEl.innerHTML;
+                const printWindow = window.open('', '_blank');
+                printWindow.document.write('<html><head><title>Struk</title>');
+                // Tambahkan CSS minimalis untuk cetak
+                printWindow.document.write('<style>body{font-family:monospace;font-size:10pt;}.receipt-item{display:grid;grid-template-columns:2fr 1fr 1fr;gap:4px;}.receipt-item span:nth-child(2){text-align:right;}.receipt-item span:nth-child(3){text-align:right;}</style>');
+                printWindow.document.write('</head><body>');
+                printWindow.document.write(printableArea);
+                printWindow.document.write('</body></html>');
+                printWindow.document.close();
+                printWindow.print();
+            };
+
+            modal.classList.remove('hidden');
+        } catch (error) {
+            alert(`Gagal membuat struk: ${error.message}`);
+        }
     };
 
     // --- FUNGSI UNTUK PENGATURAN (SETTINGS) ---
