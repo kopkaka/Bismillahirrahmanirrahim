@@ -2497,6 +2497,112 @@ const renderCashFlowChart = (data) => {
         }
     };
 
+    // --- REFACTORED: FUNGSI PEMBAYARAN TERPUSAT ---
+    const showPaymentModal = async (totalAmount, existingOrderId = null) => {
+        const modal = document.getElementById('direct-cashier-payment-modal');
+        const totalEl = document.getElementById('direct-cashier-payment-total');
+        const amountInput = document.getElementById('direct-cashier-payment-amount');
+        const changeContainer = document.getElementById('direct-cashier-change-container');
+        const errorEl = document.getElementById('direct-cashier-payment-error');
+        const ledgerDetails = document.getElementById('direct-cashier-ledger-details');
+        const amountContainer = document.getElementById('direct-cashier-payment-amount-container');
+        const methodsContainer = document.getElementById('direct-cashier-payment-methods-container');
+        const coopInput = document.getElementById('direct-cashier-coop-number');
+        const memberNameDisplay = document.getElementById('direct-cashier-member-name-display');
+        const tenorDetails = document.getElementById('direct-cashier-tenor-details');
+
+        // 1. Reset UI dan set data
+        orderIdToComplete = existingOrderId; // Set ID order global (null jika penjualan baru)
+        totalEl.textContent = formatCurrency(totalAmount);
+        totalEl.dataset.total = totalAmount;
+        amountInput.value = '';
+        coopInput.value = '';
+        changeContainer.classList.add('hidden');
+        errorEl.classList.add('hidden');
+        ledgerDetails.classList.add('hidden');
+        tenorDetails.classList.add('hidden');
+        amountContainer.classList.remove('hidden');
+        memberNameDisplay.classList.add('hidden');
+        window.validatedMemberId = null;
+
+        // 2. Muat metode pembayaran
+        methodsContainer.innerHTML = '<p class="text-sm text-gray-500">Memuat metode pembayaran...</p>';
+        try {
+            const methods = await apiFetch(`${ADMIN_API_URL}/payment-methods`);
+            const activeMethods = methods.filter(m => m.is_active);
+            methodsContainer.innerHTML = '';
+
+            activeMethods.forEach((method, index) => {
+                const isCash = method.name === 'Cash';
+                const isLedger = method.name.toLowerCase().includes('gaji') || method.name.toLowerCase().includes('ledger');
+                const radioId = `direct-payment-${method.id}`;
+                
+                methodsContainer.insertAdjacentHTML('beforeend', `
+                    <div class="flex items-center">
+                        <input id="${radioId}" name="direct-payment-method" type="radio" value="${method.name}" ${index === 0 ? 'checked' : ''} class="focus:ring-red-500 h-4 w-4 text-red-600 border-gray-300">
+                        <label for="${radioId}" class="ml-3 block text-sm font-medium text-gray-700">${method.name}</label>
+                    </div>
+                `);
+
+                // Tambahkan listener untuk setiap radio button
+                document.getElementById(radioId).addEventListener('change', () => {
+                    amountContainer.classList.toggle('hidden', !isCash);
+                    ledgerDetails.classList.toggle('hidden', !isLedger);
+                    tenorDetails.classList.add('hidden');
+                    if (!isCash) amountInput.value = '';
+                    window.validatedMemberId = null;
+                    updatePaymentButtonState();
+                });
+            });
+
+            // Trigger change event untuk metode pertama untuk mengatur UI awal
+            if (activeMethods.length > 0) {
+                document.getElementById(`direct-payment-${activeMethods[0].id}`).dispatchEvent(new Event('change'));
+            }
+        } catch (error) {
+            methodsContainer.innerHTML = `<p class="text-sm text-red-500">${error.message}</p>`;
+        }
+
+        // 3. Tampilkan modal
+        modal.classList.remove('hidden');
+    };
+
+    const updatePaymentButtonState = () => {
+        const confirmBtn = document.getElementById('confirm-direct-cashier-payment-btn');
+        const totalEl = document.getElementById('direct-cashier-payment-total');
+        const amountInput = document.getElementById('direct-cashier-payment-amount');
+        const errorEl = document.getElementById('direct-cashier-payment-error');
+        const changeContainer = document.getElementById('direct-cashier-change-container');
+        const changeAmountEl = document.getElementById('direct-cashier-change-amount');
+    
+        const selectedMethodRadio = document.querySelector(`input[name="direct-payment-method"]:checked`);
+        if (!selectedMethodRadio) return;
+    
+        const selectedMethod = selectedMethodRadio.value;
+        const isCash = selectedMethod === 'Cash';
+        const isLedger = selectedMethod.toLowerCase().includes('gaji') || selectedMethod.toLowerCase().includes('ledger');
+    
+        const total = parseFloat(totalEl.dataset.total || 0);
+        const paidAmount = parseFloat(amountInput.value) || 0;
+        
+        if (isCash) {
+            const change = paidAmount - total;
+            errorEl.classList.toggle('hidden', change >= 0);
+            confirmBtn.disabled = change < 0;
+            changeAmountEl.textContent = formatCurrency(Math.max(0, change));
+            changeContainer.classList.toggle('hidden', paidAmount <= 0);
+        } else if (isLedger) {
+            // For Ledger payment, the button is disabled if:
+            // 1. The member has not been validated yet, OR
+            // 2. The tenor has not been selected.
+            const tenorSelect = document.getElementById('direct-cashier-tenor-select');
+            confirmBtn.disabled = !window.validatedMemberId || !tenorSelect.value;
+        } else { // For other methods like Transfer, QRIS
+            // The button should be enabled as no further input is needed.
+            confirmBtn.disabled = false;
+        }
+    };
+
     // --- FUNGSI UNTUK KASIR UMUM (NON-ANGGOTA) ---
     const setupDirectCashier = () => {
         const productGrid = document.getElementById('direct-cashier-product-grid'); // FIX: Use correct element ID
