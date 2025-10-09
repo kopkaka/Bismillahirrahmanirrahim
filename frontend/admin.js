@@ -2425,9 +2425,9 @@ const renderCashFlowChart = (data) => {
             // Close the verification modal
             modal.classList.add('hidden');
             if (html5QrCode && html5QrCode.isScanning) html5QrCode.stop();
-    
-            // Show payment modal
-            showPaymentModalForOrder(orderToComplete);
+            
+            // Panggil fungsi modal pembayaran yang sudah direfaktor
+            showPaymentModal(orderToComplete.total, orderToComplete.orderId);
         });
 
         // QR Scanner Logic
@@ -2497,117 +2497,13 @@ const renderCashFlowChart = (data) => {
         }
     };
 
-    // --- REFACTOR: Pindahkan fungsi ini ke scope yang lebih tinggi ---
-    const updatePaymentButtonState = () => {
-        const radioName = 'direct-payment-method';
-        const confirmBtn = document.getElementById('confirm-direct-cashier-payment-btn');
-        const paymentTotalEl = document.getElementById('direct-cashier-payment-total'); // This element is correct
-        const paymentAmountInput = document.getElementById('direct-cashier-payment-amount');
-        const paymentErrorEl = document.getElementById('direct-cashier-payment-error');
-        const changeContainer = document.getElementById('direct-cashier-change-container');
-        const changeAmountEl = document.getElementById('direct-cashier-change-amount');
-    
-        const selectedMethodRadio = document.querySelector(`input[name="${radioName}"]:checked`);
-        if (!selectedMethodRadio) return;
-    
-        const selectedMethod = selectedMethodRadio.value;
-        const isCash = selectedMethod === 'Cash';
-        const isLedger = selectedMethod.toLowerCase().includes('gaji') || selectedMethod.toLowerCase().includes('ledger');
-    
-        const total = parseFloat(paymentTotalEl.dataset.total || 0);
-        const paidAmount = parseFloat(paymentAmountInput.value) || 0;
-        
-        if (isCash) {
-            const change = paidAmount - total;
-            paymentErrorEl.classList.toggle('hidden', change >= 0);
-            confirmPaymentBtn.disabled = change < 0;
-            changeAmountEl.textContent = formatCurrency(Math.max(0, change));
-            changeContainer.classList.toggle('hidden', paidAmount <= 0);
-        } else if (isLedger) {
-            confirmPaymentBtn.disabled = true; // Dinonaktifkan sampai nomor koperasi divalidasi
-        } else { // For other methods like Transfer, QRIS
-            confirmPaymentBtn.disabled = false;
-        }
-    };    
-
-    // Fungsi baru untuk menampilkan modal pembayaran untuk pesanan yang sudah ada
-    const showPaymentModalForOrder = async (orderData) => {
-        const paymentModal = document.getElementById('direct-cashier-payment-modal');
-        const paymentTotalEl = document.getElementById('direct-cashier-payment-total');
-        const paymentAmountInput = document.getElementById('direct-cashier-payment-amount');
-        const changeContainer = document.getElementById('direct-cashier-change-container');
-        const paymentErrorEl = document.getElementById('direct-cashier-payment-error');
-        const ledgerDetailsContainer = document.getElementById('direct-cashier-ledger-details');
-        const paymentAmountContainer = document.getElementById('direct-cashier-payment-amount-container');
-        const paymentMethodsContainer = document.getElementById('direct-cashier-payment-methods-container');
-        const confirmPaymentBtn = document.getElementById('confirm-direct-cashier-payment-btn');
-        const changeAmountEl = document.getElementById('direct-cashier-change-amount');
-        const coopNumberInput = document.getElementById('direct-cashier-coop-number');
-        const memberNameDisplay = document.getElementById('direct-cashier-member-name-display');
-        const tenorDetailsContainer = document.getElementById('direct-cashier-tenor-details');
-        const tenorSelect = document.getElementById('direct-cashier-tenor-select');
-
-        // Set orderId di scope yang lebih tinggi jika perlu, atau di window
-        orderIdToComplete = orderData.orderId; // Use the global variable
-        paymentTotalEl.textContent = formatCurrency(orderData.total);
-        paymentTotalEl.dataset.total = orderData.total;
-        paymentAmountInput.value = '';
-        changeContainer.classList.add('hidden');
-        paymentErrorEl.classList.add('hidden');
-        ledgerDetailsContainer.classList.add('hidden');
-        paymentAmountContainer.classList.remove('hidden');
-        coopNumberInput.value = '';
-        memberNameDisplay.classList.add('hidden');
-        tenorDetailsContainer.classList.add('hidden');
-        window.validatedMemberId = null; // Reset validated member ID
-
-        paymentMethodsContainer.innerHTML = '<p class="text-sm text-gray-500">Memuat metode pembayaran...</p>';
-        try { // Load payment methods
-            const methods = await apiFetch(`${ADMIN_API_URL}/payment-methods`);
-            const activeMethods = methods.filter(m => m.is_active);
-            paymentMethodsContainer.innerHTML = ''; // Kosongkan kontainer
-            activeMethods.forEach((method, index) => {
-                const isCash = method.name === 'Cash';
-                const isLedger = method.name.toLowerCase().includes('gaji') || method.name.toLowerCase().includes('ledger');
-                const radioId = `direct-payment-${method.id}`; // Gunakan ID dan nama yang sama dengan kasir umum
-                const radioHtml = `
-                    <div class="flex items-center">
-                        <input id="${radioId}" name="direct-payment-method" type="radio" value="${method.name}" ${index === 0 ? 'checked' : ''} class="focus:ring-red-500 h-4 w-4 text-red-600 border-gray-300">
-                        <label for="${radioId}" class="ml-3 block text-sm font-medium text-gray-700">${method.name}</label>
-                    </div>
-                `;
-                paymentMethodsContainer.insertAdjacentHTML('beforeend', radioHtml);
-
-                // Add listener for each radio button
-                document.getElementById(radioId).addEventListener('change', () => {
-                    paymentAmountContainer.classList.toggle('hidden', !isCash);
-                    ledgerDetailsContainer.classList.toggle('hidden', !isLedger);
-                    tenorDetailsContainer.classList.add('hidden'); // Selalu sembunyikan tenor saat metode berubah
-
-                    if (!isCash) {
-                        paymentAmountInput.value = ''; // Reset input uang bayar
-                        window.validatedMemberId = null; // Reset ID anggota jika metode lain dipilih
-                    }
-                    updatePaymentButtonState();
-                });
-            });
-            // Trigger the change event for the first method to set the initial state
-            if (activeMethods.length > 0) { document.getElementById(`direct-payment-${activeMethods[0].id}`).dispatchEvent(new Event('change')); }
-        } catch (error) {
-            paymentMethodsContainer.innerHTML = `<p class="text-sm text-red-500">${error.message}</p>`;
-        }
-        paymentModal.classList.remove('hidden');
-    };
-
     // --- FUNGSI UNTUK KASIR UMUM (NON-ANGGOTA) ---
     const setupDirectCashier = () => {
         const productGrid = document.getElementById('direct-cashier-product-grid'); // FIX: Use correct element ID
-        const cartBody = document.getElementById('direct-cashier-items-body');
         const totalEl = document.getElementById('direct-cashier-total');
         const completeBtn = document.getElementById('direct-cashier-complete-btn');
         const searchInput = document.getElementById('direct-cashier-search');
-        const ledgerDetailsContainer = document.getElementById('direct-cashier-ledger-details'); // FIX: Define here
-
+        
         if (!productGrid) return; // Only run if the UI exists
 
         const renderProductGrid = () => {
@@ -2702,165 +2598,19 @@ const renderCashFlowChart = (data) => {
             }
         });
 
-        // --- NEW LOGIC: Show payment modal on complete ---
-        const paymentModal = document.getElementById('direct-cashier-payment-modal');
-        const closePaymentModalBtn = document.getElementById('close-direct-cashier-payment-modal');
-        const cancelPaymentModalBtn = document.getElementById('cancel-direct-cashier-payment-modal'); // This is correct
-        const confirmPaymentBtn = document.getElementById('confirm-direct-cashier-payment-btn'); // This is correct
-        const paymentTotalEl = document.getElementById('direct-cashier-payment-total');
-        const paymentAmountInput = document.getElementById('direct-cashier-payment-amount');
-        const changeContainer = document.getElementById('direct-cashier-change-container');
-        const paymentAmountContainer = document.getElementById('direct-cashier-payment-amount-container');
-        const paymentErrorEl = document.getElementById('direct-cashier-payment-error'); // This is correct
-    
-        if (paymentModal) {
-            // Fungsi untuk menghitung kembalian
-            const calculateChange = () => {
-                const total = parseFloat(paymentTotalEl.dataset.total || 0);
-                const paidAmount = parseFloat(paymentAmountInput.value) || 0;
-
-                if (paidAmount > 0) {
-                    const change = paidAmount - total;
-                    changeAmountEl.textContent = formatCurrency(Math.max(0, change));
-                    changeContainer.classList.remove('hidden');
-
-                    // Tampilkan pesan error jika uang kurang dan nonaktifkan tombol konfirmasi
-                    if (change < 0) {
-                        paymentErrorEl.classList.remove('hidden');
-                        confirmPaymentBtn.disabled = true;
-                    } else {
-                        paymentErrorEl.classList.add('hidden');
-                        confirmPaymentBtn.disabled = false;
-                    }
-                } else {
-                    changeContainer.classList.add('hidden');
-                    confirmPaymentBtn.disabled = false; // Aktifkan jika input kosong (untuk metode non-tunai)
-                }
-            };
-
-            // This function shows the payment modal for a NEW cash sale
-            const showPaymentModal = async () => {
-                orderIdToComplete = null; // FIX: Use the globally declared variable
-                if (directCart.length === 0) return;
-                const total = directCart.reduce((sum, item) => sum + (parseFloat(item.price) * item.quantity), 0);
-                paymentTotalEl.textContent = formatCurrency(total);
-                paymentTotalEl.dataset.total = total; // Simpan nilai total mentah
-                paymentAmountInput.value = ''; // Reset input
-                changeContainer.classList.add('hidden'); // Sembunyikan kembalian
-                paymentErrorEl.classList.add('hidden');
-                ledgerDetailsContainer.classList.add('hidden'); // FIX: Now accessible
-                paymentAmountContainer.classList.remove('hidden'); // Tampilkan lagi input uang bayar (default)
-
-                // --- LOGIKA BARU: Ambil dan render metode pembayaran ---
-                paymentMethodsContainer.innerHTML = '<p class="text-sm text-gray-500">Memuat metode pembayaran...</p>';
-                try {
-                    const methods = await apiFetch(`${ADMIN_API_URL}/payment-methods`);
-                    const activeMethods = methods.filter(m => m.is_active);
-                    paymentMethodsContainer.innerHTML = '';
-                    activeMethods.forEach((method, index) => {
-                        const isCash = method.name === 'Cash';
-                        const isLedger = method.name.toLowerCase().includes('gaji') || method.name.toLowerCase().includes('ledger');
-                        const radioId = `direct-payment-${method.id}`;
-                        const radioHtml = `
-                            <div class="flex items-center">
-                                <input id="${radioId}" name="direct-payment-method" type="radio" value="${method.name}" ${index === 0 ? 'checked' : ''} class="focus:ring-red-500 h-4 w-4 text-red-600 border-gray-300">
-                                <label for="${radioId}" class="ml-3 block text-sm font-medium text-gray-700">${method.name}</label>
-                            </div>
-                        `;
-                        paymentMethodsContainer.insertAdjacentHTML('beforeend', radioHtml);
-                        
-                        // const ledgerDetailsContainer is now defined at a higher scope
-                        document.getElementById(radioId).addEventListener('change', () => {
-                            paymentAmountContainer.classList.toggle('hidden', !isCash);
-                            ledgerDetailsContainer.classList.toggle('hidden', !isLedger); // Show/hide member input
-                            if (!isCash) paymentAmountInput.value = ''; // FIX: Reset payment amount if not cash
-                            updatePaymentButtonState();
-                        });
-                    });
-                    if (activeMethods.length > 0) {
-                        document.getElementById(`direct-payment-${activeMethods[0].id}`).dispatchEvent(new Event('change'));
-                    }
-                } catch (error) {
-                    paymentMethodsContainer.innerHTML = `<p class="text-sm text-red-500">${error.message}</p>`;
-                }
-
-                paymentModal.classList.remove('hidden');
-            };
-
-            // Tambahkan event listener untuk input jumlah bayar
-            closePaymentModalBtn.addEventListener('click', () => paymentModal.classList.add('hidden'));
-            cancelPaymentModalBtn.addEventListener('click', () => paymentModal.classList.add('hidden'));
-            completeBtn.addEventListener('click', showPaymentModal); // This is correct
-            paymentAmountInput.addEventListener('input', calculateChange);
-        } else {
-            console.error("Direct cashier payment modal not found in HTML.");
-        }
+        // Event listener untuk tombol "Selesaikan Penjualan"
+        completeBtn.addEventListener('click', () => {
+            if (directCart.length === 0) return;
+            const total = directCart.reduce((sum, item) => sum + (parseFloat(item.price) * item.quantity), 0);
+            // Panggil fungsi modal pembayaran yang sudah direfaktor
+            showPaymentModal(total, null); // null karena ini adalah penjualan baru, bukan dari order yang sudah ada
+        });
 
         // Initial load
         apiFetch(`${ADMIN_API_URL}/products?shop=sembako`).then(products => {
             directCashierProducts = products;
             renderProductGrid();
         });
-
-        // --- Event Listeners for Payment Modal ---
-        if (paymentModal && !paymentModal.dataset.listenerAttached) {
-            paymentModal.dataset.listenerAttached = 'true';
-            const confirmPaymentBtn = document.getElementById('confirm-direct-cashier-payment-btn');
-
-            const coopNumberInput = document.getElementById('direct-cashier-coop-number');
-            const memberNameDisplay = document.getElementById('direct-cashier-member-name-display');
-            const tenorDetailsContainer = document.getElementById('direct-cashier-tenor-details');
-            const tenorSelect = document.getElementById('direct-cashier-tenor-select');
-            let validatedMemberId = null;
-
-            coopNumberInput.addEventListener('blur', async () => {
-                const coopNumber = coopNumberInput.value.trim();
-                memberNameDisplay.classList.add('hidden');
-                tenorDetailsContainer.classList.add('hidden');
-                confirmPaymentBtn.disabled = true; // Disable until validated
-                validatedMemberId = null;
-
-                if (!coopNumber) return;
-
-                try {
-                    const validationResponse = await fetch(`${API_URL}/auth/validate-coop-number`, {
-                        method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ cooperativeNumber: coopNumber })
-                    });
-                    const validationData = await validationResponse.json();
-                    if (!validationResponse.ok) throw new Error(validationData.error);
-
-                    memberNameDisplay.textContent = `Anggota ditemukan: ${validationData.user.name}`;
-                    memberNameDisplay.className = 'p-2 bg-green-100 rounded-md text-sm text-green-800';
-                    validatedMemberId = validationData.user.id;
-
-                    const allLoanTypes = await apiFetch(`${ADMIN_API_URL}/loantypes`);
-                    const employeeLoanType = allLoanTypes.find(lt => lt.name.toLowerCase().includes('karyawan'));
-                    if (!employeeLoanType) throw new Error('Tipe pinjaman untuk "Karyawan" tidak ditemukan.');
-
-                    const allTerms = await apiFetch(`${ADMIN_API_URL}/loanterms`);
-                    const applicableTerms = allTerms.filter(term => term.loan_type_id === employeeLoanType.id);
-
-                    if (applicableTerms.length > 0) {
-                        tenorSelect.innerHTML = '<option value="">-- Pilih Tenor --</option>';
-                        applicableTerms.forEach(term => {
-                            tenorSelect.innerHTML += `<option value="${term.id}">${term.tenor_months} bulan</option>`;
-                        });
-                        tenorDetailsContainer.classList.remove('hidden');
-                    } else {
-                        throw new Error('Tidak ada opsi tenor yang tersedia untuk Pinjaman Karyawan.');
-                    }
-                } catch (error) {
-                    memberNameDisplay.textContent = error.message;
-                    memberNameDisplay.className = 'p-2 bg-red-100 rounded-md text-sm text-red-800';
-                } finally {
-                    memberNameDisplay.classList.remove('hidden');
-                }
-            });
-
-            tenorSelect.addEventListener('change', () => {
-                confirmPaymentBtn.disabled = !tenorSelect.value;
-            });
-        }
 
         searchInput.addEventListener('input', renderProductGrid);
     };
@@ -6463,7 +6213,7 @@ const renderCashFlowChart = (data) => {
                 button.textContent = 'Memproses...';
                 try {
                     // 1. Ambil item dari pesanan yang ada
-                    const items = await apiFetch(`${ADMIN_API_URL}/sales/${orderId}/items`);
+                    const { items } = await apiFetch(`${ADMIN_API_URL}/sales/order/${orderId}`);
 
                     // 2. Isi keranjang kasir umum (directCart)
                     directCart = items.map(item => ({
@@ -6474,7 +6224,7 @@ const renderCashFlowChart = (data) => {
                     }));
 
                     // 3. Hapus pesanan lama dari database
-                    await apiFetch(`${ADMIN_API_URL}/sales/${saleId}`, { method: 'DELETE' });
+                    // await apiFetch(`${ADMIN_API_URL}/sales/${saleId}`, { method: 'DELETE' }); // Sebaiknya jangan dihapus, tapi di-update statusnya saat checkout
 
                     // 4. Pindah ke tab Kasir Umum dan render keranjang
                     const cashierTabButton = document.querySelector('.sembako-tab-btn[data-target="sembako-direct-cashier-tab"]');
@@ -7338,10 +7088,10 @@ const renderCashFlowChart = (data) => {
         const confirmPaymentBtn = document.getElementById('confirm-direct-cashier-payment-btn');
         if (!confirmPaymentBtn || confirmPaymentBtn.dataset.listenerAttached) return;
         confirmPaymentBtn.dataset.listenerAttached = 'true';
-
+    
         confirmPaymentBtn.addEventListener('click', async () => {
             const selectedPaymentMethod = document.querySelector('input[name="direct-payment-method"]:checked')?.value;
-            
+    
             confirmPaymentBtn.disabled = true;
             confirmPaymentBtn.textContent = 'Memproses...';
 
@@ -7351,7 +7101,7 @@ const renderCashFlowChart = (data) => {
             const paymentTotalEl = document.getElementById('direct-cashier-payment-total');
             const paymentAmountInput = document.getElementById('direct-cashier-payment-amount');
             const paymentModal = document.getElementById('direct-cashier-payment-modal');
-
+    
             try {
                 if (selectedPaymentMethod === 'Cash') {
                     const total = parseFloat(paymentTotalEl.dataset.total || 0);
@@ -7363,23 +7113,23 @@ const renderCashFlowChart = (data) => {
                 if (isLedger && !validatedMemberId) {
                     throw new Error('Nomor koperasi anggota belum divalidasi atau tidak valid.');
                 }
-
+    
                 // Check if we are completing an existing order or a new cash sale
                 // const orderIdToComplete is now a global variable
                 if (orderIdToComplete) {
                     // Logic for completing an existing order from the "Pesanan Masuk" tab
                     const payload = { 
-                        orderId: orderIdToComplete, 
                         paymentMethod: selectedPaymentMethod,
                         memberId: validatedMemberId,
                         loanTermId: tenorSelect.value
                     };
-                    await apiFetch(`${ADMIN_API_URL}/sales/complete`, { method: 'POST', body: JSON.stringify(payload) });
+                    // Endpoint diubah untuk lebih RESTful
+                    await apiFetch(`${ADMIN_API_URL}/sales/${orderIdToComplete}/complete`, { method: 'POST', body: JSON.stringify(payload) });
                     alert('Pesanan berhasil diselesaikan.');
                     paymentModal.classList.add('hidden'); // This is correct
                     window.orderIdToComplete = null; // Reset
                     loadPendingOrders(); // Refresh the pending orders list
-                } else {
+                } else { // Penjualan baru dari kasir umum
                     // Logic for a new cash sale from the "Kasir Umum" tab
                     const payload = { items: directCart, paymentMethod: selectedPaymentMethod, loanTermId: tenorSelect.value };
                     if (isLedger) payload.memberId = validatedMemberId;
@@ -7390,7 +7140,7 @@ const renderCashFlowChart = (data) => {
                     renderDirectCart();
                     paymentModal.classList.add('hidden');
                 }
-            } catch (error) { alert(`Error: ${error.message}`);
+            } catch (error) { alert(`Error: ${error.message}`); console.error(error);
             } finally { confirmPaymentBtn.disabled = false; confirmPaymentBtn.textContent = 'Konfirmasi Pembayaran'; }
         });
     };
