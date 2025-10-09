@@ -2509,6 +2509,7 @@ const renderCashFlowChart = (data) => {
         const methodsContainer = document.getElementById('direct-cashier-payment-methods-container');
         const coopInput = document.getElementById('direct-cashier-coop-number');
         const memberNameDisplay = document.getElementById('direct-cashier-member-name-display');
+        const creditCardDetails = document.getElementById('direct-cashier-credit-card-details'); // Tambahkan elemen baru
         const tenorDetails = document.getElementById('direct-cashier-tenor-details');
 
         // 1. Reset UI dan set data
@@ -2521,6 +2522,7 @@ const renderCashFlowChart = (data) => {
         errorEl.classList.add('hidden');
         ledgerDetails.classList.add('hidden');
         tenorDetails.classList.add('hidden');
+        creditCardDetails.classList.add('hidden'); // Sembunyikan input kartu kredit saat modal dibuka
         amountContainer.classList.remove('hidden');
         memberNameDisplay.classList.add('hidden');
         window.validatedMemberId = null;
@@ -2535,6 +2537,7 @@ const renderCashFlowChart = (data) => {
             activeMethods.forEach((method, index) => {
                 const isCash = method.name === 'Cash';
                 const isLedger = method.name.toLowerCase().includes('gaji') || method.name.toLowerCase().includes('ledger');
+                const isCreditCard = method.name.toLowerCase().includes('credit card'); // Cek apakah metode adalah kartu kredit
                 const radioId = `direct-payment-${method.id}`;
                 
                 methodsContainer.insertAdjacentHTML('beforeend', `
@@ -2548,6 +2551,7 @@ const renderCashFlowChart = (data) => {
                 document.getElementById(radioId).addEventListener('change', () => {
                     amountContainer.classList.toggle('hidden', !isCash);
                     ledgerDetails.classList.toggle('hidden', !isLedger);
+                    creditCardDetails.classList.toggle('hidden', !isCreditCard); // Tampilkan/sembunyikan input kartu kredit
                     tenorDetails.classList.add('hidden');
                     if (!isCash) amountInput.value = '';
                     window.validatedMemberId = null;
