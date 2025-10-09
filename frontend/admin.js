@@ -2497,10 +2497,10 @@ const renderCashFlowChart = (data) => {
     };
 
     // --- REFACTOR: Pindahkan fungsi ini ke scope yang lebih tinggi ---
-    const updatePaymentButtonState = (modalType) => { // FIX: Use correct function name
-        const radioName = modalType === 'direct' ? 'direct-payment-method' : 'direct-payment-method-order';
+    const updatePaymentButtonState = () => {
+        const radioName = 'direct-payment-method';
         const confirmBtn = document.getElementById('confirm-direct-cashier-payment-btn');
-        const paymentTotalEl = document.getElementById('direct-cashier-payment-total');
+        const paymentTotalEl = document.getElementById('direct-cashier-payment-total'); // This element is correct
         const paymentAmountInput = document.getElementById('direct-cashier-payment-amount');
         const paymentErrorEl = document.getElementById('direct-cashier-payment-error');
         const changeContainer = document.getElementById('direct-cashier-change-container');
@@ -2524,7 +2524,7 @@ const renderCashFlowChart = (data) => {
             changeContainer.classList.toggle('hidden', paidAmount <= 0);
         } else if (isLedger) {
             confirmPaymentBtn.disabled = true; // Dinonaktifkan sampai nomor koperasi divalidasi
-        } else {
+        } else { // For other methods like Transfer, QRIS
             confirmPaymentBtn.disabled = false;
         }
     };    
@@ -2561,7 +2561,7 @@ const renderCashFlowChart = (data) => {
         window.validatedMemberId = null; // Reset validated member ID
 
         paymentMethodsContainer.innerHTML = '<p class="text-sm text-gray-500">Memuat metode pembayaran...</p>';
-        try {
+        try { // Load payment methods
             const methods = await apiFetch(`${ADMIN_API_URL}/payment-methods`);
             const activeMethods = methods.filter(m => m.is_active);
             paymentMethodsContainer.innerHTML = ''; // Kosongkan kontainer
@@ -2577,24 +2577,20 @@ const renderCashFlowChart = (data) => {
                 `;
                 paymentMethodsContainer.insertAdjacentHTML('beforeend', radioHtml);
 
-                // Tambahkan listener untuk setiap radio button
+                // Add listener for each radio button
                 document.getElementById(radioId).addEventListener('change', () => {
-                    const isCash = method.name === 'Cash';
-                    const isLedger = method.name.toLowerCase().includes('gaji') || method.name.toLowerCase().includes('ledger');
                     paymentAmountContainer.classList.toggle('hidden', !isCash);
                     ledgerDetailsContainer.classList.toggle('hidden', !isLedger);
                     tenorDetailsContainer.classList.add('hidden'); // Selalu sembunyikan tenor saat metode berubah
 
                     if (!isCash) {
                         paymentAmountInput.value = ''; // Reset input uang bayar
-                        // FIX: Nonaktifkan tombol jika ledger sampai nomor divalidasi.
-                        // Untuk pesanan masuk, member sudah diketahui, jadi kita bisa langsung validasi.
-                        confirmPaymentBtn.disabled = isLedger; 
                         window.validatedMemberId = null; // Reset ID anggota jika metode lain dipilih
                     }
-                    updatePaymentButtonState('direct'); // Gunakan state updater yang sama dengan kasir umum
+                    updatePaymentButtonState();
                 });
             });
+            // Trigger the change event for the first method to set the initial state
             if (activeMethods.length > 0) { document.getElementById(`direct-payment-${activeMethods[0].id}`).dispatchEvent(new Event('change')); }
         } catch (error) {
             paymentMethodsContainer.innerHTML = `<p class="text-sm text-red-500">${error.message}</p>`;
@@ -2707,13 +2703,13 @@ const renderCashFlowChart = (data) => {
         // --- NEW LOGIC: Show payment modal on complete ---
         const paymentModal = document.getElementById('direct-cashier-payment-modal');
         const closePaymentModalBtn = document.getElementById('close-direct-cashier-payment-modal');
-        const cancelPaymentModalBtn = document.getElementById('cancel-direct-cashier-payment-modal');
-        const confirmPaymentBtn = document.getElementById('confirm-direct-cashier-payment-btn');
+        const cancelPaymentModalBtn = document.getElementById('cancel-direct-cashier-payment-modal'); // This is correct
+        const confirmPaymentBtn = document.getElementById('confirm-direct-cashier-payment-btn'); // This is correct
         const paymentTotalEl = document.getElementById('direct-cashier-payment-total');
         const paymentAmountInput = document.getElementById('direct-cashier-payment-amount');
         const changeContainer = document.getElementById('direct-cashier-change-container');
         const paymentAmountContainer = document.getElementById('direct-cashier-payment-amount-container');
-        const paymentErrorEl = document.getElementById('direct-cashier-payment-error');
+        const paymentErrorEl = document.getElementById('direct-cashier-payment-error'); // This is correct
     
         if (paymentModal) {
             // Fungsi untuk menghitung kembalian
@@ -2740,6 +2736,7 @@ const renderCashFlowChart = (data) => {
                 }
             };
 
+            // This function shows the payment modal for a NEW cash sale
             const showPaymentModal = async () => {
                 orderIdToComplete = null; // Reset orderId, ini untuk penjualan langsung
                 if (directCart.length === 0) return;
@@ -2773,9 +2770,9 @@ const renderCashFlowChart = (data) => {
                         const ledgerDetailsContainer = document.getElementById('direct-cashier-ledger-details');
                         document.getElementById(radioId).addEventListener('change', () => {
                             paymentAmountContainer.classList.toggle('hidden', !isCash);
-                            ledgerDetailsContainer.classList.toggle('hidden', !isLedger);
+                            ledgerDetailsContainer.classList.toggle('hidden', !isLedger); // Show/hide member input
                             if (!isCash) paymentAmountInput.value = ''; // FIX: Reset payment amount if not cash
-                    updatePaymentButtonState('direct'); // Panggil fungsi utama untuk update tombol
+                            updatePaymentButtonState();
                         });
                     });
                     if (activeMethods.length > 0) {
@@ -2791,7 +2788,7 @@ const renderCashFlowChart = (data) => {
             // Tambahkan event listener untuk input jumlah bayar
             closePaymentModalBtn.addEventListener('click', () => paymentModal.classList.add('hidden'));
             cancelPaymentModalBtn.addEventListener('click', () => paymentModal.classList.add('hidden'));
-            completeBtn.addEventListener('click', showPaymentModal);
+            completeBtn.addEventListener('click', showPaymentModal); // This is correct
             paymentAmountInput.addEventListener('input', calculateChange);
         } else {
             console.error("Direct cashier payment modal not found in HTML.");
@@ -2806,6 +2803,7 @@ const renderCashFlowChart = (data) => {
         // --- Event Listeners for Payment Modal ---
         if (paymentModal && !paymentModal.dataset.listenerAttached) {
             paymentModal.dataset.listenerAttached = 'true';
+            const confirmPaymentBtn = document.getElementById('confirm-direct-cashier-payment-btn');
 
             const coopNumberInput = document.getElementById('direct-cashier-coop-number');
             const memberNameDisplay = document.getElementById('direct-cashier-member-name-display');
@@ -2817,7 +2815,7 @@ const renderCashFlowChart = (data) => {
                 const coopNumber = coopNumberInput.value.trim();
                 memberNameDisplay.classList.add('hidden');
                 tenorDetailsContainer.classList.add('hidden');
-                confirmPaymentBtn.disabled = true;
+                confirmPaymentBtn.disabled = true; // Disable until validated
                 validatedMemberId = null;
 
                 if (!coopNumber) return;
@@ -2863,67 +2861,6 @@ const renderCashFlowChart = (data) => {
         }
 
         searchInput.addEventListener('input', renderProductGrid);
-
-        // Pindahkan event listener untuk tombol konfirmasi pembayaran ke sini
-        confirmPaymentBtn.addEventListener('click', async () => {
-            const selectedPaymentMethod = document.querySelector('input[name="direct-payment-method"]:checked')?.value;
-            
-            confirmPaymentBtn.disabled = true;
-            confirmPaymentBtn.textContent = 'Memproses...';
-
-            const isLedger = selectedPaymentMethod.toLowerCase().includes('gaji') || selectedPaymentMethod.toLowerCase().includes('ledger');
-            const validatedMemberId = window.validatedMemberId; // Ambil dari scope global jika perlu
-            const tenorSelect = document.getElementById('direct-cashier-tenor-select');
-            const paymentTotalEl = document.getElementById('direct-cashier-payment-total');
-            const paymentAmountInput = document.getElementById('direct-cashier-payment-amount');
-
-            try {
-                if (selectedPaymentMethod === 'Cash') {
-                    const total = parseFloat(paymentTotalEl.dataset.total || 0);
-                    const paidAmount = parseFloat(paymentAmountInput.value) || 0;
-                    if (paidAmount < total) {
-                        throw new Error('Jumlah uang yang dibayarkan kurang dari total belanja.');
-                    }
-                }
-                if (isLedger && !validatedMemberId) {
-                    throw new Error('Nomor koperasi anggota belum divalidasi atau tidak valid.');
-                }
-
-                let orderIdToComplete = window.orderIdToComplete;
-                if (orderIdToComplete) {
-                    const payload = { 
-                        orderId: orderIdToComplete, 
-                        paymentMethod: selectedPaymentMethod,
-                        memberId: validatedMemberId,
-                        loanTermId: tenorSelect.value
-                    };
-                    await apiFetch(`${ADMIN_API_URL}/sales/complete`, { method: 'POST', body: JSON.stringify(payload) });
-                    alert('Pesanan berhasil diselesaikan.');
-                    paymentModal.classList.add('hidden');
-                    document.getElementById('cashier-verification-modal')?.classList.add('hidden');
-                    window.orderIdToComplete = null;
-                    loadPendingOrders();
-                } else {
-                    const payload = {
-                        items: directCart,
-                        paymentMethod: selectedPaymentMethod,
-                        loanTermId: tenorSelect.value,
-                    };
-                    if (isLedger) payload.memberId = validatedMemberId;
-
-                    const result = await apiFetch(`${ADMIN_API_URL}/cash-sale`, { method: 'POST', body: JSON.stringify(payload) });
-                    showReceiptModal(result.receiptData); // Tampilkan modal struk
-                    directCart = [];
-                    renderDirectCart();
-                    paymentModal.classList.add('hidden');
-                }
-            } catch (error) {
-                alert(`Error: ${error.message}`);
-            } finally {
-                confirmPaymentBtn.disabled = false;
-                confirmPaymentBtn.textContent = 'Konfirmasi Pembayaran';
-            }
-        });
     };
 
     const showReceiptModal = async (receiptData) => {
@@ -7395,6 +7332,67 @@ const renderCashFlowChart = (data) => {
         });
     };
 
+    const setupPaymentConfirmationListener = () => {
+        const confirmPaymentBtn = document.getElementById('confirm-direct-cashier-payment-btn');
+        if (!confirmPaymentBtn || confirmPaymentBtn.dataset.listenerAttached) return;
+        confirmPaymentBtn.dataset.listenerAttached = 'true';
+
+        confirmPaymentBtn.addEventListener('click', async () => {
+            const selectedPaymentMethod = document.querySelector('input[name="direct-payment-method"]:checked')?.value;
+            
+            confirmPaymentBtn.disabled = true;
+            confirmPaymentBtn.textContent = 'Memproses...';
+
+            const isLedger = selectedPaymentMethod.toLowerCase().includes('gaji') || selectedPaymentMethod.toLowerCase().includes('ledger');
+            const validatedMemberId = window.validatedMemberId;
+            const tenorSelect = document.getElementById('direct-cashier-tenor-select');
+            const paymentTotalEl = document.getElementById('direct-cashier-payment-total');
+            const paymentAmountInput = document.getElementById('direct-cashier-payment-amount');
+            const paymentModal = document.getElementById('direct-cashier-payment-modal');
+
+            try {
+                if (selectedPaymentMethod === 'Cash') {
+                    const total = parseFloat(paymentTotalEl.dataset.total || 0);
+                    const paidAmount = parseFloat(paymentAmountInput.value) || 0;
+                    if (paidAmount < total) {
+                        throw new Error('Jumlah uang yang dibayarkan kurang dari total belanja.');
+                    }
+                }
+                if (isLedger && !validatedMemberId) {
+                    throw new Error('Nomor koperasi anggota belum divalidasi atau tidak valid.');
+                }
+
+                // Check if we are completing an existing order or a new cash sale
+                const orderIdToComplete = window.orderIdToComplete;
+                if (orderIdToComplete) {
+                    // Logic for completing an existing order from the "Pesanan Masuk" tab
+                    const payload = { 
+                        orderId: orderIdToComplete, 
+                        paymentMethod: selectedPaymentMethod,
+                        memberId: validatedMemberId,
+                        loanTermId: tenorSelect.value
+                    };
+                    await apiFetch(`${ADMIN_API_URL}/sales/complete`, { method: 'POST', body: JSON.stringify(payload) });
+                    alert('Pesanan berhasil diselesaikan.');
+                    paymentModal.classList.add('hidden');
+                    window.orderIdToComplete = null; // Reset
+                    loadPendingOrders(); // Refresh the pending orders list
+                } else {
+                    // Logic for a new cash sale from the "Kasir Umum" tab
+                    const payload = { items: directCart, paymentMethod: selectedPaymentMethod, loanTermId: tenorSelect.value };
+                    if (isLedger) payload.memberId = validatedMemberId;
+
+                    const result = await apiFetch(`${ADMIN_API_URL}/cash-sale`, { method: 'POST', body: JSON.stringify(payload) });
+                    showReceiptModal(result.receiptData);
+                    directCart = [];
+                    renderDirectCart();
+                    paymentModal.classList.add('hidden');
+                }
+            } catch (error) { alert(`Error: ${error.message}`);
+            } finally { confirmPaymentBtn.disabled = false; confirmPaymentBtn.textContent = 'Konfirmasi Pembayaran'; }
+        });
+    };
+
     // --- INISIALISASI ---
     const initializeHeader = async () => {
         try {
@@ -7483,6 +7481,7 @@ const renderCashFlowChart = (data) => {
         setupLogisticsModal();
         setupCoaExport();
         setupNotificationSystem(); // Panggil fungsi setup notifikasi
+        setupPaymentConfirmationListener(); // Pindahkan listener konfirmasi pembayaran ke sini
         setupCoaImport();
 
         // Tambahkan event listener untuk tombol "Ubah Data" di modal detail
