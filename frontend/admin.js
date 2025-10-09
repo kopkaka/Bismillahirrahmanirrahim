@@ -3349,12 +3349,20 @@ const renderCashFlowChart = (data) => {
     // 6.1. Kelola Tipe Akun
     const loadAccountTypes = setupSimpleCrud({
         modal: document.getElementById('account-type-modal'),
-        form: document.getElementById('account-type-form'),
+        form: document.getElementById('account-type-form'), // Pastikan ID form ini benar
         tableBody: document.getElementById('account-types-table-body'),
         addBtn: document.getElementById('show-add-account-type-form-btn'),
-        endpoint: 'accounttypes', // This will be a new endpoint
+        endpoint: 'accounttypes',
         title: 'Tipe Akun',
         fields: ['name'],
+        // FIX: onEdit ditambahkan untuk menangani nama field yang tidak standar di modal
+        onEdit: (item) => {
+            // ID input di modal adalah 'account-type-name-input', bukan 'name-input'
+            const nameInput = document.getElementById('account-type-name-input');
+            if (nameInput) {
+                nameInput.value = item.name;
+            }
+        },
         renderRow: (item, role) => `
             <tr>
                 <td class="px-6 py-4 text-sm text-gray-900">${item.name}</td>
