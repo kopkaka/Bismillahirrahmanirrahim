@@ -27,6 +27,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     let directCashierProducts = [];
     let directCart = [];
+    let orderIdToComplete = null; // FIX: Declare globally to be accessible by all functions
 
     const applyUIPermissions = () => {
         const hasPerm = (key) => userPermissions.has(key);
@@ -2326,7 +2327,6 @@ const renderCashFlowChart = (data) => {
     const cashierResultContainer = document.getElementById('cashier-result-container');
     const cashierErrorContainer = document.getElementById('cashier-error-container');
     const cashierCompleteBtn = document.getElementById('cashier-complete-btn');
-    let currentVerifiedOrder = null;
 
 
     // --- NEW PAYMENT MODAL ELEMENTS ---
@@ -2337,8 +2337,6 @@ const renderCashFlowChart = (data) => {
     const paymentMethodRadios = document.querySelectorAll('input[name="payment-method"]');
     const tenorOptionsContainer = document.getElementById('tenor-options-container');
     const paymentTenorBtns = document.querySelectorAll('.payment-tenor-btn');
-    const paymentTenorInput = document.getElementById('payment-tenor-input');
-    let orderToComplete = null; // Menyimpan orderId yang akan diselesaikan
 
     const populateCashierUI = (orderData) => {
         // Validasi dasar untuk memastikan objek pesanan sesuai
@@ -2347,7 +2345,7 @@ const renderCashFlowChart = (data) => {
         }
     
         // Simpan data pesanan yang valid untuk diselesaikan nanti
-        orderToComplete = orderData;
+        // orderToComplete is now global
     
         // Tampilkan data ke elemen HTML
         document.getElementById('cashier-order-id').textContent = orderData.orderId;
@@ -2550,7 +2548,7 @@ const renderCashFlowChart = (data) => {
         const tenorSelect = document.getElementById('direct-cashier-tenor-select');
 
         // Set orderId di scope yang lebih tinggi jika perlu, atau di window
-        window.orderIdToComplete = orderData.orderId;
+        orderIdToComplete = orderData.orderId; // Use the global variable
         paymentTotalEl.textContent = formatCurrency(orderData.total);
         paymentTotalEl.dataset.total = orderData.total;
         paymentAmountInput.value = '';
@@ -2741,7 +2739,7 @@ const renderCashFlowChart = (data) => {
 
             // This function shows the payment modal for a NEW cash sale
             const showPaymentModal = async () => {
-                orderIdToComplete = null; // Reset orderId, ini untuk penjualan langsung
+                orderIdToComplete = null; // FIX: Use the globally declared variable
                 if (directCart.length === 0) return;
                 const total = directCart.reduce((sum, item) => sum + (parseFloat(item.price) * item.quantity), 0);
                 paymentTotalEl.textContent = formatCurrency(total);
@@ -7366,7 +7364,7 @@ const renderCashFlowChart = (data) => {
                 }
 
                 // Check if we are completing an existing order or a new cash sale
-                const orderIdToComplete = window.orderIdToComplete;
+                // const orderIdToComplete is now a global variable
                 if (orderIdToComplete) {
                     // Logic for completing an existing order from the "Pesanan Masuk" tab
                     const payload = { 
@@ -7377,7 +7375,7 @@ const renderCashFlowChart = (data) => {
                     };
                     await apiFetch(`${ADMIN_API_URL}/sales/complete`, { method: 'POST', body: JSON.stringify(payload) });
                     alert('Pesanan berhasil diselesaikan.');
-                    paymentModal.classList.add('hidden');
+                    paymentModal.classList.add('hidden'); // This is correct
                     window.orderIdToComplete = null; // Reset
                     loadPendingOrders(); // Refresh the pending orders list
                 } else {
