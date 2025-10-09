@@ -4319,7 +4319,6 @@ module.exports = {
     getLoanById,
     updateLoan,
     deleteLoan,
-    deleteLoan,
     createItem,
     updateItem,
     updateUser,
