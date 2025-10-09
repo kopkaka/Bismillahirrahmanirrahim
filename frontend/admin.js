@@ -2716,10 +2716,6 @@ const renderCashFlowChart = (data) => {
         const changeAmountEl = document.getElementById('direct-cashier-change-amount');
         const paymentErrorEl = document.getElementById('direct-cashier-payment-error');
         const paymentMethodRadios = document.querySelectorAll('input[name="direct-payment-method"]');
-        const paymentMethodsContainer = document.getElementById('direct-cashier-payment-methods-container');
-        const ledgerDetailsContainer = document.getElementById('direct-cashier-ledger-details');
-        const coopNumberInput = document.getElementById('direct-cashier-coop-number');
-        const memberNameDisplay = document.getElementById('direct-cashier-member-name-display');
         const tenorDetailsContainer = document.getElementById('direct-cashier-tenor-details');
         const tenorSelect = document.getElementById('direct-cashier-tenor-select');
 
@@ -2727,6 +2723,11 @@ const renderCashFlowChart = (data) => {
         // Pindahkan orderIdToComplete ke scope yang lebih tinggi (window)
         let orderIdToComplete = null; // Menyimpan orderId jika ini penyelesaian pesanan
 
+        // Pindahkan deklarasi elemen modal ke sini agar bisa diakses oleh showPaymentModal
+        const paymentMethodsContainer = document.getElementById('direct-cashier-payment-methods-container');
+        const ledgerDetailsContainer = document.getElementById('direct-cashier-ledger-details');
+        const coopNumberInput = document.getElementById('direct-cashier-coop-number');
+        const memberNameDisplay = document.getElementById('direct-cashier-member-name-display');
         if (paymentModal) {
 
             // Tampilkan/sembunyikan input berdasarkan metode pembayaran
@@ -2879,71 +2880,6 @@ const renderCashFlowChart = (data) => {
                 paymentModal.classList.remove('hidden');
             };
 
-            confirmPaymentBtn.addEventListener('click', async () => {
-                const selectedPaymentMethod = document.querySelector('input[name="direct-payment-method"]:checked')?.value; // FIX: Add optional chaining
-                
-                confirmPaymentBtn.disabled = true;
-                confirmPaymentBtn.textContent = 'Memproses...';
-
-                // Validasi tambahan sebelum mengirim
-                if (selectedPaymentMethod === 'Cash') {
-                    const total = parseFloat(paymentTotalEl.dataset.total || 0);
-                    const paidAmount = parseFloat(paymentAmountInput.value) || 0;
-                    if (paidAmount < total) {
-                        alert('Jumlah uang yang dibayarkan kurang dari total belanja.');
-                        confirmPaymentBtn.disabled = false; confirmPaymentBtn.textContent = 'Konfirmasi Pembayaran'; return;
-                    }
-                }
-                const isLedger = selectedPaymentMethod.toLowerCase().includes('gaji') || selectedPaymentMethod.toLowerCase().includes('ledger');
-                if (isLedger && !validatedMemberId) {
-                    alert('Nomor koperasi anggota belum divalidasi atau tidak valid.');
-                    confirmPaymentBtn.disabled = false; confirmPaymentBtn.textContent = 'Konfirmasi Pembayaran'; return;
-                }
-
-                try {
-                    orderIdToComplete = window.orderIdToComplete; // Ambil dari scope global
-                    if (orderIdToComplete) {
-                        // --- Logika untuk menyelesaikan pesanan yang sudah ada ---
-                        const payload = { 
-                            orderId: orderIdToComplete, 
-                            paymentMethod: selectedPaymentMethod,
-                            memberId: validatedMemberId, // Kirim memberId yang tervalidasi
-                            loanTermId: tenorSelect.value // Kirim tenor yang dipilih
-                        };
-                        await apiFetch(`${ADMIN_API_URL}/sales/complete`, { method: 'POST', body: JSON.stringify(payload) });
-                        alert('Pesanan berhasil diselesaikan.');
-                        paymentModal.classList.add('hidden');
-                        document.getElementById('cashier-verification-modal').classList.add('hidden');
-                        window.orderIdToComplete = null; // Reset setelah selesai
-                        loadPendingOrders(); // Muat ulang daftar pesanan
-                    } else {
-                        // --- Logika untuk penjualan langsung (kasir umum) ---
-                        const payload = {
-                            items: directCart,
-                            paymentMethod: selectedPaymentMethod,
-                            loanTermId: tenorSelect.value, // Kirim ID tenor yang dipilih
-                        };
-
-                        if (isLedger) {
-                            payload.memberId = validatedMemberId;
-                        }
-
-                        await apiFetch(`${ADMIN_API_URL}/cash-sale`, { 
-                            method: 'POST', body: JSON.stringify(payload) 
-                        });
-                        alert('Penjualan berhasil dicatat.');
-                        directCart = [];
-                        renderDirectCart();
-                        paymentModal.classList.add('hidden');
-                    }
-                } catch (error) {
-                    alert(`Error: ${error.message}`);
-                } finally {
-                    confirmPaymentBtn.disabled = false;
-                    confirmPaymentBtn.textContent = 'Konfirmasi Pembayaran';
-                }
-            });
-
             // Tambahkan event listener untuk input jumlah bayar
             closePaymentModalBtn.addEventListener('click', () => paymentModal.classList.add('hidden'));
             cancelPaymentModalBtn.addEventListener('click', () => paymentModal.classList.add('hidden'));
@@ -2955,31 +2891,69 @@ const renderCashFlowChart = (data) => {
         // --- END OF NEW LOGIC ---
 
         // --- LOGIC LAMA (SEBAGAI CADANGAN JIKA MODAL TIDAK DITEMUKAN) ---
-        // completeBtn.addEventListener('click', async () => {
-        //     if (directCart.length === 0 || !confirm('Selesaikan dan catat penjualan ini?')) return;
-
-        //     completeBtn.disabled = true;
-        //     completeBtn.textContent = 'Memproses...';
-
-        //     try {
-        //         await apiFetch(`${ADMIN_API_URL}/cash-sale`, { method: 'POST', body: JSON.stringify({ items: directCart, paymentMethod: 'Cash' }) });
-        //         alert('Penjualan berhasil dicatat.');
-        //         directCart = [];
-        //         renderDirectCart();
-        //     } catch (error) {
-        //         alert(`Error: ${error.message}`);
-        //     } finally {
-        //         completeBtn.disabled = false;
-        //         completeBtn.textContent = 'Selesaikan Penjualan';
-        //     }
-        // });
-
         searchInput.addEventListener('input', renderProductGrid);
 
         // Initial load
         apiFetch(`${ADMIN_API_URL}/products?shop=sembako`).then(products => {
             directCashierProducts = products;
             renderProductGrid();
+        });
+
+        // Pindahkan event listener untuk tombol konfirmasi pembayaran ke sini
+        confirmPaymentBtn.addEventListener('click', async () => {
+            const selectedPaymentMethod = document.querySelector('input[name="direct-payment-method"]:checked')?.value;
+            
+            confirmPaymentBtn.disabled = true;
+            confirmPaymentBtn.textContent = 'Memproses...';
+
+            const isLedger = selectedPaymentMethod.toLowerCase().includes('gaji') || selectedPaymentMethod.toLowerCase().includes('ledger');
+
+            try {
+                if (selectedPaymentMethod === 'Cash') {
+                    const total = parseFloat(paymentTotalEl.dataset.total || 0);
+                    const paidAmount = parseFloat(paymentAmountInput.value) || 0;
+                    if (paidAmount < total) {
+                        throw new Error('Jumlah uang yang dibayarkan kurang dari total belanja.');
+                    }
+                }
+                if (isLedger && !validatedMemberId) {
+                    throw new Error('Nomor koperasi anggota belum divalidasi atau tidak valid.');
+                }
+
+                orderIdToComplete = window.orderIdToComplete;
+                if (orderIdToComplete) {
+                    const payload = { 
+                        orderId: orderIdToComplete, 
+                        paymentMethod: selectedPaymentMethod,
+                        memberId: validatedMemberId,
+                        loanTermId: tenorSelect.value
+                    };
+                    await apiFetch(`${ADMIN_API_URL}/sales/complete`, { method: 'POST', body: JSON.stringify(payload) });
+                    alert('Pesanan berhasil diselesaikan.');
+                    paymentModal.classList.add('hidden');
+                    document.getElementById('cashier-verification-modal')?.classList.add('hidden');
+                    window.orderIdToComplete = null;
+                    loadPendingOrders();
+                } else {
+                    const payload = {
+                        items: directCart,
+                        paymentMethod: selectedPaymentMethod,
+                        loanTermId: tenorSelect.value,
+                    };
+                    if (isLedger) payload.memberId = validatedMemberId;
+
+                    await apiFetch(`${ADMIN_API_URL}/cash-sale`, { method: 'POST', body: JSON.stringify(payload) });
+                    alert('Penjualan berhasil dicatat.');
+                    directCart = [];
+                    renderDirectCart();
+                    paymentModal.classList.add('hidden');
+                }
+            } catch (error) {
+                alert(`Error: ${error.message}`);
+            } finally {
+                confirmPaymentBtn.disabled = false;
+                confirmPaymentBtn.textContent = 'Konfirmasi Pembayaran';
+            }
         });
     };
 
