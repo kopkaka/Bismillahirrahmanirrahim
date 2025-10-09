@@ -2285,7 +2285,6 @@ const renderCashFlowChart = (data) => {
     });
 
     const renderDirectCart = () => {
-        const cartBody = document.getElementById('direct-cashier-items-body');
         const totalEl = document.getElementById('direct-cashier-total');
         const completeBtn = document.getElementById('direct-cashier-complete-btn');
 
@@ -2503,6 +2502,7 @@ const renderCashFlowChart = (data) => {
         const totalEl = document.getElementById('direct-cashier-total');
         const completeBtn = document.getElementById('direct-cashier-complete-btn');
         const searchInput = document.getElementById('direct-cashier-search');
+        const cartBody = document.getElementById('direct-cashier-items-body');
         
         if (!productGrid) return; // Only run if the UI exists
 
