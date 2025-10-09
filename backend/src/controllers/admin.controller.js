@@ -4355,7 +4355,6 @@ module.exports = {
     getSuppliers,
     getLoanTerms,
     getEmployers,
-    getAccounts,
     getAllProductsForDropdown,
     getIncomeStatement,
     getIncomeStatementSummary,
