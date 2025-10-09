@@ -7194,7 +7194,67 @@ const renderCashFlowChart = (data) => {
         const confirmPaymentBtn = document.getElementById('confirm-direct-cashier-payment-btn');
         if (!confirmPaymentBtn || confirmPaymentBtn.dataset.listenerAttached) return;
         confirmPaymentBtn.dataset.listenerAttached = 'true';
+
+        // FIX: Tambahkan event listener untuk input jumlah bayar
+        // Ini akan memanggil updatePaymentButtonState setiap kali pengguna mengetik,
+        // sehingga kembalian dapat dihitung dan ditampilkan secara real-time.
+        const paymentAmountInput = document.getElementById('direct-cashier-payment-amount');
+        paymentAmountInput.addEventListener('input', updatePaymentButtonState);
     
+        // --- FIX: Tambahkan listener untuk validasi nomor koperasi & pemuatan tenor ---
+        const coopNumberInput = document.getElementById('direct-cashier-coop-number');
+        const memberNameDisplay = document.getElementById('direct-cashier-member-name-display');
+        const tenorDetailsContainer = document.getElementById('direct-cashier-tenor-details');
+        const tenorSelect = document.getElementById('direct-cashier-tenor-select');
+
+        coopNumberInput.addEventListener('blur', async () => {
+            const coopNumber = coopNumberInput.value.trim();
+            
+            // Reset state setiap kali input diubah
+            memberNameDisplay.classList.add('hidden');
+            tenorDetailsContainer.classList.add('hidden');
+            window.validatedMemberId = null;
+            updatePaymentButtonState(); // Update tombol untuk menonaktifkannya
+
+            if (!coopNumber) return;
+
+            memberNameDisplay.textContent = 'Memvalidasi...';
+            memberNameDisplay.className = 'p-2 bg-gray-100 rounded-md text-sm text-gray-700';
+            memberNameDisplay.classList.remove('hidden');
+
+            try {
+                // 1. Validasi nomor koperasi
+                const validationResponse = await fetch(`${API_URL}/auth/validate-coop-number`, {
+                    method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ cooperativeNumber: coopNumber })
+                });
+                const validationData = await validationResponse.json();
+                if (!validationResponse.ok) throw new Error(validationData.error);
+
+                memberNameDisplay.textContent = `Anggota ditemukan: ${validationData.user.name}`;
+                memberNameDisplay.className = 'p-2 bg-green-100 rounded-md text-sm text-green-800';
+                window.validatedMemberId = validationData.user.id;
+
+                // 2. Dapatkan ID tipe pinjaman untuk "Potong Gaji"
+                // Asumsi nama tipe pinjaman di DB adalah 'Employee Ledger' atau mengandung 'Gaji'
+                const loanTypeRes = await apiFetch(`${ADMIN_API_URL}/loantype-id-by-name?name=Employee Ledger`);
+                const employeeLoanTypeId = loanTypeRes.id;
+
+                // 3. Dapatkan semua tenor dan filter yang sesuai
+                const allTerms = await apiFetch(`${ADMIN_API_URL}/loanterms`);
+                const applicableTerms = allTerms.filter(term => term.loan_type_id === employeeLoanTypeId);
+
+                if (applicableTerms.length > 0) {
+                    tenorSelect.innerHTML = '<option value="">-- Pilih Tenor --</option>' + applicableTerms.map(term => `<option value="${term.id}">${term.tenor_months} bulan</option>`).join('');
+                    tenorDetailsContainer.classList.remove('hidden');
+                } else { throw new Error('Tidak ada opsi tenor yang tersedia untuk pembayaran ini.'); }
+            } catch (error) {
+                memberNameDisplay.textContent = error.message;
+                memberNameDisplay.className = 'p-2 bg-red-100 rounded-md text-sm text-red-800';
+            }
+        });
+
+        tenorSelect.addEventListener('change', updatePaymentButtonState);
+
         confirmPaymentBtn.addEventListener('click', async () => {
             const selectedPaymentMethod = document.querySelector('input[name="direct-payment-method"]:checked')?.value;
     
