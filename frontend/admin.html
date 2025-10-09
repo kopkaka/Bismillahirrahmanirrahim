@@ -700,9 +700,6 @@
 
                 <!-- Usaha Koperasi: Toko Sembako Section -->
                 <div id="toko-sembako-content" class="content-section">
-                    <div class="flex justify-between items-center mb-6">
-                        <button class="sidebar-link text-sm text-red-600 hover:underline" data-target="usaha-koperasi">&larr; Kembali ke Unit Usaha</button>
-                    </div>
                     <!-- Tab Navigation -->
                     <div class="hidden sm:block">
                         <div class="border-b border-gray-200">
@@ -744,7 +741,7 @@
                                 <div class="mb-4">
                                     <input type="text" id="direct-cashier-search" placeholder="Cari produk..." class="w-full px-4 py-2 border rounded-lg focus:ring-red-500 focus:border-red-500">
                                 </div>
-                                <div id="direct-cashier-product-grid" class="flex-grow overflow-y-auto grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 xl:grid-cols-7 gap-3 p-1 self-start">
+                                <div id="direct-cashier-product-grid" class="flex-grow overflow-y-auto grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 xl:grid-cols-7 gap-3 p-1 items-start">
                                     <!-- Product cards will be injected here -->
                                 </div>
                             </div>
@@ -797,7 +794,9 @@
 
                 <!-- Laporan Kasir Section -->
                 <div id="report-cashier-content" class="content-section">
-                    <div class="flex justify-between items-center mb-6"><h2 class="text-2xl font-semibold text-gray-800">Riwayat Transaksi Kasir</h2><button class="sidebar-link text-sm text-red-600 hover:underline" data-target="usaha-koperasi">&larr; Kembali ke Unit Usaha</button></div>
+                    <div class="flex justify-between items-center mb-6">
+                        <h2 class="text-2xl font-semibold text-gray-800">Riwayat Transaksi Kasir</h2>
+                    </div>
                     <div class="bg-white p-6 rounded-lg shadow-md">
                         <!-- Filter Form -->
                         <form id="cashier-report-filter-form" class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6 items-end">
