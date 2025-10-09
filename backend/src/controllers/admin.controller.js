@@ -4415,6 +4415,5 @@ module.exports = {
     getLoanTypeIdByName,
     deletePaymentMethod,
     cancelSale,
-    completeOrder,
-    confirmTakeawayOrder
+    completeOrder
 };
