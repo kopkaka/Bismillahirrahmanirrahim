@@ -2713,101 +2713,9 @@ const renderCashFlowChart = (data) => {
         const paymentAmountInput = document.getElementById('direct-cashier-payment-amount');
         const changeContainer = document.getElementById('direct-cashier-change-container');
         const paymentAmountContainer = document.getElementById('direct-cashier-payment-amount-container');
-        const changeAmountEl = document.getElementById('direct-cashier-change-amount');
         const paymentErrorEl = document.getElementById('direct-cashier-payment-error');
-        const paymentMethodRadios = document.querySelectorAll('input[name="direct-payment-method"]');
-        const tenorDetailsContainer = document.getElementById('direct-cashier-tenor-details');
-        const tenorSelect = document.getElementById('direct-cashier-tenor-select');
-
-        let validatedMemberId = null; // Untuk menyimpan ID anggota yang tervalidasi
-        // Pindahkan orderIdToComplete ke scope yang lebih tinggi (window)
-        let orderIdToComplete = null; // Menyimpan orderId jika ini penyelesaian pesanan
-
-        // Pindahkan deklarasi elemen modal ke sini agar bisa diakses oleh showPaymentModal
-        const paymentMethodsContainer = document.getElementById('direct-cashier-payment-methods-container');
-        const ledgerDetailsContainer = document.getElementById('direct-cashier-ledger-details');
-        const coopNumberInput = document.getElementById('direct-cashier-coop-number');
-        const memberNameDisplay = document.getElementById('direct-cashier-member-name-display');
+    
         if (paymentModal) {
-
-            // Tampilkan/sembunyikan input berdasarkan metode pembayaran
-            paymentMethodRadios.forEach(radio => {
-                radio.addEventListener('change', () => {
-                    const isCash = radio.value === 'Cash';
-                    const isLedger = radio.value === 'Employee Ledger';
-
-                    // Tampilkan/sembunyikan field yang berhubungan dengan pembayaran tunai
-                    // FIX: Logika yang benar adalah menyembunyikan input uang jika BUKAN cash.
-                    paymentAmountContainer.classList.toggle('hidden', radio.value !== 'Cash');
-                    changeContainer.classList.toggle('hidden', !isCash);
-
-                    // Tampilkan/sembunyikan field untuk potong gaji
-                    ledgerDetailsContainer.classList.toggle('hidden', !isLedger);
-                    tenorDetailsContainer.classList.add('hidden'); // Selalu sembunyikan tenor saat metode berubah
-
-                    if (!isCash) {
-                        paymentAmountInput.value = ''; // Reset input uang bayar
-                        confirmPaymentBtn.disabled = isLedger; // Nonaktifkan jika ledger sampai nomor divalidasi
-                        validatedMemberId = null; // Reset ID anggota jika metode lain dipilih
-                    }
-                    updatePaymentButtonState('direct');
-                });
-            });
-
-            // Validasi nomor koperasi saat input kehilangan fokus
-            coopNumberInput.addEventListener('blur', async () => {
-                const coopNumber = coopNumberInput.value.trim();
-                memberNameDisplay.classList.add('hidden');
-                tenorDetailsContainer.classList.add('hidden'); // Sembunyikan tenor saat validasi ulang
-                confirmPaymentBtn.disabled = true; // Nonaktifkan tombol saat validasi ulang
-                validatedMemberId = null;
-
-                if (!coopNumber) return;
-
-                try {
-                    const validationResponse = await fetch(`${API_URL}/auth/validate-coop-number`, {
-                        method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ cooperativeNumber: coopNumber })
-                    });
-                    const validationData = await validationResponse.json();
-                    if (!validationResponse.ok) throw new Error(validationData.error);
-
-                    memberNameDisplay.textContent = `Anggota ditemukan: ${validationData.user.name}`;
-                    memberNameDisplay.className = 'p-2 bg-green-100 rounded-md text-sm text-green-800';
-                    validatedMemberId = validationData.user.id;
-
-                    // --- LOGIKA BARU: Muat tenor setelah validasi berhasil ---
-                    try {
-                        // FIX: Daripada mencari nama spesifik, cari tipe pinjaman yang mengandung kata "karyawan".
-                        // Ini lebih fleksibel jika nama di database sedikit berbeda (misal: "Pinjaman Khusus Karyawan").
-                        const allLoanTypes = await apiFetch(`${ADMIN_API_URL}/loantypes`);
-                        const employeeLoanType = allLoanTypes.find(lt => lt.name.toLowerCase().includes('karyawan'));
-
-                        if (!employeeLoanType) throw new Error('Tipe pinjaman untuk "Karyawan" tidak ditemukan. Harap buat di Pengaturan > Kelola Tipe Pinjaman.');
-                        const loanTypeId = employeeLoanType.id;
-
-                        const allTerms = await apiFetch(`${ADMIN_API_URL}/loanterms`);
-                        const applicableTerms = allTerms.filter(term => term.loan_type_id === loanTypeId);
-
-                        if (applicableTerms.length > 0) {
-                            tenorSelect.innerHTML = '<option value="">-- Pilih Tenor --</option>';
-                            applicableTerms.forEach(term => {
-                                tenorSelect.innerHTML += `<option value="${term.id}">${term.tenor_months} bulan</option>`;
-                            });
-                            tenorDetailsContainer.classList.remove('hidden');
-                        } else {
-                            throw new Error('Tidak ada opsi tenor yang tersedia untuk Pinjaman Karyawan.');
-                        }
-                    } catch (termError) {
-                        memberNameDisplay.textContent = termError.message;
-                        memberNameDisplay.className = 'p-2 bg-red-100 rounded-md text-sm text-red-800';
-                    }
-
-                } catch (error) { memberNameDisplay.textContent = error.message; memberNameDisplay.className = 'p-2 bg-red-100 rounded-md text-sm text-red-800';
-                } finally { memberNameDisplay.classList.remove('hidden'); }
-            });
-
-            // Aktifkan tombol konfirmasi hanya jika tenor sudah dipilih
-            tenorSelect.addEventListener('change', () => { confirmPaymentBtn.disabled = !tenorSelect.value; });
             // Fungsi untuk menghitung kembalian
             const calculateChange = () => {
                 const total = parseFloat(paymentTotalEl.dataset.total || 0);
@@ -2852,7 +2760,6 @@ const renderCashFlowChart = (data) => {
                     paymentMethodsContainer.innerHTML = '';
                     activeMethods.forEach((method, index) => {
                         const isCash = method.name === 'Cash';
-                        // FIX: Pengecekan harus lebih fleksibel, tidak hardcoded ke "Employee Ledger".
                         const isLedger = method.name.toLowerCase().includes('gaji') || method.name.toLowerCase().includes('ledger');
                         const radioId = `direct-payment-${method.id}`;
                         const radioHtml = `
@@ -2863,6 +2770,7 @@ const renderCashFlowChart = (data) => {
                         `;
                         paymentMethodsContainer.insertAdjacentHTML('beforeend', radioHtml);
                         
+                        const ledgerDetailsContainer = document.getElementById('direct-cashier-ledger-details');
                         document.getElementById(radioId).addEventListener('change', () => {
                             paymentAmountContainer.classList.toggle('hidden', !isCash);
                             ledgerDetailsContainer.classList.toggle('hidden', !isLedger);
@@ -2888,16 +2796,73 @@ const renderCashFlowChart = (data) => {
         } else {
             console.error("Direct cashier payment modal not found in HTML.");
         }
-        // --- END OF NEW LOGIC ---
-
-        // --- LOGIC LAMA (SEBAGAI CADANGAN JIKA MODAL TIDAK DITEMUKAN) ---
-        searchInput.addEventListener('input', renderProductGrid);
 
         // Initial load
         apiFetch(`${ADMIN_API_URL}/products?shop=sembako`).then(products => {
             directCashierProducts = products;
             renderProductGrid();
         });
+
+        // --- Event Listeners for Payment Modal ---
+        if (paymentModal && !paymentModal.dataset.listenerAttached) {
+            paymentModal.dataset.listenerAttached = 'true';
+
+            const coopNumberInput = document.getElementById('direct-cashier-coop-number');
+            const memberNameDisplay = document.getElementById('direct-cashier-member-name-display');
+            const tenorDetailsContainer = document.getElementById('direct-cashier-tenor-details');
+            const tenorSelect = document.getElementById('direct-cashier-tenor-select');
+            let validatedMemberId = null;
+
+            coopNumberInput.addEventListener('blur', async () => {
+                const coopNumber = coopNumberInput.value.trim();
+                memberNameDisplay.classList.add('hidden');
+                tenorDetailsContainer.classList.add('hidden');
+                confirmPaymentBtn.disabled = true;
+                validatedMemberId = null;
+
+                if (!coopNumber) return;
+
+                try {
+                    const validationResponse = await fetch(`${API_URL}/auth/validate-coop-number`, {
+                        method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ cooperativeNumber: coopNumber })
+                    });
+                    const validationData = await validationResponse.json();
+                    if (!validationResponse.ok) throw new Error(validationData.error);
+
+                    memberNameDisplay.textContent = `Anggota ditemukan: ${validationData.user.name}`;
+                    memberNameDisplay.className = 'p-2 bg-green-100 rounded-md text-sm text-green-800';
+                    validatedMemberId = validationData.user.id;
+
+                    const allLoanTypes = await apiFetch(`${ADMIN_API_URL}/loantypes`);
+                    const employeeLoanType = allLoanTypes.find(lt => lt.name.toLowerCase().includes('karyawan'));
+                    if (!employeeLoanType) throw new Error('Tipe pinjaman untuk "Karyawan" tidak ditemukan.');
+
+                    const allTerms = await apiFetch(`${ADMIN_API_URL}/loanterms`);
+                    const applicableTerms = allTerms.filter(term => term.loan_type_id === employeeLoanType.id);
+
+                    if (applicableTerms.length > 0) {
+                        tenorSelect.innerHTML = '<option value="">-- Pilih Tenor --</option>';
+                        applicableTerms.forEach(term => {
+                            tenorSelect.innerHTML += `<option value="${term.id}">${term.tenor_months} bulan</option>`;
+                        });
+                        tenorDetailsContainer.classList.remove('hidden');
+                    } else {
+                        throw new Error('Tidak ada opsi tenor yang tersedia untuk Pinjaman Karyawan.');
+                    }
+                } catch (error) {
+                    memberNameDisplay.textContent = error.message;
+                    memberNameDisplay.className = 'p-2 bg-red-100 rounded-md text-sm text-red-800';
+                } finally {
+                    memberNameDisplay.classList.remove('hidden');
+                }
+            });
+
+            tenorSelect.addEventListener('change', () => {
+                confirmPaymentBtn.disabled = !tenorSelect.value;
+            });
+        }
+
+        searchInput.addEventListener('input', renderProductGrid);
 
         // Pindahkan event listener untuk tombol konfirmasi pembayaran ke sini
         confirmPaymentBtn.addEventListener('click', async () => {
@@ -2907,6 +2872,10 @@ const renderCashFlowChart = (data) => {
             confirmPaymentBtn.textContent = 'Memproses...';
 
             const isLedger = selectedPaymentMethod.toLowerCase().includes('gaji') || selectedPaymentMethod.toLowerCase().includes('ledger');
+            const validatedMemberId = window.validatedMemberId; // Ambil dari scope global jika perlu
+            const tenorSelect = document.getElementById('direct-cashier-tenor-select');
+            const paymentTotalEl = document.getElementById('direct-cashier-payment-total');
+            const paymentAmountInput = document.getElementById('direct-cashier-payment-amount');
 
             try {
                 if (selectedPaymentMethod === 'Cash') {
@@ -2920,7 +2889,7 @@ const renderCashFlowChart = (data) => {
                     throw new Error('Nomor koperasi anggota belum divalidasi atau tidak valid.');
                 }
 
-                orderIdToComplete = window.orderIdToComplete;
+                let orderIdToComplete = window.orderIdToComplete;
                 if (orderIdToComplete) {
                     const payload = { 
                         orderId: orderIdToComplete, 
