@@ -7,6 +7,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const sidebarOverlay = document.getElementById('sidebar-overlay');
     const menuButton = document.getElementById('menu-button');    
     const allLinks = document.querySelectorAll('.sidebar-link, .settings-card-link, .accounting-card-link, .report-card-link');
+    const cartBody = document.getElementById('direct-cashier-items-body'); // FIX: Define at a higher scope
     const contentSections = document.querySelectorAll('.content-section');
     const sidebarLinks = document.querySelectorAll('.sidebar-link');
  
@@ -2502,7 +2503,6 @@ const renderCashFlowChart = (data) => {
         const totalEl = document.getElementById('direct-cashier-total');
         const completeBtn = document.getElementById('direct-cashier-complete-btn');
         const searchInput = document.getElementById('direct-cashier-search');
-        const cartBody = document.getElementById('direct-cashier-items-body');
         
         if (!productGrid) return; // Only run if the UI exists
 
