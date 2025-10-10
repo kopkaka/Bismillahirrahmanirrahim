@@ -57,6 +57,14 @@ document.addEventListener('DOMContentLoaded', () => {
         if (!hasPerm('viewAccounting')) document.querySelector('.sidebar-link[data-target="accounting"]')?.remove();
         if (!hasPerm('viewReports')) document.querySelector('.sidebar-link[data-target="reports"]')?.remove();
         if (!hasPerm('viewSettings')) document.querySelector('.sidebar-link[data-target="settings"]')?.parentElement.remove();
+
+        // Sembunyikan kartu di halaman Pengaturan jika tidak ada izin
+        if (!hasPerm('manageCooperativeProfile')) document.querySelector('.settings-card-link[data-target="manage-cooperative-profile"]')?.remove();
+        if (!hasPerm('manageTestimonials')) {
+            document.querySelector('.settings-card-link[data-target="testimonials"]')?.remove();
+        }
+        if (!hasPerm('manageShuRules')) document.querySelector('.settings-card-link[data-target="manage-shu-rules"]')?.remove();
+        if (!hasPerm('manageAnnouncements')) document.querySelector('.settings-card-link[data-target="manage-announcements"]')?.remove();
     };
 
     const checkAdminAuth = async () => {
@@ -821,9 +829,11 @@ const renderCashFlowChart = (data) => {
                 }
 
                 let adminActions = '';
-                if (userRole === 'admin') {
-                    if (saving.status === 'Pending') adminActions += `<button class="edit-saving-btn text-indigo-600 hover:text-indigo-900" data-id="${saving.id}">Ubah</button>`;
-                    adminActions += `<button class="delete-saving-btn text-red-600 hover:text-red-900" data-id="${saving.id}">Hapus</button>`;
+                // Gunakan hak akses, bukan role
+                if (hasPerm('manageSavings')) {
+                    // Tombol ubah hanya muncul untuk status Pending
+                    if (saving.status === 'Pending') { adminActions += `<button class="edit-saving-btn text-indigo-600 hover:text-indigo-900" data-id="${saving.id}">Ubah</button>`; }
+                    adminActions += `<button class="delete-saving-btn text-red-600 hover:text-red-900 ml-2" data-id="${saving.id}">Hapus</button>`;
                 }
 
                 row.innerHTML = `
@@ -901,9 +911,11 @@ const renderCashFlowChart = (data) => {
                 const monthlyInstallment = loan.monthlyInstallment || 0;
                 const totalPayment = loan.totalPayment || 0;
                 const statusClass = loan.status === 'Approved' ? 'bg-green-100 text-green-800' : (loan.status === 'Rejected' ? 'bg-red-100 text-red-800' : (loan.status === 'Lunas' ? 'bg-blue-100 text-blue-800' : 'bg-yellow-100 text-yellow-800'));
-                const adminActions = userRole === 'admin' && loan.status === 'Pending'
+                
+                // Gunakan hak akses, bukan role
+                const adminActions = hasPerm('manageLoans') && loan.status === 'Pending'
                     ? `<button class="edit-loan-btn text-indigo-600 hover:text-indigo-900" data-id="${loan.id}">Ubah</button>
-                       <button class="delete-loan-btn text-red-600 hover:text-red-900" data-id="${loan.id}">Hapus</button>`
+                       <button class="delete-loan-btn text-red-600 hover:text-red-900 ml-2" data-id="${loan.id}">Hapus</button>`
                     : '';
                 row.innerHTML = `
                     <td class="px-6 py-4 text-sm text-gray-900">${loan.memberName}</td>
@@ -1210,10 +1222,10 @@ const renderCashFlowChart = (data) => {
                 const statusClass = inst.status === 'Lunas' ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800';
 
                 let actionButton = '';
-                if (inst.status === 'Lunas' && userRole === 'admin') {
-                    // Tombol Batalkan untuk admin jika sudah lunas
+                if (inst.status === 'Lunas' && hasPerm('manageLoanPayments')) {
+                    // Tombol Batalkan jika sudah lunas
                     actionButton = `<button class="cancel-installment-btn text-sm bg-red-600 text-white py-1 px-3 rounded-md hover:bg-red-700" data-payment-id="${inst.paymentId}" data-loan-id="${summary.id}">Batalkan</button>`;
-                } else if (inst.status !== 'Lunas' && isLoanPayable && ['admin', 'akunting'].includes(userRole)) {
+                } else if (inst.status !== 'Lunas' && isLoanPayable && hasPerm('manageLoanPayments')) {
                     // Tombol Bayar jika belum lunas
                     actionButton = `<button class="pay-installment-btn text-sm bg-green-600 text-white py-1 px-3 rounded-md hover:bg-green-700" data-loan-id="${summary.id}" data-installment-number="${inst.installmentNumber}">Bayar</button>`;
                 } else if (inst.status !== 'Lunas') {
@@ -1708,7 +1720,7 @@ const renderCashFlowChart = (data) => {
                 const row = tableBody.insertRow();
                 let actionButtons = `<span class="text-xs text-gray-400">Tidak ada aksi</span>`;
 
-                if (['admin', 'akunting'].includes(userRole)) {
+                if (hasPerm('approveSaving')) {
                     actionButtons = `<button class="approve-btn text-green-600" data-id="${item.id}" data-type="savings" data-new-status="Approved">Setujui</button>
                                      <button class="reject-btn text-red-600" data-id="${item.id}" data-type="savings" data-new-status="Rejected">Tolak</button>`;
                 }
@@ -1761,7 +1773,7 @@ const renderCashFlowChart = (data) => {
                 const row = tableBody.insertRow();
                 let actionButtons = `<span class="text-xs text-gray-400">Tidak ada aksi</span>`;
 
-                if (['admin', 'akunting'].includes(userRole)) {
+                if (hasPerm('approveSaving')) {
                     actionButtons = `<button class="approve-btn text-green-600" data-id="${item.id}" data-type="savings" data-new-status="Approved">Setujui</button>
                                      <button class="reject-btn text-red-600" data-id="${item.id}" data-type="savings" data-new-status="Rejected">Tolak</button>`;
                 }
@@ -1808,10 +1820,10 @@ const renderCashFlowChart = (data) => {
                     // Tombol Detail diubah menjadi tombol Surat Komitmen
                     actionButtons = `<button class="commitment-letter-btn text-blue-600 hover:text-blue-900" data-loan-id="${item.id}">Lihat Komitmen</button>`;
 
-                    if (item.status === 'Pending' && ['admin', 'akunting'].includes(userRole)) {
+                    if (item.status === 'Pending' && hasPerm('approveLoanAccounting')) {
                         actionButtons += `<button class="approve-btn text-green-600 ml-2" data-id="${item.id}" data-type="loans" data-new-status="Approved by Accounting">Setujui (Akunting)</button>
                                           <button class="reject-btn text-red-600" data-id="${item.id}" data-type="loans" data-new-status="Rejected">Tolak</button>`;
-                    } else if (item.status === 'Approved by Accounting' && ['admin', 'manager'].includes(userRole)) {
+                    } else if (item.status === 'Approved by Accounting' && hasPerm('approveLoanManager')) {
                         actionButtons += `<button class="approve-btn text-green-600" data-id="${item.id}" data-type="loans" data-new-status="Approved">Finalisasi (Manager)</button>
                                           <button class="reject-btn text-red-600" data-id="${item.id}" data-type="loans" data-new-status="Rejected">Tolak</button>`;
                     }
@@ -1856,10 +1868,13 @@ const renderCashFlowChart = (data) => {
                     ? `<a href="${API_URL.replace('/api', '')}/${payment.proof_path.replace(/\\/g, '/')}" target="_blank" class="text-blue-600 hover:underline">Lihat</a>`
                     : '-';
                 
-                const actionButtons = `
-                    <button class="approve-btn text-green-600" data-id="${payment.id}" data-type="loan-payments" data-new-status="Approved">Setujui</button>
-                    <button class="reject-btn text-red-600" data-id="${payment.id}" data-type="loan-payments" data-new-status="Rejected">Tolak</button>
-                `;
+                let actionButtons = '-';
+                if (hasPerm('manageLoanPayments')) {
+                    actionButtons = `
+                        <button class="approve-btn text-green-600" data-id="${payment.id}" data-type="loan-payments" data-new-status="Approved">Setujui</button>
+                        <button class="reject-btn text-red-600" data-id="${payment.id}" data-type="loan-payments" data-new-status="Rejected">Tolak</button>
+                    `;
+                }
     
                 row.innerHTML = `
                     <td class="px-6 py-4 text-sm text-gray-900">${payment.member_name}</td>
@@ -2176,8 +2191,8 @@ const renderCashFlowChart = (data) => {
                     <button class="view-order-details-btn text-blue-600 hover:underline" data-order-id="${order.order_id}">Detail</button>
                     <button class="confirm-takeaway-btn text-green-600 hover:underline" data-order-id="${order.order_id}" data-sale-id="${order.id}">Proses di Kasir</button>
                 `;
-
-                if (userRole === 'admin') {
+                // Gunakan hak akses, bukan role
+                if (hasPerm('manageSales')) {
                     actionButtons += `<button class="cancel-order-btn text-red-600 hover:underline ml-2" data-order-id="${order.order_id}">Batalkan</button>`;
                 }
 
@@ -3206,7 +3221,7 @@ const renderCashFlowChart = (data) => {
                 </td>
                 <td class="px-6 py-4 text-sm font-medium space-x-2">
                     <button class="edit-perusahaan-btn text-indigo-600 hover:text-indigo-900" data-id="${item.id}">Ubah</button>
-                    ${role === 'admin' ? `<button class="delete-perusahaan-btn text-red-600 hover:text-red-900" data-id="${item.id}">Hapus</button>` : ''}
+                    ${hasPerm('deleteData') ? `<button class="delete-perusahaan-btn text-red-600 hover:text-red-900 ml-2" data-id="${item.id}">Hapus</button>` : ''}
                 </td>
             </tr>`,
     });
@@ -3224,8 +3239,7 @@ const renderCashFlowChart = (data) => {
             <tr>
                 <td class="px-6 py-4 text-sm text-gray-900">${item.name}</td>
                 <td class="px-6 py-4 text-sm font-medium space-x-2">
-                    <button class="edit-jabatan-btn text-indigo-600 hover:text-indigo-900" data-id="${item.id}">Ubah</button>
-                    ${role === 'admin' ? `<button class="delete-jabatan-btn text-red-600 hover:text-red-900" data-id="${item.id}">Hapus</button>` : ''}
+                    <button class="edit-jabatan-btn text-indigo-600 hover:text-indigo-900" data-id="${item.id}">Ubah</button>${hasPerm('deleteData') ? `<button class="delete-jabatan-btn text-red-600 hover:text-red-900 ml-2" data-id="${item.id}">Hapus</button>` : ''}
                 </td>
             </tr>`
     });
@@ -3245,7 +3259,7 @@ const renderCashFlowChart = (data) => {
                 <td class="px-6 py-4 text-sm text-gray-500">${item.description || '-'}</td>
                 <td class="px-6 py-4 text-sm font-medium space-x-2">
                     <button class="edit-tipe-simpanan-btn text-indigo-600 hover:text-indigo-900" data-id="${item.id}">Ubah</button>
-                    ${role === 'admin' ? `<button class="delete-tipe-simpanan-btn text-red-600 hover:text-red-900" data-id="${item.id}">Hapus</button>` : ''}
+                    ${hasPerm('deleteData') ? `<button class="delete-tipe-simpanan-btn text-red-600 hover:text-red-900 ml-2" data-id="${item.id}">Hapus</button>` : ''}
                 </td>
             </tr>`
     });
@@ -3265,7 +3279,7 @@ const renderCashFlowChart = (data) => {
                 <td class="px-6 py-4 text-sm text-gray-500">${item.description || '-'}</td>
                 <td class="px-6 py-4 text-sm font-medium space-x-2">
                     <button class="edit-tipe-pinjaman-btn text-indigo-600 hover:text-indigo-900" data-id="${item.id}">Ubah</button>
-                    ${role === 'admin' ? `<button class="delete-tipe-pinjaman-btn text-red-600 hover:text-red-900" data-id="${item.id}">Hapus</button>` : ''}
+                    ${hasPerm('deleteData') ? `<button class="delete-tipe-pinjaman-btn text-red-600 hover:text-red-900 ml-2" data-id="${item.id}">Hapus</button>` : ''}
                 </td>
             </tr>`
     });
@@ -3298,7 +3312,7 @@ const renderCashFlowChart = (data) => {
                 <td class="px-6 py-4 text-sm text-gray-500">${item.interest_rate}%</td>
                 <td class="px-6 py-4 text-sm font-medium space-x-2">
                     <button class="edit-tenor-pinjaman-btn text-indigo-600 hover:text-indigo-900" data-id="${item.id}">Ubah</button>
-                    ${role === 'admin' ? `<button class="delete-tenor-pinjaman-btn text-red-600 hover:text-red-900" data-id="${item.id}">Hapus</button>` : ''}
+                    ${hasPerm('deleteData') ? `<button class="delete-tenor-pinjaman-btn text-red-600 hover:text-red-900 ml-2" data-id="${item.id}">Hapus</button>` : ''}
                 </td>
             </tr>`
     });
@@ -3340,7 +3354,7 @@ const renderCashFlowChart = (data) => {
                 <td class="px-6 py-4 text-sm text-gray-500">${item.account_type}</td>
                 <td class="px-6 py-4 text-sm font-medium space-x-2">
                     <button class="edit-akun-btn text-indigo-600 hover:text-indigo-900" data-id="${item.id}">Ubah</button>
-                    ${role === 'admin' ? `<button class="delete-akun-btn text-red-600 hover:text-red-900" data-id="${item.id}">Hapus</button>` : ''}
+                    ${hasPerm('deleteData') ? `<button class="delete-akun-btn text-red-600 hover:text-red-900 ml-2" data-id="${item.id}">Hapus</button>` : ''}
                 </td>
             </tr>`;
         }
@@ -3368,7 +3382,7 @@ const renderCashFlowChart = (data) => {
                 <td class="px-6 py-4 text-sm text-gray-900">${item.name}</td>
                 <td class="px-6 py-4 text-sm font-medium space-x-2">
                     <button class="edit-tipe-akun-btn text-indigo-600 hover:text-indigo-900" data-id="${item.id}">Ubah</button>
-                    ${role === 'admin' ? `<button class="delete-tipe-akun-btn text-red-600 hover:text-red-900" data-id="${item.id}">Hapus</button>` : ''}
+                    ${hasPerm('deleteData') ? `<button class="delete-tipe-akun-btn text-red-600 hover:text-red-900 ml-2" data-id="${item.id}">Hapus</button>` : ''}
                 </td>
             </tr>`
     });
@@ -3390,7 +3404,7 @@ const renderCashFlowChart = (data) => {
                 <td class="px-6 py-4 text-sm text-gray-500">${item.phone || '-'}</td>
                 <td class="px-6 py-4 text-sm font-medium space-x-2">
                     <button class="edit-supplier-btn text-indigo-600 hover:text-indigo-900" data-id="${item.id}">Ubah</button>
-                    ${role === 'admin' ? `<button class="delete-supplier-btn text-red-600 hover:text-red-900" data-id="${item.id}">Hapus</button>` : ''}
+                    ${hasPerm('deleteData') ? `<button class="delete-supplier-btn text-red-600 hover:text-red-900 ml-2" data-id="${item.id}">Hapus</button>` : ''}
                 </td>
             </tr>`
     });
@@ -3412,7 +3426,7 @@ const renderCashFlowChart = (data) => {
                 <td class="px-6 py-4 text-sm text-gray-500">${item.default_unit || '-'}</td>
                 <td class="px-6 py-4 text-sm font-medium space-x-2">
                     <button class="edit-item-produk-btn text-indigo-600 hover:text-indigo-900" data-id="${item.id}">Ubah</button>
-                    ${role === 'admin' ? `<button class="delete-item-produk-btn text-red-600 hover:text-red-900" data-id="${item.id}">Hapus</button>` : ''}
+                    ${hasPerm('deleteData') ? `<button class="delete-item-produk-btn text-red-600 hover:text-red-900 ml-2" data-id="${item.id}">Hapus</button>` : ''}
                 </td>
             </tr>`
     });
@@ -3443,7 +3457,10 @@ const renderCashFlowChart = (data) => {
                 <td class="px-6 py-4 text-sm font-medium text-gray-900">${item.title}</td>
                 <td class="px-6 py-4 text-sm text-gray-500">${formatDate(item.created_at)}</td>
                 <td class="px-6 py-4 text-sm"><span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${statusClass}">${statusText}</span></td>
-                <td class="px-6 py-4 text-sm font-medium space-x-2"><button class="edit-pengumuman-btn text-indigo-600 hover:text-indigo-900" data-id="${item.id}">Ubah</button><button class="delete-pengumuman-btn text-red-600 hover:text-red-900" data-id="${item.id}">Hapus</button></td>
+                <td class="px-6 py-4 text-sm font-medium space-x-2">
+                    <button class="edit-pengumuman-btn text-indigo-600 hover:text-indigo-900" data-id="${item.id}">Ubah</button>
+                    <button class="delete-pengumuman-btn text-red-600 hover:text-red-900" data-id="${item.id}">Hapus</button>
+                </td>
             </tr>`;
         },
     });
@@ -3483,8 +3500,7 @@ const renderCashFlowChart = (data) => {
                         <td class="px-6 py-4 text-sm font-medium text-gray-900">${item.name}</td>
                         <td class="px-6 py-4 text-sm"><span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${statusClass}">${statusText}</span></td>
                         <td class="px-6 py-4 text-sm font-medium space-x-2">
-                            <button class="edit-partner-btn text-indigo-600 hover:text-indigo-900" data-id="${item.id}">Ubah</button>
-                            <button class="delete-partner-btn text-red-600 hover:text-red-900" data-id="${item.id}">Hapus</button>
+                            <button class="edit-partner-btn text-indigo-600 hover:text-indigo-900" data-id="${item.id}">Ubah</button>${hasPerm('deleteData') ? `<button class="delete-partner-btn text-red-600 hover:text-red-900 ml-2" data-id="${item.id}">Hapus</button>` : ''}
                         </td>
                     `;
                 });
@@ -3669,9 +3685,12 @@ const renderCashFlowChart = (data) => {
                     <td class="px-6 py-4 text-sm font-medium text-gray-900">${item.name}</td>
                     <td class="px-6 py-4 text-sm text-gray-500">${item.division || '-'}</td>
                     <td class="px-6 py-4 text-sm text-gray-500 max-w-md truncate" title="${item.text}">${item.text}</td>
-                    <td class="px-6 py-4 text-sm font-medium space-x-2">
+                    <td class="px-6 py-4 text-sm font-medium space-x-2">${
+                        hasPerm('manageTestimonials') ? `
                         <button class="edit-testimonial-btn text-indigo-600 hover:text-indigo-900" data-id="${item.id}">Ubah</button>
-                        <button class="delete-testimonial-btn text-red-600 hover:text-red-900" data-id="${item.id}">Hapus</button>
+                        <button class="delete-testimonial-btn text-red-600 hover:text-red-900 ml-2" data-id="${item.id}">Hapus</button>
+                        ` : '-'
+                    }
                     </td>
                 `;
             });
@@ -3826,8 +3845,9 @@ const renderCashFlowChart = (data) => {
                 <td class="px-6 py-4 text-sm text-gray-900">${item.name}</td>
                 <td class="px-6 py-4 text-sm"><span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${statusClass}">${statusText}</span></td>
                 <td class="px-6 py-4 text-sm font-medium space-x-2 whitespace-nowrap">
-                    <button class="edit-tipe-pembayaran-btn text-indigo-600 hover:text-indigo-900" data-id="${item.id}">Ubah</button>
-                    <button class="delete-tipe-pembayaran-btn text-red-600 hover:text-red-900" data-id="${item.id}">Hapus</button>
+                    <button class="edit-tipe-pembayaran-btn text-indigo-600 hover:text-indigo-900" data-id="${item.id}">Ubah</button>${
+                        hasPerm('deleteData') ? `<button class="delete-tipe-pembayaran-btn text-red-600 hover:text-red-900 ml-2" data-id="${item.id}">Hapus</button>` : ''
+                    }
                 </td>
             </tr>`;
         },
@@ -5417,7 +5437,7 @@ const renderCashFlowChart = (data) => {
                 cellActions.className = 'px-6 py-4 text-sm font-medium space-x-2';
                 cellActions.innerHTML = `
                     <button class="edit-product-btn text-indigo-600 hover:text-indigo-900" data-id="${product.id}" data-shop-type="${shopType}">Ubah</button>
-                    <button class="delete-product-btn text-red-600 hover:text-red-900" data-id="${product.id}" data-shop-type="${shopType}">Hapus</button>
+                    ${hasPerm('manageProducts') ? `<button class="delete-product-btn text-red-600 hover:text-red-900 ml-2" data-id="${product.id}" data-shop-type="${shopType}">Hapus</button>` : ''}
                 `;
 
                 row.append(cellImage, cellName, cellDesc, cellPrice, cellStock, cellActions);
@@ -5578,7 +5598,7 @@ const renderCashFlowChart = (data) => {
         const button = e.target;
         const { id, shopType } = button.dataset;
 
-        if (button.matches('.edit-product-btn')) {
+        if (button.matches('.edit-product-btn') && hasPerm('manageProducts')) {
             const product = await apiFetch(`${ADMIN_API_URL}/products/${id}`);
             await showProductModal(product, shopType);
         }
@@ -5586,7 +5606,7 @@ const renderCashFlowChart = (data) => {
         if (button.matches('.delete-product-btn')) {
             if (confirm('Anda yakin ingin menghapus produk ini?')) {
                 try {
-                    // Pastikan shopType ada sebelum melanjutkan
+                    // Pastikan shopType ada sebelum melanjutkan, dan user punya izin
                     if (!shopType) {
                         console.error('shopType is missing from the delete button dataset.');
                         alert('Terjadi kesalahan: Tipe toko tidak ditemukan.');
@@ -6444,7 +6464,7 @@ const renderCashFlowChart = (data) => {
                     const statusClass = { 'Selesai': 'bg-green-100 text-green-800', 'Dibatalkan': 'bg-red-100 text-red-800' }[row.status] || 'bg-gray-100 text-gray-800';
                     
                     let actionButton = '-';
-                    if (row.status === 'Selesai' && ['admin', 'akunting'].includes(userRole)) {
+                    if (row.status === 'Selesai' && hasPerm('manageSales')) {
                         actionButton = `<button class="cancel-sale-btn text-red-600 hover:underline" data-id="${row.id}">Batalkan</button>`;
                     }
 
@@ -6468,7 +6488,7 @@ const renderCashFlowChart = (data) => {
         tableBody.addEventListener('click', async (e) => {
             if (e.target.matches('.cancel-sale-btn')) {
                 const saleId = e.target.dataset.id;
-                if (confirm('Anda yakin ingin membatalkan transaksi ini? Stok akan dikembalikan dan jurnal akan dihapus.')) {
+                if (confirm('Anda yakin ingin membatalkan transaksi ini? Stok akan dikembalikan dan jurnal terkait akan dihapus.')) {
                     try {
                         await apiFetch(`${ADMIN_API_URL}/sales/${saleId}/cancel`, { method: 'POST' });
                         alert('Transaksi berhasil dibatalkan.');
@@ -6556,7 +6576,7 @@ const renderCashFlowChart = (data) => {
                 'manage-loan-terms': loadLoanTerms, 
                 'manage-accounts': () => { loadAccounts(); loadAccountTypes(); },
                 'manage-suppliers': () => { loadSuppliers(); loadMasterProducts(); masterProductOptionsCache = null; },
-                'manage-cooperative-profile': loadCooperativeProfile,
+                'manage-cooperative-profile': loadCooperativeProfile, // Ditambahkan
                 'manage-saving-account-mapping': loadSavingAccountMapping, 
                 'manage-loan-account-mapping': loadLoanAccountMapping, 
                 'manage-payment-methods-main': () => { document.querySelector('.payment-method-tab-btn[data-target="payment-methods-list-tab"]').click(); },
