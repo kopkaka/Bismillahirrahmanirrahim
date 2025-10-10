@@ -2191,8 +2191,8 @@ const renderCashFlowChart = (data) => {
                     <button class="view-order-details-btn text-blue-600 hover:underline" data-order-id="${order.order_id}">Detail</button>
                     <button class="confirm-takeaway-btn text-green-600 hover:underline" data-order-id="${order.order_id}" data-sale-id="${order.id}">Proses di Kasir</button>
                 `;
-                // Gunakan hak akses, bukan role
-                if (hasPerm('manageSales')) {
+                // FIX: Gunakan hak akses yang lebih spesifik, bukan 'deleteData'
+                if (userPermissions.has('manageSales')) {
                     actionButtons += `<button class="cancel-order-btn text-red-600 hover:underline ml-2" data-order-id="${order.order_id}">Batalkan</button>`;
                 }
 
@@ -3221,7 +3221,7 @@ const renderCashFlowChart = (data) => {
                 </td>
                 <td class="px-6 py-4 text-sm font-medium space-x-2">
                     <button class="edit-perusahaan-btn text-indigo-600 hover:text-indigo-900" data-id="${item.id}">Ubah</button>
-                    ${hasPerm('deleteData') ? `<button class="delete-perusahaan-btn text-red-600 hover:text-red-900 ml-2" data-id="${item.id}">Hapus</button>` : ''}
+                    ${userPermissions.has('deleteData') ? `<button class="delete-perusahaan-btn text-red-600 hover:text-red-900" data-id="${item.id}">Hapus</button>` : ''}
                 </td>
             </tr>`,
     });
@@ -3239,7 +3239,8 @@ const renderCashFlowChart = (data) => {
             <tr>
                 <td class="px-6 py-4 text-sm text-gray-900">${item.name}</td>
                 <td class="px-6 py-4 text-sm font-medium space-x-2">
-                    <button class="edit-jabatan-btn text-indigo-600 hover:text-indigo-900" data-id="${item.id}">Ubah</button>${hasPerm('deleteData') ? `<button class="delete-jabatan-btn text-red-600 hover:text-red-900 ml-2" data-id="${item.id}">Hapus</button>` : ''}
+                    <button class="edit-jabatan-btn text-indigo-600 hover:text-indigo-900" data-id="${item.id}">Ubah</button>
+                    ${userPermissions.has('deleteData') ? `<button class="delete-jabatan-btn text-red-600 hover:text-red-900" data-id="${item.id}">Hapus</button>` : ''}
                 </td>
             </tr>`
     });
@@ -3259,7 +3260,7 @@ const renderCashFlowChart = (data) => {
                 <td class="px-6 py-4 text-sm text-gray-500">${item.description || '-'}</td>
                 <td class="px-6 py-4 text-sm font-medium space-x-2">
                     <button class="edit-tipe-simpanan-btn text-indigo-600 hover:text-indigo-900" data-id="${item.id}">Ubah</button>
-                    ${hasPerm('deleteData') ? `<button class="delete-tipe-simpanan-btn text-red-600 hover:text-red-900 ml-2" data-id="${item.id}">Hapus</button>` : ''}
+                    ${userPermissions.has('deleteData') ? `<button class="delete-tipe-simpanan-btn text-red-600 hover:text-red-900" data-id="${item.id}">Hapus</button>` : ''}
                 </td>
             </tr>`
     });
@@ -3279,7 +3280,7 @@ const renderCashFlowChart = (data) => {
                 <td class="px-6 py-4 text-sm text-gray-500">${item.description || '-'}</td>
                 <td class="px-6 py-4 text-sm font-medium space-x-2">
                     <button class="edit-tipe-pinjaman-btn text-indigo-600 hover:text-indigo-900" data-id="${item.id}">Ubah</button>
-                    ${hasPerm('deleteData') ? `<button class="delete-tipe-pinjaman-btn text-red-600 hover:text-red-900 ml-2" data-id="${item.id}">Hapus</button>` : ''}
+                    ${userPermissions.has('deleteData') ? `<button class="delete-tipe-pinjaman-btn text-red-600 hover:text-red-900" data-id="${item.id}">Hapus</button>` : ''}
                 </td>
             </tr>`
     });
@@ -3312,7 +3313,7 @@ const renderCashFlowChart = (data) => {
                 <td class="px-6 py-4 text-sm text-gray-500">${item.interest_rate}%</td>
                 <td class="px-6 py-4 text-sm font-medium space-x-2">
                     <button class="edit-tenor-pinjaman-btn text-indigo-600 hover:text-indigo-900" data-id="${item.id}">Ubah</button>
-                    ${hasPerm('deleteData') ? `<button class="delete-tenor-pinjaman-btn text-red-600 hover:text-red-900 ml-2" data-id="${item.id}">Hapus</button>` : ''}
+                    ${userPermissions.has('deleteData') ? `<button class="delete-tenor-pinjaman-btn text-red-600 hover:text-red-900" data-id="${item.id}">Hapus</button>` : ''}
                 </td>
             </tr>`
     });
@@ -3354,7 +3355,7 @@ const renderCashFlowChart = (data) => {
                 <td class="px-6 py-4 text-sm text-gray-500">${item.account_type}</td>
                 <td class="px-6 py-4 text-sm font-medium space-x-2">
                     <button class="edit-akun-btn text-indigo-600 hover:text-indigo-900" data-id="${item.id}">Ubah</button>
-                    ${hasPerm('deleteData') ? `<button class="delete-akun-btn text-red-600 hover:text-red-900 ml-2" data-id="${item.id}">Hapus</button>` : ''}
+                    ${userPermissions.has('deleteData') ? `<button class="delete-akun-btn text-red-600 hover:text-red-900" data-id="${item.id}">Hapus</button>` : ''}
                 </td>
             </tr>`;
         }
@@ -3382,7 +3383,7 @@ const renderCashFlowChart = (data) => {
                 <td class="px-6 py-4 text-sm text-gray-900">${item.name}</td>
                 <td class="px-6 py-4 text-sm font-medium space-x-2">
                     <button class="edit-tipe-akun-btn text-indigo-600 hover:text-indigo-900" data-id="${item.id}">Ubah</button>
-                    ${hasPerm('deleteData') ? `<button class="delete-tipe-akun-btn text-red-600 hover:text-red-900 ml-2" data-id="${item.id}">Hapus</button>` : ''}
+                    ${userPermissions.has('deleteData') ? `<button class="delete-tipe-akun-btn text-red-600 hover:text-red-900" data-id="${item.id}">Hapus</button>` : ''}
                 </td>
             </tr>`
     });
@@ -3404,7 +3405,7 @@ const renderCashFlowChart = (data) => {
                 <td class="px-6 py-4 text-sm text-gray-500">${item.phone || '-'}</td>
                 <td class="px-6 py-4 text-sm font-medium space-x-2">
                     <button class="edit-supplier-btn text-indigo-600 hover:text-indigo-900" data-id="${item.id}">Ubah</button>
-                    ${hasPerm('deleteData') ? `<button class="delete-supplier-btn text-red-600 hover:text-red-900 ml-2" data-id="${item.id}">Hapus</button>` : ''}
+                    ${userPermissions.has('deleteData') ? `<button class="delete-supplier-btn text-red-600 hover:text-red-900" data-id="${item.id}">Hapus</button>` : ''}
                 </td>
             </tr>`
     });
@@ -3426,7 +3427,7 @@ const renderCashFlowChart = (data) => {
                 <td class="px-6 py-4 text-sm text-gray-500">${item.default_unit || '-'}</td>
                 <td class="px-6 py-4 text-sm font-medium space-x-2">
                     <button class="edit-item-produk-btn text-indigo-600 hover:text-indigo-900" data-id="${item.id}">Ubah</button>
-                    ${hasPerm('deleteData') ? `<button class="delete-item-produk-btn text-red-600 hover:text-red-900 ml-2" data-id="${item.id}">Hapus</button>` : ''}
+                    ${userPermissions.has('deleteData') ? `<button class="delete-item-produk-btn text-red-600 hover:text-red-900" data-id="${item.id}">Hapus</button>` : ''}
                 </td>
             </tr>`
     });
@@ -3500,7 +3501,7 @@ const renderCashFlowChart = (data) => {
                         <td class="px-6 py-4 text-sm font-medium text-gray-900">${item.name}</td>
                         <td class="px-6 py-4 text-sm"><span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${statusClass}">${statusText}</span></td>
                         <td class="px-6 py-4 text-sm font-medium space-x-2">
-                            <button class="edit-partner-btn text-indigo-600 hover:text-indigo-900" data-id="${item.id}">Ubah</button>${hasPerm('deleteData') ? `<button class="delete-partner-btn text-red-600 hover:text-red-900 ml-2" data-id="${item.id}">Hapus</button>` : ''}
+                            <button class="edit-partner-btn text-indigo-600 hover:text-indigo-900" data-id="${item.id}">Ubah</button>${userPermissions.has('deleteData') ? `<button class="delete-partner-btn text-red-600 hover:text-red-900" data-id="${item.id}">Hapus</button>` : ''}
                         </td>
                     `;
                 });
@@ -3686,7 +3687,7 @@ const renderCashFlowChart = (data) => {
                     <td class="px-6 py-4 text-sm text-gray-500">${item.division || '-'}</td>
                     <td class="px-6 py-4 text-sm text-gray-500 max-w-md truncate" title="${item.text}">${item.text}</td>
                     <td class="px-6 py-4 text-sm font-medium space-x-2">${
-                        hasPerm('manageTestimonials') ? `
+                        userPermissions.has('manageTestimonials') ? `
                         <button class="edit-testimonial-btn text-indigo-600 hover:text-indigo-900" data-id="${item.id}">Ubah</button>
                         <button class="delete-testimonial-btn text-red-600 hover:text-red-900 ml-2" data-id="${item.id}">Hapus</button>
                         ` : '-'
@@ -5437,7 +5438,7 @@ const renderCashFlowChart = (data) => {
                 cellActions.className = 'px-6 py-4 text-sm font-medium space-x-2';
                 cellActions.innerHTML = `
                     <button class="edit-product-btn text-indigo-600 hover:text-indigo-900" data-id="${product.id}" data-shop-type="${shopType}">Ubah</button>
-                    ${hasPerm('manageProducts') ? `<button class="delete-product-btn text-red-600 hover:text-red-900 ml-2" data-id="${product.id}" data-shop-type="${shopType}">Hapus</button>` : ''}
+                    ${userPermissions.has('manageProducts') ? `<button class="delete-product-btn text-red-600 hover:text-red-900" data-id="${product.id}" data-shop-type="${shopType}">Hapus</button>` : ''}
                 `;
 
                 row.append(cellImage, cellName, cellDesc, cellPrice, cellStock, cellActions);
@@ -5598,7 +5599,7 @@ const renderCashFlowChart = (data) => {
         const button = e.target;
         const { id, shopType } = button.dataset;
 
-        if (button.matches('.edit-product-btn') && hasPerm('manageProducts')) {
+        if (button.matches('.edit-product-btn') && userPermissions.has('manageProducts')) {
             const product = await apiFetch(`${ADMIN_API_URL}/products/${id}`);
             await showProductModal(product, shopType);
         }
@@ -6488,7 +6489,7 @@ const renderCashFlowChart = (data) => {
         tableBody.addEventListener('click', async (e) => {
             if (e.target.matches('.cancel-sale-btn')) {
                 const saleId = e.target.dataset.id;
-                if (confirm('Anda yakin ingin membatalkan transaksi ini? Stok akan dikembalikan dan jurnal terkait akan dihapus.')) {
+            if (confirm('Anda yakin ingin membatalkan transaksi ini? Stok akan dikembalikan dan jurnal akan dihapus.')) {
                     try {
                         await apiFetch(`${ADMIN_API_URL}/sales/${saleId}/cancel`, { method: 'POST' });
                         alert('Transaksi berhasil dibatalkan.');
