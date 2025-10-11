@@ -2450,23 +2450,6 @@ const postShuDistribution = async (req, res) => {
     }
 };
 
-/**
- * @desc    Get all available permissions in the system. This is for the admin role to ensure they always have full access.
- * @route   GET /api/admin/all-permissions
- * @access  Private (Admin)
- */
-const getAllSystemPermissions = async (req, res) => {
-    try {
-        // Admin should always have all permissions. Querying the permissions table directly ensures this.
-        const result = await pool.query('SELECT key FROM permissions');
-        // Return a flat array of permission keys, e.g., ['viewDashboard', 'manageUsers', ...]
-        res.json(result.rows.map(row => row.key));
-    } catch (err) {
-        console.error('Error fetching all system permissions:', err.message);
-        res.status(500).json({ error: 'Gagal mengambil daftar lengkap hak akses.' });
-    }
-};
-
 const getIncomeStatement = async (req, res) => {
     const { startDate, endDate } = req.query;
 
@@ -4476,9 +4459,7 @@ module.exports = {
     cancelSale, // Tetap di sini karena ini adalah aksi admin
     getPartners,
     createPartner,
-    updatePartner,
-    deletePartner,
-    getAllSystemPermissions,
+    updatePartner,    deletePartner,
     completeOrder, // Tetap di sini karena ini adalah aksi admin
     deleteSale,
     // Account Type CRUD
