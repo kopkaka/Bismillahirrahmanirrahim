@@ -68,7 +68,14 @@ document.addEventListener('DOMContentLoaded', () => {
         document.getElementById('user-name-header').textContent = userName || 'Pengguna';
 
         try {
-            const permissionsArray = await apiFetch(`${API_URL}/member/permissions`);
+            let permissionsArray;
+            // FIX: If user is admin, fetch all permissions directly to ensure full access.
+            // For other roles, fetch their specific permissions from the token.
+            if (userRole === 'admin') {
+                permissionsArray = await apiFetch(`${ADMIN_API_URL}/all-permissions`);
+            } else {
+                permissionsArray = await apiFetch(`${API_URL}/member/permissions`);
+            }
             userPermissions = new Set(permissionsArray);
             applyUIPermissions();
         } catch (error) {
