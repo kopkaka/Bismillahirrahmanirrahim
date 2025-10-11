@@ -4,8 +4,6 @@ const path = require('path');
 const { createNotification } = require('../utils/notification.util');
 const { getApprovalCounts } = require('./approval.controller');
 const dashboardService = require('../services/dashboard.service');
-const accountController = require('./account.controller');
-const companyController = require('./company.controller');
 const accountTypeController = require('./accounttype.controller');
 
 const getDashboardStats = async (req, res) => {
@@ -4364,10 +4362,10 @@ module.exports = {
     getPendingLoans,
     updateLoanStatus,
     recordLoanPayment,
-    getLoanDetailsForAdmin,
-    getCompanyInfo: companyController.getCompanyInfo,
-    updateCompanyInfo: companyController.updateCompanyInfo,
-    getAccounts: accountController.getAccounts,
+    getLoanDetailsForAdmin,    
+    getCompanyInfo, // Menggunakan fungsi lokal
+    updateCompanyInfo, // Menggunakan fungsi lokal
+    getAccounts: require('./account.controller').getAccounts, // Menggunakan require langsung
     getLoanById,
     updateLoan,
     getApprovalCounts,
