@@ -2148,21 +2148,19 @@ const getShuRules = async (req, res) => {
 };
 
 const saveShuRules = async (req, res) => {
-    const { year, rules } = req.body;
+    const { year, member_business_service_percentage, member_capital_service_percentage, reserve_fund_percentage, management_fund_percentage, education_fund_percentage, social_fund_percentage } = req.body;
 
-    if (!year || !rules || typeof rules !== 'object') {
-        return res.status(400).json({ error: 'Tahun dan objek aturan SHU diperlukan.' });
-    }
+    if (!year) return res.status(400).json({ error: 'Tahun diperlukan.' });
 
     const requiredKeys = [
         'reserve_fund_percentage', 'member_business_service_percentage', 'member_capital_service_percentage',
         'management_fund_percentage', 'education_fund_percentage', 'social_fund_percentage'
     ];
 
-    const values = requiredKeys.map(key => parseFloat(rules[key]));
+    const values = requiredKeys.map(key => parseFloat(req.body[key]));
 
     if (values.some(isNaN)) {
-        return res.status(400).json({ error: 'Semua nilai persentase harus diisi dan berupa angka.' });
+        return res.status(400).json({ error: 'Semua nilai persentase harus diisi dengan benar.' });
     }
 
     const totalPercentage = values.reduce((sum, value) => sum + value, 0);
@@ -2185,7 +2183,7 @@ const saveShuRules = async (req, res) => {
             RETURNING *;
         `;
         
-        const result = await pool.query(query, [year, ...values]);
+        const result = await pool.query(query, [year, reserve_fund_percentage, member_business_service_percentage, member_capital_service_percentage, management_fund_percentage, education_fund_percentage, social_fund_percentage]);
         res.json({ message: `Aturan SHU untuk tahun ${year} berhasil disimpan.`, data: result.rows[0] });
     } catch (err) {
         console.error(`Error saving SHU rules for year ${year}:`, err.message);
@@ -4304,6 +4302,60 @@ const getCashierReport = async (req, res) => {
     } 
 };
 
+const getPartners = async (req, res) => {
+    try {
+        const result = await pool.query('SELECT * FROM partners ORDER BY display_order ASC, name ASC');
+        res.json(result.rows);
+    } catch (err) {
+        console.error('Error fetching partners:', err.message);
+        res.status(500).json({ error: 'Gagal mengambil data mitra.' });
+    }
+};
+
+const createPartner = async (req, res) => {
+    const { name, website_url } = req.body;
+    if (!req.file) return res.status(400).json({ error: 'Logo mitra wajib diunggah.' });
+    if (!name) return res.status(400).json({ error: 'Nama mitra wajib diisi.' });
+
+    const logoUrl = '/' + req.file.path.replace(/\\/g, '/');
+    try {
+        const query = 'INSERT INTO partners (name, logo_url, website_url) VALUES ($1, $2, $3) RETURNING *';
+        const result = await pool.query(query, [name, logoUrl, website_url || null]);
+        res.status(201).json(result.rows[0]);
+    } catch (err) {
+        console.error('Error creating partner:', err.message);
+        res.status(500).json({ error: 'Gagal membuat mitra baru.' });
+    }
+};
+
+const updatePartner = async (req, res) => {
+    const { id } = req.params;
+    const { name, website_url } = req.body;
+    if (!name) return res.status(400).json({ error: 'Nama mitra wajib diisi.' });
+
+    try {
+        const oldPartnerRes = await pool.query('SELECT logo_url FROM partners WHERE id = $1', [id]);
+        let logoUrl = oldPartnerRes.rows[0]?.logo_url;
+        if (req.file) {
+            logoUrl = '/' + req.file.path.replace(/\\/g, '/');
+        }
+        const query = 'UPDATE partners SET name = $1, website_url = $2, logo_url = $3 WHERE id = $4 RETURNING *';
+        const result = await pool.query(query, [name, website_url || null, logoUrl, id]);
+        res.json(result.rows[0]);
+    } catch (err) {
+        console.error('Error updating partner:', err.message);
+        res.status(500).json({ error: 'Gagal memperbarui mitra.' });
+    }
+};
+
+const deletePartner = async (req, res) => {
+    const { id } = req.params;
+    try {
+        await pool.query('DELETE FROM partners WHERE id = $1', [id]);
+        res.status(204).send();
+    } catch (err) { console.error('Error deleting partner:', err.message); res.status(500).json({ error: 'Gagal menghapus mitra.' }); }
+};
+
 module.exports = {
     getDashboardStats,
     getMemberGrowth,
@@ -4407,6 +4459,10 @@ module.exports = {
     getLoanTypeIdByName,
     deletePaymentMethod,
     cancelSale, // Tetap di sini karena ini adalah aksi admin
+    getPartners,
+    createPartner,
+    updatePartner,
+    deletePartner,
     completeOrder, // Tetap di sini karena ini adalah aksi admin
     deleteSale,
     // Account Type CRUD
