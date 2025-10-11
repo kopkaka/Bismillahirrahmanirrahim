@@ -61,8 +61,18 @@ const getInitialAdminData = async (req, res) => {
             dashboardService.getBalanceSheetSummary(),
         ]);
 
+        // FIX: Correctly destructure the results from Promise.all.
+        // The first result is a raw query result, the others are processed data from the service.
+        const stats = statsResult.rows[0];
+
         res.json({
-            stats: statsResult.rows[0],
+            // Ensure stats values are parsed correctly to avoid frontend issues.
+            stats: {
+                totalMembers: parseInt(stats.total_members, 10),
+                totalSavings: parseFloat(stats.total_savings),
+                totalActiveLoans: parseFloat(stats.total_active_loans),
+                pendingMembers: parseInt(stats.pending_members, 10)
+            },
             cashFlow,
             memberGrowth,
             balanceSheet,
