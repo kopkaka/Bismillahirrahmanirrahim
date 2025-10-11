@@ -811,6 +811,28 @@ const deleteLoan = async (req, res) => {
     }
 };
 
+/**
+ * @desc    Generic function to get a single item by ID from a specified table.
+ * @param   {string} tableName - The name of the table to query.
+ * @returns {function} Express middleware function.
+ */
+const getItemById = (tableName) => async (req, res) => {
+    // Security: Ensure only whitelisted tables can be accessed.
+    if (!ALLOWED_GENERIC_CRUD_TABLES.has(tableName)) {
+        console.error(`Attempt to get item from non-whitelisted table: ${tableName}`);
+        return res.status(403).json({ error: 'Operasi tidak diizinkan untuk tabel ini.' });
+    }
+    const { id } = req.params;
+    try {
+        const result = await pool.query(`SELECT * FROM "${tableName}" WHERE id = $1`, [id]);
+        if (result.rows.length === 0) return res.status(404).json({ error: 'Item tidak ditemukan.' });
+        res.json(result.rows[0]);
+    } catch (err) {
+        console.error(`Error fetching item from ${tableName} with ID ${id}:`, err);
+        res.status(500).json({ error: 'Gagal mengambil data item.' });
+    }
+};
+
 const createItem = (tableName, allowedFields) => async (req, res) => {
     // Security: Ensure only whitelisted tables can be accessed.
     if (!ALLOWED_GENERIC_CRUD_TABLES.has(tableName)) {
@@ -2896,13 +2918,13 @@ const createManualSaving = async (req, res) => {
 };
 
 const getBalanceSheetSummary = async (req, res) => {
-    // For simplicity, we'll calculate as of today.
-    const endDate = new Date().toISOString().split('T')[0];
-
     try {
-        // Query for asset, liability, and equity balances (excluding income statement accounts)
-        // FIX: Start from chart_of_accounts and LEFT JOIN to ensure a row is always returned, even with an empty database.
-        // This prevents a "Cannot read properties of undefined (reading 'assets')" error.
+        // FIX: Remove the incorrect call to dashboardService.
+        // The logic to calculate the summary is already here and correct.
+        // For simplicity, we'll calculate as of today.
+        const endDate = new Date().toISOString().split('T')[0];
+
+        // Query for asset, liability, and equity balances
         const balanceQuery = `
             SELECT
                 COALESCE(SUM(je.debit - je.credit) FILTER (WHERE coa.account_type = 'Aset'), 0) as assets,
@@ -2914,7 +2936,7 @@ const getBalanceSheetSummary = async (req, res) => {
             WHERE coa.account_type IN ('Aset', 'Kewajiban', 'Ekuitas');
         `;
 
-        // Query for net income (retained earnings + current year income)
+        // Query for net income
         const netIncomeQuery = `
             SELECT COALESCE(SUM(
                 (je.credit - je.debit) FILTER (WHERE coa.account_type = 'Pendapatan')
@@ -2933,12 +2955,12 @@ const getBalanceSheetSummary = async (req, res) => {
         ]);
         
         const balances = balanceResult.rows[0];
-        const netIncome = parseFloat(netIncomeResult.rows[0].total_net_income);
+        const netIncome = parseFloat(netIncomeResult.rows[0].total_net_income || 0);
 
         const summary = {
-            assets: parseFloat(balances.assets),
-            liabilities: parseFloat(balances.liabilities),
-            equity: parseFloat(balances.equity) + netIncome
+            assets: parseFloat(balances.assets || 0),
+            liabilities: parseFloat(balances.liabilities || 0),
+            equity: parseFloat(balances.equity || 0) + netIncome
         };
 
         res.json(summary);
@@ -2960,7 +2982,7 @@ const getBalanceSheet = async (req, res) => {
     const prevYearEndDate = `${year - 1}-12-31`;
 
     try {        
-        // FIX: This single, optimized query replaces the previous three separate queries.
+        // FIX: This single, optimized query replaces multiple separate queries.
         // It calculates both beginning and ending balances for all account types in one pass.
         // By starting from journal_entries and using FILTER, it's significantly more performant
         // and ensures that equity calculations (including net income) are accurate for both periods.
@@ -4348,6 +4370,7 @@ module.exports = {
     getApprovalCounts,
     createItem,
     updateItem,
+    getItemById,
     updateUser,
     deleteLoan,
     deleteUser,
