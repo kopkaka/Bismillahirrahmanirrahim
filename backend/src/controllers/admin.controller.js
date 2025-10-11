@@ -832,6 +832,14 @@ const createItem = (tableName, allowedFields) => async (req, res) => {
         }
     });
 
+    // --- FIX: Handle file uploads separately ---
+    // If a file was uploaded by multer, add its path to the query.
+    if (req.file) {
+        fields.push(`"${req.file.fieldname}"`); // e.g., "document_url"
+        values.push('/' + req.file.path.replace(/\\/g, '/')); // Store the web-accessible path
+        valuePlaceholders.push(`$${paramIndex++}`);
+    }
+
     if (fields.length === 0) {
         return res.status(400).json({ error: 'Tidak ada data valid yang dikirim.' });
     }
@@ -867,6 +875,13 @@ const updateItem = (tableName, allowedFields) => async (req, res) => {
             values.push(req.body[field] === '' ? null : req.body[field]);
         }
     });
+
+    // --- FIX: Handle file uploads separately for updates ---
+    if (req.file) {
+        // The fieldname from multer (e.g., 'document') should match the database column name
+        fieldsToUpdate.push(`"${req.file.fieldname}" = $${paramIndex++}`);
+        values.push('/' + req.file.path.replace(/\\/g, '/'));
+    }
 
     if (fieldsToUpdate.length === 0) return res.status(400).json({ error: 'Tidak ada data valid untuk diperbarui.' });
 
