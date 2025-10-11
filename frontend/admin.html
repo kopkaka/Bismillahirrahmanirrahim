@@ -843,14 +843,6 @@
                 <div id="settings-content" class="content-section">
                     <h2 class="text-2xl font-semibold text-gray-800 mb-6">Pengaturan Umum</h2>
                     <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                        <!-- Card Pengaturan Profil Koperasi -->
-                        <div data-target="manage-cooperative-profile" class="settings-card-link bg-white p-6 rounded-lg shadow-md hover:shadow-lg transition-shadow cursor-pointer flex flex-col">
-                            <div class="w-12 h-12 rounded-full bg-blue-100 flex items-center justify-center mb-4">
-                                <svg class="w-6 h-6 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"></path></svg>
-                            </div>
-                            <h3 class="font-semibold text-lg text-gray-800">Profil Koperasi</h3>
-                            <p class="text-sm text-gray-500 mt-1 flex-grow">Ubah nama, alamat, dan logo koperasi.</p>
-                        </div>
                         <!-- Card Pengaturan -->
                         <div data-target="manage-employers" class="settings-card-link bg-white p-6 rounded-lg shadow-md hover:shadow-lg transition-shadow cursor-pointer flex flex-col">
                             <div class="w-12 h-12 rounded-full bg-gray-100 flex items-center justify-center mb-4">
@@ -2072,39 +2064,6 @@
                     </div>
                 </div>
 
-                <!-- Cooperative Profile Management Section -->
-                <div id="manage-cooperative-profile-content" class="content-section">
-                    <div class="flex justify-between items-center mb-6">
-                        <h2 class="text-2xl font-semibold text-gray-800">Kelola Profil Koperasi</h2>
-                        <button class="back-to-settings-btn text-sm text-red-600 hover:underline">&larr; Kembali ke Pengaturan</button>
-                    </div>
-                    <div class="bg-white p-8 rounded-lg shadow-md max-w-2xl mx-auto">
-                        <form id="cooperative-profile-form" class="space-y-6">
-                            <div>
-                                <label for="coop-name-input" class="block text-sm font-medium text-gray-700">Nama Koperasi</label>
-                                <input type="text" id="coop-name-input" required class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-red-500 focus:ring-red-500">
-                            </div>
-                            <div>
-                                <label for="coop-address-input" class="block text-sm font-medium text-gray-700">Alamat</label>
-                                <textarea id="coop-address-input" rows="3" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-red-500 focus:ring-red-500"></textarea>
-                            </div>
-                            <div>
-                                <label for="coop-phone-input" class="block text-sm font-medium text-gray-700">Telepon</label>
-                                <input type="text" id="coop-phone-input" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-red-500 focus:ring-red-500">
-                            </div>
-                            <div>
-                                <label for="coop-logo-input" class="block text-sm font-medium text-gray-700">Logo Koperasi</label>
-                                <div class="mt-1 flex items-center space-x-4">
-                                    <img id="coop-logo-preview" src="https://placehold.co/100x100?text=Logo" alt="Pratinjau Logo" class="h-20 w-20 object-contain rounded bg-gray-100 p-1 border">
-                                    <input type="file" id="coop-logo-input" accept="image/*" class="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-red-50 file:text-red-700 hover:file:bg-red-100">
-                                </div>
-                            </div>
-                            <div class="flex justify-end pt-4">
-                                <button type="submit" class="bg-red-600 text-white py-2 px-4 rounded-md hover:bg-red-700">Simpan Perubahan</button>
-                            </div>
-                        </form>
-                    </div>
-                </div>
             </main>
         </div>
     </div>

@@ -56,8 +56,6 @@ document.addEventListener('DOMContentLoaded', () => {
         if (!hasPerm('viewReports')) document.querySelector('.sidebar-link[data-target="reports"]')?.remove();
         if (!hasPerm('viewSettings')) document.querySelector('.sidebar-link[data-target="settings"]')?.parentElement.remove();
  
-        // Sembunyikan kartu di halaman Pengaturan jika tidak ada izin
-        if (!hasPerm('manageCooperativeProfile')) document.querySelector('.settings-card-link[data-target="manage-cooperative-profile"]')?.remove();
         if (!hasPerm('manageTestimonials')) document.querySelector('.settings-card-link[data-target="testimonials"]')?.remove();
         if (!hasPerm('manageShuRules')) document.querySelector('.settings-card-link[data-target="manage-shu-rules"]')?.remove();
         if (!hasPerm('manageAnnouncements')) document.querySelector('.settings-card-link[data-target="manage-announcements"]')?.remove();
@@ -3580,89 +3578,6 @@ const renderCashFlowChart = (data) => {
         loadPartners();
     };
 
-    // --- FUNGSI UNTUK UPDATE TAMPILAN HEADER (LOGO) ---
-    const updateHeaderDisplay = (info) => {
-        const headerLogo = document.getElementById('header-logo-img');
-        if (!headerLogo) return;
-
-        if (info && info.logo_url) {
-            const webPath = info.logo_url.replace(/\\/g, '/');
-            // Base URL untuk aset adalah root server API, bukan path /api
-            const baseUrl = API_URL.replace('/api', '');
-            const fullLogoUrl = `${baseUrl}${webPath.startsWith('/') ? '' : '/'}${webPath}`;
-            headerLogo.src = fullLogoUrl;
-        } else {
-            // Fallback ke logo default jika logo_url tidak ada
-            headerLogo.src = 'logo/logo.png';
-        }
-    };
-
-    // --- FUNGSI UNTUK KELOLA PROFIL KOPERASI ---
-    const cooperativeProfileForm = document.getElementById('cooperative-profile-form');
-
-    const loadCooperativeProfile = async () => {
-        if (!cooperativeProfileForm) return;
-        try {
-            const info = await apiFetch(`${ADMIN_API_URL}/company-info`);
-
-            document.getElementById('coop-name-input').value = info.name || '';
-            document.getElementById('coop-address-input').value = info.address || '';
-            document.getElementById('coop-phone-input').value = info.phone || '';
-            
-            const logoPreview = document.getElementById('coop-logo-preview');
-            if (info.logo_url) {
-                const webPath = info.logo_url.replace(/\\/g, '/');
-                const fullLogoUrl = `${API_URL.replace('/api', '')}${webPath.startsWith('/') ? '' : '/'}${webPath}`;
-                logoPreview.src = fullLogoUrl;
-            } else {
-                logoPreview.src = 'https://placehold.co/100x100?text=Logo';
-            }
-
-            // Pratinjau untuk logo baru
-            document.getElementById('coop-logo-input').addEventListener('change', (e) => {
-                const file = e.target.files[0];
-                if (file) {
-                    const reader = new FileReader();
-                    reader.onload = (event) => {
-                        logoPreview.src = event.target.result;
-                    };
-                    reader.readAsDataURL(file);
-                }
-            });
-
-        } catch (error) {
-            alert(`Terjadi kesalahan: ${error.message}`);
-            console.error('Error loading cooperative profile:', error);
-        }
-    };
-
-    if (cooperativeProfileForm) {
-        cooperativeProfileForm.addEventListener('submit', async (e) => {
-            e.preventDefault();
-            const submitBtn = cooperativeProfileForm.querySelector('button[type="submit"]');
-            submitBtn.disabled = true;
-            submitBtn.textContent = 'Menyimpan...';
-
-            const formData = new FormData();
-            formData.append('name', document.getElementById('coop-name-input').value);
-            formData.append('address', document.getElementById('coop-address-input').value);
-            formData.append('phone', document.getElementById('coop-phone-input').value);
-
-            const logoInput = document.getElementById('coop-logo-input');
-            if (logoInput.files[0]) {
-                formData.append('logo', logoInput.files[0]); // 'logo' harus cocok dengan nama field multer di backend
-            }
-
-            try {
-                const updatedInfo = await apiFetch(`${ADMIN_API_URL}/company-info`, { method: 'PUT', body: formData });
-                initializeHeader(); // Panggil fungsi inisialisasi header untuk memperbarui logo
-                alert('Profil koperasi berhasil diperbarui.');
-
-            } catch (error) { alert(`Terjadi kesalahan: ${error.message}`); console.error('Error updating cooperative profile:', error);
-            } finally { submitBtn.disabled = false; submitBtn.textContent = 'Simpan Perubahan'; }
-        });
-    }
-
     // --- FUNGSI UNTUK KELOLA TESTIMONI ---
     const testimonialModal = document.getElementById('testimonial-modal');
     const testimonialForm = document.getElementById('testimonial-form');
@@ -5516,10 +5431,6 @@ const renderCashFlowChart = (data) => {
         });
     });
 
-    // --- FUNGSI UNTUK KELOLA TOKO (USAHA KOPERASI) ---
-    // This function is defined earlier in the file. This is a duplicate.
-
-    // Event delegation for product actions
     document.querySelector('main').addEventListener('click', async (e) => {
         const button = e.target;
         const { id, shopType } = button.dataset;
@@ -6502,7 +6413,6 @@ const renderCashFlowChart = (data) => {
                 'manage-loan-terms': loadLoanTerms, 
                 'manage-accounts': () => { loadAccounts(); loadAccountTypes(); },
                 'manage-suppliers': () => { loadSuppliers(); loadMasterProducts(); masterProductOptionsCache = null; },
-                'manage-cooperative-profile': loadCooperativeProfile,
                 'manage-saving-account-mapping': loadSavingAccountMapping, 
                 'manage-loan-account-mapping': loadLoanAccountMapping, 
                 'manage-payment-methods-main': () => { document.querySelector('.payment-method-tab-btn[data-target="payment-methods-list-tab"]').click(); },
