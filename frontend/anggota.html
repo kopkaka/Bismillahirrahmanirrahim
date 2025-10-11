@@ -175,7 +175,15 @@
                 
                 <!-- Dashboard Section -->
                 <div id="dashboard-content" class="content-section active">
-                    <h2 class="text-2xl font-semibold text-gray-800 mb-6">Selamat Datang, <span id="member-name-welcome">Anggota</span>!</h2>
+                    <div class="flex flex-col sm:flex-row justify-between sm:items-center mb-6">
+                        <h2 class="text-2xl font-semibold text-gray-800">Selamat Datang, <span id="member-name-welcome">Anggota</span>!</h2>
+                        <!-- Widget Jam -->
+                        <div id="clock-widget" class="text-right mt-2 sm:mt-0">
+                            <p class="font-semibold text-xl text-gray-700" id="clock-time">00:00:00</p>
+                            <p class="text-sm text-gray-500" id="clock-date">Hari, Tanggal</p>
+                        </div>
+                    </div>
+                    
                     
                     <!-- Wrapper for Card and Announcements -->
                     <div class="grid grid-cols-1 lg:grid-cols-3 gap-8 mb-8">
