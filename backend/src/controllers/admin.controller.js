@@ -42,13 +42,12 @@ const getDashboardStats = async (req, res) => {
  */
 const getInitialAdminData = async (req, res) => {
     try {
-        // Menggunakan Promise.all untuk menjalankan semua query secara paralel
+        // Use Promise.all to run all queries in parallel for better performance
         const [
-            stats,
+            statsResult,
             cashFlow,
             memberGrowth,
             balanceSheet,
-            // Tambahkan data lain yang dibutuhkan di sini
         ] = await Promise.all([
             pool.query(`
                 SELECT
@@ -63,7 +62,7 @@ const getInitialAdminData = async (req, res) => {
         ]);
 
         res.json({
-            stats: stats.rows[0],
+            stats: statsResult.rows[0],
             cashFlow,
             memberGrowth,
             balanceSheet,
@@ -4430,7 +4429,7 @@ const deletePartner = async (req, res) => {
 
 module.exports = {
     getDashboardStats,
-    getInitialAdminData, // Ekspor fungsi baru
+    getInitialAdminData,
     getMemberGrowth,
     getCashFlowSummary,
     getPendingLoansForAdmin,
