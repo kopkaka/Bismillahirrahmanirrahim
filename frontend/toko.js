@@ -225,9 +225,12 @@ document.addEventListener('DOMContentLoaded', () => {
 
             // Set default category filter to 'all'
             const defaultCategory = 'all';
-            const defaultCategoryLink = categoryNav.querySelector(`[data-category="${defaultCategory}"]`);
-            if (defaultCategoryLink) {
-                defaultCategoryLink.classList.add('active');
+            // FIX: Only interact with categoryNav if it exists
+            if (categoryNav) {
+                const defaultCategoryLink = categoryNav.querySelector(`[data-category="${defaultCategory}"]`);
+                if (defaultCategoryLink) {
+                    defaultCategoryLink.classList.add('active');
+                }
             }
             filterProductsByCategory(defaultCategory);
 
