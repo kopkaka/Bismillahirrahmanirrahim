@@ -2901,17 +2901,17 @@ const getBalanceSheetSummary = async (req, res) => {
 
     try {
         // Query for asset, liability, and equity balances (excluding income statement accounts)
-        // FIX: Use conditional aggregation with FILTER to ensure all categories are always returned, even if their total is 0.
-        // This prevents errors when an entire account type (e.g., 'Ekuitas') has no transactions.
+        // FIX: Start from chart_of_accounts and LEFT JOIN to ensure a row is always returned, even with an empty database.
+        // This prevents a "Cannot read properties of undefined (reading 'assets')" error.
         const balanceQuery = `
             SELECT
                 COALESCE(SUM(je.debit - je.credit) FILTER (WHERE coa.account_type = 'Aset'), 0) as assets,
                 COALESCE(SUM(je.credit - je.debit) FILTER (WHERE coa.account_type = 'Kewajiban'), 0) as liabilities,
                 COALESCE(SUM(je.credit - je.debit) FILTER (WHERE coa.account_type = 'Ekuitas'), 0) as equity
-            FROM journal_entries je
-            JOIN chart_of_accounts coa ON je.account_id = coa.id
-            JOIN general_journal gj ON je.journal_id = gj.id
-            WHERE gj.entry_date <= $1 AND coa.account_type IN ('Aset', 'Kewajiban', 'Ekuitas');
+            FROM chart_of_accounts coa
+            LEFT JOIN journal_entries je ON je.account_id = coa.id
+            LEFT JOIN general_journal gj ON je.journal_id = gj.id AND gj.entry_date <= $1
+            WHERE coa.account_type IN ('Aset', 'Kewajiban', 'Ekuitas');
         `;
 
         // Query for net income (retained earnings + current year income)
@@ -2920,11 +2920,11 @@ const getBalanceSheetSummary = async (req, res) => {
                 (je.credit - je.debit) FILTER (WHERE coa.account_type = 'Pendapatan')
             ), 0) - COALESCE(SUM(
                 (je.debit - je.credit) FILTER (WHERE coa.account_type IN ('HPP', 'Biaya'))
-            ), 0) as total
-            FROM journal_entries je
-            JOIN chart_of_accounts coa ON je.account_id = coa.id
-            JOIN general_journal gj ON je.journal_id = gj.id
-            WHERE gj.entry_date <= $1 AND coa.account_type IN ('Pendapatan', 'HPP', 'Biaya');
+            ), 0) as total_net_income
+            FROM chart_of_accounts coa
+            LEFT JOIN journal_entries je ON je.account_id = coa.id
+            LEFT JOIN general_journal gj ON je.journal_id = gj.id AND gj.entry_date <= $1
+            WHERE coa.account_type IN ('Pendapatan', 'HPP', 'Biaya');
         `;
 
         const [balanceResult, netIncomeResult] = await Promise.all([
@@ -2933,7 +2933,7 @@ const getBalanceSheetSummary = async (req, res) => {
         ]);
         
         const balances = balanceResult.rows[0];
-        const netIncome = parseFloat(netIncomeResult.rows[0].total);
+        const netIncome = parseFloat(netIncomeResult.rows[0].total_net_income);
 
         const summary = {
             assets: parseFloat(balances.assets),
