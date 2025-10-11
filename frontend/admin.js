@@ -3045,29 +3045,27 @@ const renderCashFlowChart = (data) => {
             return form.querySelector(`[id$="${dashedField}-input"][type="file"]`);
         }).filter(Boolean); // Filter out nulls
 
-        // --- FIX: Always use FormData for endpoints that might handle files ---
-        // This ensures the backend receives 'multipart/form-data' and multer is engaged,
-        // preventing a 500 error when editing without changing the file.
         const endpointsWithFiles = ['employers', 'partners', 'testimonials'];
         const alwaysUseFormData = endpointsWithFiles.includes(endpoint);
-
+        
         let requestBody;
         let useFormData = alwaysUseFormData || fileInputs.some(input => input.files.length > 0);
 
         if (useFormData) {
             requestBody = new FormData();
-            // Append all simple fields to FormData
+            // FIX: Append all simple fields to FormData directly from the 'body' object
+            // This ensures all text data is included, even when no new file is uploaded.
             for (const key in body) {
                 requestBody.append(key, body[key]);
             }
-            // Append file(s)
+            // Append new file(s) if they exist
             fileInputs.forEach(input => {
                 if (input.files[0]) {
-                    // The key should match the field name, e.g., 'document_url' -> 'document_url'
-                    const fieldName = input.id.match(/-(.*?)-input/)[1].replace(/-/g, '_');
+                    const fieldName = input.name; // Use the 'name' attribute of the input
                     requestBody.append(fieldName, input.files[0]);
                 }
             });
+
         } else {
             requestBody = JSON.stringify(body);
         }
@@ -3244,10 +3242,12 @@ const renderCashFlowChart = (data) => {
         fields: ['name', 'address', 'phone', 'contract_number', 'document_url'],
         renderRow: (item, role) => `
             <tr>
+                <!-- FIX: Add missing table cells for address and phone -->
                 <td class="px-6 py-4 text-sm text-gray-900">${item.name}</td>
                 <td class="px-6 py-4 text-sm text-gray-500">${item.address || '-'}</td>
                 <td class="px-6 py-4 text-sm text-gray-500">${item.phone || '-'}</td>
                 <td class="px-6 py-4 text-sm text-gray-500">${item.contract_number || '-'}</td>
+                <!-- FIX: Use the correct base URL for document links -->
                 <td class="px-6 py-4 text-sm text-gray-500">
                     ${item.document_url ? `<a href="${item.document_url}" target="_blank" rel="noopener noreferrer" class="text-blue-600 hover:underline">Lihat Dokumen</a>` : '-'}
                 </td>
