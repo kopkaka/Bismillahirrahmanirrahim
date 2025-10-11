@@ -55,9 +55,7 @@ document.addEventListener('DOMContentLoaded', () => {
         if (!hasPerm('viewAccounting')) document.querySelector('.sidebar-link[data-target="accounting"]')?.remove();
         if (!hasPerm('viewReports')) document.querySelector('.sidebar-link[data-target="reports"]')?.remove();
         if (!hasPerm('viewSettings')) document.querySelector('.sidebar-link[data-target="settings"]')?.parentElement.remove();
- 
         if (!hasPerm('manageTestimonials')) document.querySelector('.settings-card-link[data-target="testimonials"]')?.remove();
-        if (!hasPerm('manageShuRules')) document.querySelector('.settings-card-link[data-target="manage-shu-rules"]')?.remove();
         if (!hasPerm('manageUsers')) document.querySelector('.settings-card-link[data-target="manage-users-roles"]')?.remove();
     };
 
