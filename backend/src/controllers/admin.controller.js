@@ -899,7 +899,8 @@ const ALLOWED_GENERIC_CRUD_TABLES = new Set([
     'chart_of_accounts',
     'savings',
     'suppliers',
-    'logistics_entries'
+    'logistics_entries',
+    'testimonials'
 ]);
 
 const deleteItem = (tableName) => async (req, res) => {
