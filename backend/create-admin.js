@@ -1,25 +1,25 @@
 const bcrypt = require('bcryptjs');
-const pool = require('../../db');
-require('dotenv').config({ path: '../.env' }); // Pastikan path ke file .env benar
+const pool = require('../db'); // FIX: Path disesuaikan untuk naik satu level dari 'scripts'
+require('dotenv').config({ path: require('path').resolve(__dirname, '../../.env') }); // FIX: Path yang lebih robust
 
 /**
  * Skrip untuk membuat pengguna admin baru dari baris perintah.
  *
- * Cara Penggunaan:
- * node scripts/create-admin.js <nama_lengkap> <email> <password>
+ * Cara Penggunaan (via npm):
+ * npm run create-admin -- "<nama_lengkap>" <email> <password>
  *
  * Contoh:
- * node scripts/create-admin.js "Admin Utama" "admin@kopkaka.com" "password123"
+ * npm run create-admin -- "Admin Utama" "admin@kopkaka.com" "password123"
  */
 
 const createAdmin = async () => {
     const args = process.argv.slice(2);
     if (args.length < 3) {
-        console.error('Penggunaan: node scripts/create-admin.js "<nama_lengkap>" <email> <password>');
+        console.error('Penggunaan: npm run create-admin -- "<nama_lengkap>" <email> <password>');
         process.exit(1);
     }
 
-    const [name, email, password] = args;
+    const [name, email, password] = args; // FIX: Kembalikan urutan ke Name, Email, Password
 
     if (!email.includes('@')) {
         console.error('Error: Format email tidak valid.');
