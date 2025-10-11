@@ -223,8 +223,8 @@ document.addEventListener('DOMContentLoaded', () => {
                 return;
             }
 
-            // Set default category filter to 'tv_audio'
-            const defaultCategory = 'tv_audio';
+            // Set default category filter to 'all'
+            const defaultCategory = 'all';
             const defaultCategoryLink = categoryNav.querySelector(`[data-category="${defaultCategory}"]`);
             if (defaultCategoryLink) {
                 defaultCategoryLink.classList.add('active');
