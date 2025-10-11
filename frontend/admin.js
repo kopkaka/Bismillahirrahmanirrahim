@@ -6488,7 +6488,11 @@ const renderCashFlowChart = (data) => {
         // Tampilkan konten yang dituju
         const targetSection = document.getElementById(`${targetId}-content`);
         if (targetSection) {
-            targetSection.classList.add('active');
+            // FIX: Ensure the section is actually active before proceeding
+            // This prevents errors if the targetId is valid but the section is hidden by permissions.
+            if (getComputedStyle(targetSection).display !== 'none') {
+                targetSection.classList.add('active');
+            }
         }
         
         // --- FIX: Ambil judul halaman dari elemen yang diklik ---
@@ -6500,7 +6504,11 @@ const renderCashFlowChart = (data) => {
         }
         document.getElementById('page-title').textContent = pageTitleText;
 
-        if (targetId === 'admin-profile') loadAdminProfileData();
+        // FIX: Call the correct function for the admin's own profile page.
+        if (targetId === 'admin-profile') {
+            loadAdminProfileData();
+        }
+
         // Panggil fungsi load data yang sesuai
         if (targetId === 'dashboard') loadDashboardData();
         if (targetId === 'members') loadMembers(1);
