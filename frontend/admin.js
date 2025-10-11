@@ -3022,6 +3022,19 @@ const renderCashFlowChart = (data) => {
                 if (field === 'interest_rate' && !element) {
                     element = form.querySelector('#loan-term-interest-input');
                 }
+                // FIX: Tambahkan kasus khusus untuk modal Perusahaan (Employer)
+                if (field === 'address' && !element) {
+                    element = form.querySelector('#employer-address-input');
+                }
+                if (field === 'phone' && !element) {
+                    element = form.querySelector('#employer-phone-input');
+                }
+                if (field === 'contract_number' && !element) {
+                    element = form.querySelector('#employer-contract-input');
+                }
+                if (field === 'document_url' && !element) {
+                    element = form.querySelector('#employer-document-input');
+                }
 
 
                 if (element) {
