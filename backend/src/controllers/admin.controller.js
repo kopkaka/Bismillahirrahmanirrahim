@@ -35,6 +35,45 @@ const getDashboardStats = async (req, res) => {
     }
 };
 
+/**
+ * @desc    Get all initial data needed for the admin dashboard in a single request.
+ * @route   GET /api/admin/initial-data
+ * @access  Private (Admin, etc.)
+ */
+const getInitialAdminData = async (req, res) => {
+    try {
+        // Menggunakan Promise.all untuk menjalankan semua query secara paralel
+        const [
+            stats,
+            cashFlow,
+            memberGrowth,
+            balanceSheet,
+            // Tambahkan data lain yang dibutuhkan di sini
+        ] = await Promise.all([
+            pool.query(`
+                SELECT
+                    (SELECT COUNT(*) FROM members WHERE status = 'Active' AND role = 'member') AS total_members,
+                    (SELECT COALESCE(SUM(CASE WHEN st.name = 'Penarikan Simpanan Sukarela' THEN -s.amount ELSE s.amount END), 0) FROM savings s JOIN saving_types st ON s.saving_type_id = st.id WHERE s.status = 'Approved') AS total_savings,
+                    (SELECT COALESCE(SUM(remaining_principal), 0) FROM loans WHERE status = 'Approved') AS total_active_loans,
+                    (SELECT COUNT(*) FROM members WHERE status = 'Pending') AS pending_members
+            `),
+            dashboardService.getCashFlowSummary(),
+            dashboardService.getMemberGrowth(),
+            dashboardService.getBalanceSheetSummary(),
+        ]);
+
+        res.json({
+            stats: stats.rows[0],
+            cashFlow,
+            memberGrowth,
+            balanceSheet,
+        });
+    } catch (err) {
+        console.error('Error fetching initial admin data:', err.message);
+        res.status(500).json({ error: 'Gagal mengambil data awal dasbor.' });
+    }
+};
+
 const getCashFlowSummary = async (req, res) => {
     try {
         const data = await dashboardService.getCashFlowSummary(req.query.startDate, req.query.endDate);
@@ -4391,6 +4430,7 @@ const deletePartner = async (req, res) => {
 
 module.exports = {
     getDashboardStats,
+    getInitialAdminData, // Ekspor fungsi baru
     getMemberGrowth,
     getCashFlowSummary,
     getPendingLoansForAdmin,
