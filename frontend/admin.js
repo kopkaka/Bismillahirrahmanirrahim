@@ -3655,7 +3655,7 @@ const renderCashFlowChart = (data) => {
 
             try {
                 const updatedInfo = await apiFetch(`${ADMIN_API_URL}/company-info`, { method: 'PUT', body: formData });
-                updateHeaderDisplay(updatedInfo); // Perbarui logo di header
+                initializeHeader(); // Panggil fungsi inisialisasi header untuk memperbarui logo
                 alert('Profil koperasi berhasil diperbarui.');
 
             } catch (error) { alert(`Terjadi kesalahan: ${error.message}`); console.error('Error updating cooperative profile:', error);
@@ -7373,7 +7373,13 @@ const renderCashFlowChart = (data) => {
     const initializeHeader = async () => {
         try {
             const info = await apiFetch(`${ADMIN_API_URL}/company-info`);
-            updateHeaderDisplay(info);
+            const headerLogo = document.getElementById('header-logo-img');
+            if (headerLogo && info && info.logo_url) {
+                const webPath = info.logo_url.replace(/\\/g, '/');
+                const baseUrl = API_URL.replace('/api', '');
+                const fullLogoUrl = `${baseUrl}${webPath.startsWith('/') ? '' : '/'}${webPath}`;
+                headerLogo.src = fullLogoUrl;
+            }
         } catch (error) {
             console.error('Gagal memuat info koperasi untuk header:', error);
         }
