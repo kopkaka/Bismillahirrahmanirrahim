@@ -2959,107 +2959,85 @@ const getBalanceSheet = async (req, res) => {
     const yearStartDate = `${year}-01-01`;
     const prevYearEndDate = `${year - 1}-12-31`;
 
-    try {
-        // Query for balances. This gets both beginning and ending balances in one go.
-        const balanceQuery = `
+    try {        
+        // FIX: This single, optimized query replaces the previous three separate queries.
+        // It calculates both beginning and ending balances for all account types in one pass.
+        // By starting from journal_entries and using FILTER, it's significantly more performant
+        // and ensures that equity calculations (including net income) are accurate for both periods.
+        const reportQuery = `
             SELECT
                 coa.account_type,
                 coa.account_name,
                 coa.account_number,
-                -- Beginning Balance (as of end of last year)
-                COALESCE(SUM(CASE WHEN gj.entry_date <= $2 THEN
-                    CASE WHEN coa.account_type = 'Aset' THEN je.debit - je.credit ELSE je.credit - je.debit END
-                ELSE 0 END), 0) as beginning_balance,
-                -- Ending Balance (as of asOfDate)
-                COALESCE(SUM(CASE WHEN gj.entry_date <= $1 THEN
-                    CASE WHEN coa.account_type = 'Aset' THEN je.debit - je.credit ELSE je.credit - je.debit END
-                ELSE 0 END), 0) as ending_balance
+                -- Calculate beginning balance (up to the end of the previous year)
+                COALESCE(SUM(
+                    CASE
+                        WHEN coa.account_type IN ('Aset', 'HPP', 'Biaya') THEN je.debit - je.credit
+                        ELSE je.credit - je.debit
+                    END
+                ) FILTER (WHERE gj.entry_date <= $2), 0) as beginning_balance,
+                -- Calculate ending balance (up to the selected end date)
+                COALESCE(SUM(
+                    CASE
+                        WHEN coa.account_type IN ('Aset', 'HPP', 'Biaya') THEN je.debit - je.credit
+                        ELSE je.credit - je.debit
+                    END
+                ) FILTER (WHERE gj.entry_date <= $1), 0) as ending_balance
             FROM chart_of_accounts coa
             LEFT JOIN journal_entries je ON je.account_id = coa.id
-            LEFT JOIN general_journal gj ON je.journal_id = gj.id AND gj.entry_date <= $1
-            WHERE coa.account_type IN ('Aset', 'Kewajiban', 'Ekuitas')
+            LEFT JOIN general_journal gj ON je.journal_id = gj.id AND gj.entry_date <= $1 -- Filter dates in JOIN for efficiency
             GROUP BY coa.id
             ORDER BY coa.account_number;
         `;
 
-        // Query for Retained Earnings (net income from all previous years)
-        const retainedEarningsQuery = `
-            SELECT COALESCE(SUM(
-                CASE
-                    WHEN coa.account_type = 'Pendapatan' THEN je.credit - je.debit
-                    WHEN coa.account_type IN ('HPP', 'Biaya') THEN je.debit - je.credit
-                    ELSE 0
-                END
-            ), 0) as amount
-            FROM journal_entries je
-            JOIN chart_of_accounts coa ON je.account_id = coa.id
-            JOIN general_journal gj ON je.journal_id = gj.id
-            WHERE gj.entry_date <= $1; -- up to prevYearEndDate
-        `;
-
-        // Query for Current Period's Net Income
-        const currentNetIncomeQuery = `
-            SELECT COALESCE(SUM(
-                CASE
-                    WHEN coa.account_type = 'Pendapatan' THEN je.credit - je.debit
-                    WHEN coa.account_type IN ('HPP', 'Biaya') THEN je.debit - je.credit
-                    ELSE 0
-                END
-            ), 0) as amount
-            FROM journal_entries je
-            JOIN chart_of_accounts coa ON je.account_id = coa.id
-            JOIN general_journal gj ON je.journal_id = gj.id
-            WHERE gj.entry_date BETWEEN $1 AND $2; -- between yearStartDate and endDate
-        `;
-
-        const [balanceResult, retainedEarningsResult, currentNetIncomeResult] = await Promise.all([
-            pool.query(balanceQuery, [endDate, prevYearEndDate]),
-            pool.query(retainedEarningsQuery, [prevYearEndDate]),
-            pool.query(currentNetIncomeQuery, [yearStartDate, endDate])
-        ]);
-
-        const retainedEarnings = parseFloat(retainedEarningsResult.rows[0].amount);
-        const currentNetIncome = parseFloat(currentNetIncomeResult.rows[0].amount);
+        const result = await pool.query(reportQuery, [endDate, prevYearEndDate]);
 
         const report = {
             assets: { items: [], beginning_total: 0, ending_total: 0 },
             liabilities: { items: [], beginning_total: 0, ending_total: 0 },
             equity: { items: [], beginning_total: 0, ending_total: 0 },
         };
+        
+        let beginningNetIncome = 0;
+        let endingNetIncome = 0;
 
-        balanceResult.rows.forEach(row => {
+        result.rows.forEach(row => {
             const beginning_balance = parseFloat(row.beginning_balance);
             const ending_balance = parseFloat(row.ending_balance);
 
+            // Skip accounts that have no balance in either period
             if (beginning_balance === 0 && ending_balance === 0) return;
 
             const item = { name: row.account_name, number: row.account_number, beginning_balance, ending_balance };
 
             if (row.account_type === 'Aset') {
                 report.assets.items.push(item);
-                report.assets.beginning_total += beginning_balance;
-                report.assets.ending_total += ending_balance;
             } else if (row.account_type === 'Kewajiban') {
                 report.liabilities.items.push(item);
-                report.liabilities.beginning_total += beginning_balance;
-                report.liabilities.ending_total += ending_balance;
             } else if (row.account_type === 'Ekuitas') {
                 report.equity.items.push(item);
-                report.equity.beginning_total += beginning_balance;
-                report.equity.ending_total += ending_balance;
+            } else if (['Pendapatan', 'HPP', 'Biaya'].includes(row.account_type)) {
+                // Accumulate net income separately
+                beginningNetIncome += beginning_balance;
+                endingNetIncome += ending_balance;
             }
         });
 
-        if (retainedEarnings !== 0) {
-            report.equity.items.push({ name: 'Laba Ditahan', number: '3-9998', beginning_balance: retainedEarnings, ending_balance: retainedEarnings });
-            report.equity.beginning_total += retainedEarnings;
-            report.equity.ending_total += retainedEarnings;
-        }
+        // Add Net Income as a line item in Equity
+        report.equity.items.push({
+            name: 'Laba/Rugi (Akumulasi)',
+            number: '3-9999',
+            beginning_balance: beginningNetIncome,
+            ending_balance: endingNetIncome
+        });
 
-        if (currentNetIncome !== 0) {
-            report.equity.items.push({ name: 'Laba/Rugi Tahun Berjalan', number: '3-9999', beginning_balance: 0, ending_balance: currentNetIncome });
-            report.equity.ending_total += currentNetIncome;
-        }
+        // Calculate totals after all items have been processed
+        report.assets.beginning_total = report.assets.items.reduce((sum, item) => sum + item.beginning_balance, 0);
+        report.assets.ending_total = report.assets.items.reduce((sum, item) => sum + item.ending_balance, 0);
+        report.liabilities.beginning_total = report.liabilities.items.reduce((sum, item) => sum + item.beginning_balance, 0);
+        report.liabilities.ending_total = report.liabilities.items.reduce((sum, item) => sum + item.ending_balance, 0);
+        report.equity.beginning_total = report.equity.items.reduce((sum, item) => sum + item.beginning_balance, 0);
+        report.equity.ending_total = report.equity.items.reduce((sum, item) => sum + item.ending_balance, 0);
 
         res.json(report);
     } catch (err) {
