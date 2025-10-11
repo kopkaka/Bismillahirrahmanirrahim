@@ -2974,57 +2974,10 @@ const createManualSaving = async (req, res) => {
 };
 
 const getBalanceSheetSummary = async (req, res) => {
-    // For simplicity, we'll calculate as of today.
-    const endDate = new Date().toISOString().split('T')[0];
-
     try {
-        // Query for asset, liability, and equity balances (excluding income statement accounts)
-        const balanceQuery = `
-            SELECT
-                coa.account_type,
-                COALESCE(SUM(
-                    CASE
-                        WHEN coa.account_type = 'Aset' THEN je.debit - je.credit
-                        ELSE je.credit - je.debit
-                    END
-                ), 0) as total
-            FROM chart_of_accounts coa
-            LEFT JOIN journal_entries je ON je.account_id = coa.id
-            LEFT JOIN general_journal gj ON je.journal_id = gj.id AND gj.entry_date <= $1
-            WHERE coa.account_type IN ('Aset', 'Kewajiban', 'Ekuitas')
-            GROUP BY coa.account_type;
-        `;
-
-        // Query for net income (retained earnings + current year income)
-        const netIncomeQuery = `
-            SELECT COALESCE(SUM(
-                CASE
-                    WHEN coa.account_type = 'Pendapatan' THEN je.credit - je.debit
-                    WHEN coa.account_type IN ('HPP', 'Biaya') THEN je.debit - je.credit
-                    ELSE 0
-                END
-            ), 0) as total
-            FROM journal_entries je
-            JOIN chart_of_accounts coa ON je.account_id = coa.id
-            JOIN general_journal gj ON je.journal_id = gj.id
-            WHERE gj.entry_date <= $1 AND coa.account_type IN ('Pendapatan', 'HPP', 'Biaya');
-        `;
-
-        const [balanceResult, netIncomeResult] = await Promise.all([
-            pool.query(balanceQuery, [endDate]),
-            pool.query(netIncomeQuery, [endDate])
-        ]);
-
-        const summary = { assets: 0, liabilities: 0, equity: 0 };
-
-        balanceResult.rows.forEach(row => {
-            const total = parseFloat(row.total);
-            if (row.account_type === 'Aset') summary.assets += total;
-            else if (row.account_type === 'Kewajiban') summary.liabilities += total;
-            else if (row.account_type === 'Ekuitas') summary.equity += total;
-        });
-
-        summary.equity += parseFloat(netIncomeResult.rows[0].total);
+        // The controller's job is to handle the request and response.
+        // The business logic is in the service.
+        const summary = await dashboardService.getBalanceSheetSummary();
         res.json(summary);
     } catch (err) {
         console.error('Error generating balance sheet summary:', err.message);
