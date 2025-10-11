@@ -58,7 +58,6 @@ document.addEventListener('DOMContentLoaded', () => {
  
         if (!hasPerm('manageTestimonials')) document.querySelector('.settings-card-link[data-target="testimonials"]')?.remove();
         if (!hasPerm('manageShuRules')) document.querySelector('.settings-card-link[data-target="manage-shu-rules"]')?.remove();
-        if (!hasPerm('manageAnnouncements')) document.querySelector('.settings-card-link[data-target="manage-announcements"]')?.remove();
         if (!hasPerm('manageUsers')) document.querySelector('.settings-card-link[data-target="manage-users-roles"]')?.remove();
     };
 
@@ -3433,42 +3432,6 @@ const renderCashFlowChart = (data) => {
             </tr>`
     });
 
-
-    // 8. Kelola Pengumuman
-    const loadAnnouncements = setupSimpleCrud({
-        modal: document.getElementById('announcement-modal'),
-        form: document.getElementById('announcement-form'),
-        tableBody: document.getElementById('announcements-table-body'),
-        addBtn: document.getElementById('add-announcement-btn'),
-        endpoint: 'announcements',
-        title: 'Pengumuman',
-        fields: ['title', 'content', 'is_published'],
-        onAdd: () => {
-            // Set checkbox to checked by default for new announcements
-            document.getElementById('is-published-input').checked = true;
-        },
-        onEdit: (item) => {
-            // Handle checkbox state when editing
-            document.getElementById('is-published-input').checked = item.is_published;
-        },
-        renderRow: (item) => {
-            const statusClass = item.is_published ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800';
-            const statusText = item.is_published ? 'Dipublikasikan' : 'Draft';
-            return `
-            <tr>
-                <td class="px-6 py-4 text-sm font-medium text-gray-900">${item.title}</td>
-                <td class="px-6 py-4 text-sm text-gray-500">${formatDate(item.created_at)}</td>
-                <td class="px-6 py-4 text-sm"><span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${statusClass}">${statusText}</span></td>
-                <td class="px-6 py-4 text-sm font-medium space-x-2">${
-                    hasPerm('manageAnnouncements') ? `
-                    <button class="edit-pengumuman-btn text-indigo-600 hover:text-indigo-900" data-id="${item.id}">Ubah</button>
-                    <button class="delete-pengumuman-btn text-red-600 hover:text-red-900" data-id="${item.id}">Hapus</button>
-                    ` : '-'
-                }</td>
-            </tr>`;
-        },
-    });
-
     // --- FUNGSI UNTUK KELOLA MITRA ---
     const setupPartnerManagement = () => {
         const modal = document.getElementById('partner-modal');
@@ -6417,7 +6380,6 @@ const renderCashFlowChart = (data) => {
                 'manage-loan-account-mapping': loadLoanAccountMapping, 
                 'manage-payment-methods-main': () => { document.querySelector('.payment-method-tab-btn[data-target="payment-methods-list-tab"]').click(); },
                 'manage-shu-rules': setupShuRules,
-                'manage-announcements': loadAnnouncements,
                 'manage-partners': setupPartnerManagement, 
                 'manage-products': () => { document.querySelector('.product-tab-btn[data-target="products-sembako-tab"]').click(); } 
             }[targetId];
