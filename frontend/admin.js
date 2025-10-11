@@ -7452,7 +7452,6 @@ const renderCashFlowChart = (data) => {
         setupCoaExport();
         setupNotificationSystem(); // Panggil fungsi setup notifikasi
         setupPaymentConfirmationListener(); // Pindahkan listener konfirmasi pembayaran ke sini
-        startClock(); // Mulai jam
         setupCoaImport();
 
         // Tambahkan event listener untuk tombol "Ubah Data" di modal detail

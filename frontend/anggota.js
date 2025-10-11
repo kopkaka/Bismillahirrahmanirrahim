@@ -2613,26 +2613,6 @@ document.addEventListener('DOMContentLoaded', () => {
         withdrawSavingBtn?.addEventListener('click', () => handleQuickAccessClick('application-saving-tab', 'withdrawal-form'));
     };
 
-    // --- CLOCK WIDGET ---
-    const startClock = () => {
-        const timeEl = document.getElementById('clock-time');
-        const dateEl = document.getElementById('clock-date');
-
-        if (!timeEl || !dateEl) return;
-
-        const updateClock = () => {
-            const now = new Date();
-            const timeOptions = { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false };
-            const dateOptions = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' };
-
-            timeEl.textContent = now.toLocaleTimeString('id-ID', timeOptions).replace(/\./g, ':');
-            dateEl.textContent = now.toLocaleDateString('id-ID', dateOptions);
-        };
-
-        updateClock(); // Initial call
-        setInterval(updateClock, 1000); // Update every second
-    };
-
     // --- INITIALIZATION ---
     const initializeApp = () => {
         if (!checkAuth()) return;
@@ -2648,7 +2628,6 @@ document.addEventListener('DOMContentLoaded', () => {
         setupMandatorySavingModal(); // Panggil setup untuk modal simpanan wajib
         setupVoluntarySavingModalForm(); // Tambahkan setup untuk form modal
         setupApplicationTabs();
-        startClock(); // Mulai jam
         
         const setupTransactionPageListeners = () => {
             const tableBody = document.getElementById('transactions-table-body');
