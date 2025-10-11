@@ -122,12 +122,9 @@ router.get('/sales/:orderId/items', protect, authorize(['viewUsahaKoperasi']), a
 router.post('/sales/:id/cancel', protect, authorize(['admin', 'akunting']), adminController.cancelSale);
 // Rute baru untuk halaman checkout.html
 router.get('/public/sales/:orderId', adminController.getSaleDetailsByOrderId);
-// Rute baru untuk verifikasi pesanan oleh kasir
+// Rute baru untuk verifikasi pesanan oleh kasir (menggunakan endpoint yang sama dengan publik)
 router.get('/sales/order/:orderId', protect, authorize(['viewUsahaKoperasi']), adminController.getSaleDetailsByOrderId);
-router.post('/sales/complete', protect, authorize(['viewUsahaKoperasi']), adminController.completeOrder);
-router.delete('/sales/:id', protect, authorize(['viewUsahaKoperasi']), adminController.deleteSale);
-
-
+router.post('/sales/:orderId/complete', protect, authorize(['viewUsahaKoperasi']), adminController.completeOrder);
 // Rute baru untuk mengambil permintaan pengunduran diri
 router.get('/pending-resignations', protect, authorize(['admin']), adminController.getPendingResignations);
 router.post('/process-resignation', protect, authorize(['admin']), adminController.processResignation);
@@ -196,11 +193,11 @@ router.get('/reports/monthly-closing-status', protect, authorize(['viewReports']
 router.get('/reports/cashier', protect, authorize(['viewUsahaKoperasi', 'viewReports']), adminController.getCashierReport);
 
 // SHU Rules Management
-router.get('/shu-rules/:year', protect, authorize(['viewSettings']), adminController.getShuRules);
-router.post('/shu-rules', protect, authorize(['viewSettings']), adminController.saveShuRules);
+router.get('/shu-rules/:year', protect, authorize(['viewSettings', 'postSHU']), getShuRules);
+router.post('/shu-rules', protect, authorize(['viewSettings']), saveShuRules);
 
 // SHU Posting
-router.post('/shu/calculate-preview', protect, authorize(['postSHU']), adminController.calculateShuPreview);
+router.post('/shu/calculate-preview', protect, authorize(['postSHU']), adminController.calculateShuPreview); // Menggunakan controller yang sudah diimpor
 router.post('/shu/post-distribution', protect, authorize(['postSHU']), adminController.postShuDistribution);
 
 // Monthly Closing Process
