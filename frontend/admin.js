@@ -699,25 +699,20 @@ const renderCashFlowChart = (data) => {
     // --- FUNGSI UNTUK DASHBOARD ---
     const loadDashboardData = async () => {
         try {
-            // 1. Ambil statistik umum (simpanan, pinjaman, pendaftar baru)
-            const stats = await apiFetch(`${ADMIN_API_URL}/stats`); // Pastikan endpoint ini benar
+            // OPTIMIZATION: Fetch all initial dashboard data in a single request
+            const initialData = await apiFetch(`${ADMIN_API_URL}/initial-data`);
+
+            const { stats, cashFlow, memberGrowth, balanceSheet } = initialData;
 
             document.getElementById('total-savings').textContent = formatCurrency(stats.totalSavings);
             document.getElementById('total-loans').textContent = formatCurrency(stats.totalActiveLoans);
             document.getElementById('pending-members-count').textContent = stats.pendingMembers || 0;
             document.getElementById('total-members').textContent = stats.totalMembers || 0;
 
-            // Muat data untuk grafik arus kas (default 30 hari terakhir)
-            const cashFlowData = await apiFetch(`${ADMIN_API_URL}/cashflow-summary`);
-            renderCashFlowChart(cashFlowData);
-
-            // Muat data untuk grafik pertumbuhan anggota
-            const memberGrowthData = await apiFetch(`${ADMIN_API_URL}/member-growth`);
-            renderMemberGrowthChart(memberGrowthData);
-
-            // Muat data untuk grafik neraca
-            const balanceSheetData = await apiFetch(`${ADMIN_API_URL}/balance-sheet-summary`);
-            renderBalanceSheetChart(balanceSheetData);
+            // Render charts with the data we just fetched
+            renderCashFlowChart(cashFlow);
+            renderMemberGrowthChart(memberGrowth);
+            renderBalanceSheetChart(balanceSheet);
 
             setupIncomeStatementChartFilter(); // Panggil fungsi filter untuk grafik laba rugi di dasbor
 
