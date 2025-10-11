@@ -1,7 +1,6 @@
 import { API_URL } from './config.js';
 
 document.addEventListener('DOMContentLoaded', () => {
-    const body = document.body;
     const productGrid = document.getElementById('product-grid');
     const pageTitle = document.querySelector('h1').textContent.toLowerCase();
     const cartItemCountElements = document.querySelectorAll('.cart-item-count'); // Ganti ke class selector
@@ -16,11 +15,17 @@ document.addEventListener('DOMContentLoaded', () => {
     const creditForm = document.getElementById('credit-application-form');
     const categoryNav = document.getElementById('category-navigation');
     let allProducts = []; // To store all fetched products
+
     let productToAdd = null; // Variable to hold the product when modal is shown
     
-    // Dapatkan tipe toko dan kategori dari atribut data di body
-    const shopType = body.dataset.shopType;
-    const pageCategory = body.dataset.category || 'all';
+    let shopType = '';
+    if (pageTitle.includes('sembako')) {
+        shopType = 'sembako';
+    } else if (pageTitle.includes('elektronik')) {
+        shopType = 'elektronik';
+    } else if (pageTitle.includes('aplikasi')) {
+        shopType = 'aplikasi';
+    }
 
     const formatCurrency = (amount) => {
         if (amount === null || amount === undefined) return 'Rp 0';
@@ -160,6 +165,29 @@ document.addEventListener('DOMContentLoaded', () => {
         `;
     };
 
+    const handleCategoryDisplay = () => {
+        const params = new URLSearchParams(window.location.search);
+        const category = params.get('category');
+
+        // Hapus kelas 'active' dari semua link kategori
+        if (categoryNav) {
+            categoryNav.querySelectorAll('.category-link').forEach(l => l.classList.remove('active'));
+        }
+
+        if (category && categoryNav) {
+            // Jika ada kategori di URL, tampilkan produknya
+            const activeLink = categoryNav.querySelector(`.category-link[data-category="${category}"]`);
+            if (activeLink) {
+                activeLink.classList.add('active');
+            }
+            filterProductsByCategory(category);
+        } else {
+            // Jika tidak ada kategori di URL, tampilkan pesan awal
+            if (productGrid) {
+                productGrid.innerHTML = `<p class="col-span-full text-center text-gray-500 py-8">Silakan pilih kategori di atas untuk melihat produk.</p>`;
+            }
+        }
+    };
     const displayProducts = (productsToDisplay) => {
         if (!productGrid) return;
         productGrid.innerHTML = ''; // Kosongkan grid
@@ -218,14 +246,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 return;
             }
 
-            // Tandai kategori aktif di navigasi
-            if (categoryNav) {
-                const activeLink = categoryNav.querySelector(`.category-link[data-category="${pageCategory}"]`);
-                if (activeLink) activeLink.classList.add('active');
-            }
-
-            // Langsung filter dan tampilkan produk sesuai kategori halaman
-            filterProductsByCategory(pageCategory);
+            handleCategoryDisplay(); // Tampilkan konten berdasarkan URL saat halaman dimuat
         } catch (error) {
             console.error('Error:', error);
             productGrid.innerHTML = `<p class="col-span-full text-center text-red-500">Terjadi kesalahan saat memuat produk.</p>`;
@@ -236,10 +257,27 @@ document.addEventListener('DOMContentLoaded', () => {
     updateCartCount();
 
     if (shopType) {
-        // Hanya panggil loadPublicProducts jika ada productGrid di halaman ini.
-        // Ini mencegah pemanggilan di halaman hub kategori utama.
-        if (productGrid) {
-            loadPublicProducts(shopType);
-        }
+        loadPublicProducts(shopType);
     }
+
+    if (categoryNav) {
+        categoryNav.addEventListener('click', (e) => {
+            e.preventDefault();
+            const link = e.target.closest('.category-link');
+            if (!link) return;
+
+            const category = link.dataset.category;
+            const url = new URL(window.location);
+            url.searchParams.set('category', category);
+
+            // Gunakan history.pushState untuk mengubah URL tanpa memuat ulang halaman
+            history.pushState({ category: category }, '', url);
+
+            // Tampilkan produk berdasarkan kategori yang baru dipilih
+            handleCategoryDisplay();
+        });
+    }
+
+    // Tambahkan event listener untuk tombol back/forward browser
+    window.addEventListener('popstate', handleCategoryDisplay);
 });
