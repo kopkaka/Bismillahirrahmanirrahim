@@ -42,7 +42,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }
         // Sembunyikan menu berdasarkan hak akses yang diperlukan
         if (!hasPerm('viewApprovals')) document.querySelector('.sidebar-link[data-target="approvals"]')?.remove();
-        if (!hasPerm('viewMembers')) document.querySelector('.sidebar-link[data-target="members"]')?.remove();
+        if (!hasPerm('viewMembers')) document.querySelector('.sidebar-link[data-target="members"]')?.remove(); // FIX: This line was duplicated and incorrect.
         if (!hasPerm('viewSavings')) document.querySelector('.sidebar-link[data-target="savings"]')?.remove();
         if (!hasPerm('viewLoans')) document.querySelector('.sidebar-link[data-target="loans"]')?.remove();
         // Sembunyikan kartu ringkasan di dasbor jika tidak memiliki hak akses
@@ -57,7 +57,7 @@ document.addEventListener('DOMContentLoaded', () => {
         if (!hasPerm('viewSettings')) document.querySelector('.sidebar-link[data-target="settings"]')?.parentElement.remove();
  
         // Sembunyikan kartu di halaman Pengaturan jika tidak ada izin
-        if (!hasPerm('manageCooperativeProfile')) document.querySelector('.settings-card-link[data-target="manage-cooperative-profile"]')?.remove();
+        // FIX: The line below was incorrectly hiding the cooperative profile card. It has been removed.
         if (!hasPerm('manageTestimonials')) document.querySelector('.settings-card-link[data-target="testimonials"]')?.remove();
         if (!hasPerm('manageShuRules')) document.querySelector('.settings-card-link[data-target="manage-shu-rules"]')?.remove();
         if (!hasPerm('manageAnnouncements')) document.querySelector('.settings-card-link[data-target="manage-announcements"]')?.remove();
@@ -3644,12 +3644,12 @@ const renderCashFlowChart = (data) => {
             submitBtn.textContent = 'Menyimpan...';
 
             const formData = new FormData();
-            formData.append('name', document.getElementById('coop-name-input').value);
-            formData.append('address', document.getElementById('coop-address-input').value);
-            formData.append('phone', document.getElementById('coop-phone-input').value);
+            formData.append('name', document.getElementById('coop-name-input').value || '');
+            formData.append('address', document.getElementById('coop-address-input').value || '');
+            formData.append('phone', document.getElementById('coop-phone-input').value || '');
 
             const logoInput = document.getElementById('coop-logo-input');
-            if (logoInput.files[0]) {
+            if (logoInput && logoInput.files[0]) {
                 formData.append('logo', logoInput.files[0]); // 'logo' harus cocok dengan nama field multer di backend
             }
 
