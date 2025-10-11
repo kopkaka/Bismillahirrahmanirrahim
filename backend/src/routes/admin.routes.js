@@ -102,8 +102,8 @@ router.put('/members/:id',
 // Role & Permission Management
 router.get('/permissions', protect, authorize(['viewSettings']), adminController.getAllPermissions);
 router.get('/roles/:roleName/permissions', protect, authorize(['viewSettings']), adminController.getRolePermissions);
-// FIX: Register the route for admins to get all system permissions.
-// This route is called on admin login to ensure they have full access, bypassing token-based permissions.
+// FIX: Daftarkan rute agar admin bisa mengambil semua hak akses sistem.
+// Rute ini dipanggil saat admin login untuk memastikan mereka selalu memiliki akses penuh, mengabaikan hak akses yang ada di token.
 router.get('/all-permissions', protect, authorize(['admin']), adminController.getAllSystemPermissions);
 router.put('/roles/:roleName/permissions', protect, authorize(['viewSettings']), adminController.updateRolePermissions);
 
