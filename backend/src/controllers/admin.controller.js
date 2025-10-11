@@ -851,6 +851,33 @@ const createItem = (tableName, allowedFields) => async (req, res) => {
     }
 };
 
+/**
+ * @desc    Generic function to get a single item by ID from a specified table.
+ * @param   {string} tableName - The name of the table to query.
+ * @returns {function} Express middleware handler.
+ */
+const getItemById = (tableName) => async (req, res) => {
+    // Security: Ensure only whitelisted tables can be accessed.
+    if (!ALLOWED_GENERIC_CRUD_TABLES.has(tableName)) {
+        console.error(`Attempt to get from non-whitelisted table: ${tableName}`);
+        return res.status(403).json({ error: 'Operasi tidak diizinkan untuk tabel ini.' });
+    }
+
+    const { id } = req.params;
+    try {
+        const query = `SELECT * FROM "${tableName}" WHERE id = $1`;
+        const result = await pool.query(query, [id]);
+
+        if (result.rows.length === 0) {
+            return res.status(404).json({ error: 'Item tidak ditemukan.' });
+        }
+        res.json(result.rows[0]);
+    } catch (err) {
+        console.error(`Error fetching item by ID from ${tableName}:`, err.message);
+        res.status(500).json({ error: 'Gagal mengambil data item.' });
+    }
+};
+
 const updateItem = (tableName, allowedFields) => async (req, res) => {
     if (!ALLOWED_GENERIC_CRUD_TABLES.has(tableName)) {
         console.error(`Attempt to update in non-whitelisted table: ${tableName}`);
@@ -4370,6 +4397,7 @@ module.exports = {
     getPendingLoans,
     updateLoanStatus,
     recordLoanPayment,
+    getItemById,
     getLoanDetailsForAdmin,    
     getCompanyInfo, // Menggunakan fungsi lokal
     updateCompanyInfo, // Menggunakan fungsi lokal
