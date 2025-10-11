@@ -147,22 +147,8 @@ document.addEventListener('DOMContentLoaded', () => {
             ? `<div class="absolute top-2 right-2 bg-red-600 text-white text-xs font-bold px-2 py-1 rounded-full shadow-lg">STOK HABIS</div>`
             : '';
 
-        // Tombol untuk semua jenis produk, termasuk elektronik, akan menjadi tombol "Lihat Detail"
-        // Logika pembelian kredit akan ditangani di halaman detail produk.
-        const detailButtonHtml = `
-            <button 
-                class="buy-electronic-btn w-full mt-4 bg-accent text-white px-4 py-2 rounded-lg font-semibold hover:bg-red-800 transition-colors focus:outline-none focus:ring-2 focus:ring-red-400"
-                data-product-id="${product.id}"
-                data-product-name="${product.name}"
-                data-product-price="${product.price}"
-                data-product-stock="${product.stock}"
-                data-product-shop-type="${product.shop_type}"
-            >
-                ${isOutOfStock ? 'Stok Habis' : 'Lihat Detail'}
-            </button>`;
-
         return `
-            <div class="card-product bg-white rounded-lg shadow-md overflow-hidden group transition-all duration-300 flex flex-col ${isOutOfStock ? 'opacity-60' : 'hover:shadow-xl hover:-translate-y-1'}">
+            <div class="card-product bg-white rounded-lg shadow-md overflow-hidden group transition-all duration-300 flex flex-col ${isOutOfStock ? 'opacity-60' : 'hover:shadow-xl'}">
                 <div class="relative">
                     <img src="${imageUrl}" alt="${product.name}" class="w-full h-40 object-cover">
                     ${stockBadgeHtml}
@@ -171,7 +157,6 @@ document.addEventListener('DOMContentLoaded', () => {
                     <h3 class="text-lg font-semibold text-gray-800 truncate" title="${product.name}">${product.name}</h3>
                     <div class="mt-auto pt-4">
                         <span class="text-xl font-bold text-accent">${formatCurrency(product.price)}</span>
-                        ${detailButtonHtml}
                     </div>
                 </div>
             </div>
@@ -209,48 +194,6 @@ document.addEventListener('DOMContentLoaded', () => {
             productGrid.innerHTML = `<p class="col-span-full text-center text-red-500">Terjadi kesalahan saat memuat produk.</p>`;
         }
     };
-
-    if (shopType) {
-        loadPublicProducts(shopType);
-    }
-
-    // Event delegation untuk tombol "Tambah ke Keranjang"
-    productGrid.addEventListener('click', (e) => {
-        // Cari elemen tombol terdekat yang diklik
-        const button = e.target.closest('.buy-electronic-btn'); // Sekarang semua tombol adalah 'buy-electronic-btn'
-        if (button) {
-            const card = button.closest('.card-product');
-            const name = card.querySelector('h3').textContent;
-            const priceText = card.querySelector('.text-accent').textContent;
-            const price = parseFloat(priceText.replace(/[^0-9,-]+/g, "").replace(",", "."));
-            const stock = parseInt(button.dataset.productStock || '1', 10); // Default to 1 for electronics
-            const shopType = button.dataset.productShopType || 'elektronik';
-            const imageUrl = card.querySelector('img').src;
-
-            const product = {
-                id: button.dataset.productId,
-                name: name,
-                price: price,
-                stock: stock,
-                shopType: shopType,
-                imageUrl: imageUrl
-            };
-
-            const cooperativeNumber = localStorage.getItem('cooperative_number');
-
-            if (!cooperativeNumber) {
-                showCoopModal(product);
-                return;
-            }
-
-            // Untuk semua produk, arahkan ke halaman detail.
-            // Halaman detail akan menangani logika 'add to cart' atau 'apply for credit'.
-            // Untuk sekarang, kita bisa log atau alert sebagai placeholder.
-            // window.location.href = `detail-produk.html?id=${product.id}`;
-            alert(`Akan membuka detail untuk: ${product.name}`);
-
-        }
-    });
 
     // Event listener untuk tombol di dalam modal
     if (saveCoopNumberBtn) {
