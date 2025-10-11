@@ -7340,19 +7340,17 @@ const renderCashFlowChart = (data) => {
     
             const body = {
                 year: yearSelect.value,
-                rules: {
-                    member_business_service_percentage: document.getElementById('shu-member-business-service').value,
-                    member_capital_service_percentage: document.getElementById('shu-member-capital-service').value,
-                    reserve_fund_percentage: document.getElementById('shu-reserve-fund').value,
-                    management_fund_percentage: document.getElementById('shu-management-fund').value,
-                    education_fund_percentage: document.getElementById('shu-education-fund').value,
-                    social_fund_percentage: document.getElementById('shu-social-fund').value
-                }
+                member_business_service_percentage: document.getElementById('shu-member-business-service').value,
+                member_capital_service_percentage: document.getElementById('shu-member-capital-service').value,
+                reserve_fund_percentage: document.getElementById('shu-reserve-fund').value,
+                management_fund_percentage: document.getElementById('shu-management-fund').value,
+                education_fund_percentage: document.getElementById('shu-education-fund').value,
+                social_fund_percentage: document.getElementById('shu-social-fund').value
             };
     
             submitBtn.disabled = true; submitBtn.textContent = 'Menyimpan...';
             try {
-                // FIX: The body structure was simplified to match the backend expectation.
+                // FIX: The body structure is simplified to match the backend expectation.
                 await apiFetch(`${ADMIN_API_URL}/shu-rules`, {
                     method: 'POST',
                     body: JSON.stringify(body)
