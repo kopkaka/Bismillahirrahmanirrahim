@@ -182,13 +182,11 @@ document.addEventListener('DOMContentLoaded', () => {
             }
             filterProductsByCategory(category);
         } else {
-            // Jika tidak ada kategori di URL, tampilkan pesan awal
-            if (productGrid) {
-                productGrid.innerHTML = `<p class="col-span-full text-center text-gray-500 py-8">Silakan pilih kategori di atas untuk melihat produk.</p>`;
-            }
+            // Jika tidak ada kategori di URL, tampilkan semua produk
+            filterProductsByCategory('all');
         }
     };
-    const displayProducts = (productsToDisplay) => {
+    const displayProducts = (productsToDisplay, category) => {
         if (!productGrid) return;
         productGrid.innerHTML = ''; // Kosongkan grid
         if (productsToDisplay.length === 0) {
@@ -196,6 +194,10 @@ document.addEventListener('DOMContentLoaded', () => {
             return;
         }
         productsToDisplay.forEach(product => {
+            // Jika kategori adalah 'all', jangan tampilkan produk elektronik
+            if (category === 'all' && product.shop_type === 'elektronik') {
+                return;
+            }
             productGrid.innerHTML += createProductCard(product);
         });
     };
@@ -211,7 +213,7 @@ document.addEventListener('DOMContentLoaded', () => {
         };
 
         if (category === 'all') {
-            displayProducts(allProducts);
+            displayProducts(allProducts, 'all');
             return;
         }
 
@@ -221,7 +223,7 @@ document.addEventListener('DOMContentLoaded', () => {
             return keywords.some(keyword => productName.includes(keyword));
         });
 
-        displayProducts(filtered);
+        displayProducts(filtered, category);
     };
 
     const loadPublicProducts = async (type) => {

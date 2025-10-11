@@ -44,47 +44,53 @@
         </section>
 
         <div class="container mx-auto px-6 py-12">
-            <!-- Category Navigation -->
-            <section class="mb-12">
-                <h2 class="text-2xl font-bold text-gray-800 mb-6 text-center">Jelajahi Kategori</h2>
-                <div id="category-navigation" class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-7 gap-4 text-center">
-                    <a href="#" class="category-link block bg-white p-6 rounded-lg shadow hover:shadow-lg hover:-translate-y-1 transition-all" data-category="all">
-                        <img src="https://img.icons8.com/fluency/96/online-store.png" class="h-16 w-16 mx-auto mb-2" alt="Toko Icon"/>
-                        <span class="font-semibold text-gray-700">Semua Produk</span>
-                    </a>
-                    <a href="#" class="category-link block bg-white p-6 rounded-lg shadow hover:shadow-lg hover:-translate-y-1 transition-all" data-category="tv_audio">
-                        <img src="https://img.icons8.com/fluency/96/000000/retro-tv.png" class="h-16 w-16 mx-auto mb-2" alt="TV Icon"/>
-                        <span class="font-semibold text-gray-700">Televisi & Audio</span>
-                    </a>
-                    <a href="#" class="category-link block bg-white p-6 rounded-lg shadow hover:shadow-lg hover:-translate-y-1 transition-all" data-category="kulkas">
-                        <img src="https://img.icons8.com/fluency/96/000000/fridge.png" class="h-16 w-16 mx-auto mb-2" alt="Kulkas Icon"/>
-                        <span class="font-semibold text-gray-700">Kulkas & Freezer</span>
-                    </a>
-                    <a href="#" class="category-link block bg-white p-6 rounded-lg shadow hover:shadow-lg hover:-translate-y-1 transition-all" data-category="ac">
-                        <img src="https://img.icons8.com/fluency/96/000000/air-conditioner.png" class="h-16 w-16 mx-auto mb-2" alt="AC Icon"/>
-                        <span class="font-semibold text-gray-700">Pendingin Ruangan</span>
-                    </a>
-                    <a href="#" class="category-link block bg-white p-6 rounded-lg shadow hover:shadow-lg hover:-translate-y-1 transition-all" data-category="mesin_cuci">
-                        <img src="https://img.icons8.com/fluency/96/000000/washing-machine.png" class="h-16 w-16 mx-auto mb-2" alt="Mesin Cuci Icon"/>
-                        <span class="font-semibold text-gray-700">Mesin Cuci</span>
-                    </a>
-                    <a href="#" class="category-link block bg-white p-6 rounded-lg shadow hover:shadow-lg hover:-translate-y-1 transition-all" data-category="handphone">
-                        <img src="https://img.icons8.com/fluency/96/000000/touchscreen-smartphone.png" class="h-16 w-16 mx-auto mb-2" alt="Handphone Icon"/>
-                        <span class="font-semibold text-gray-700">Handphone</span>
-                    </a>
-                    <a href="#" class="category-link block bg-white p-6 rounded-lg shadow hover:shadow-lg hover:-translate-y-1 transition-all" data-category="komputer">
-                        <img src="https://img.icons8.com/fluency/96/000000/laptop.png" class="h-16 w-16 mx-auto mb-2" alt="Komputer Icon"/>
-                        <span class="font-semibold text-gray-700">Komputer</span>
-                    </a>
-                </div>
-            </section>
+            <div class="flex flex-col lg:flex-row gap-8">
+                <!-- Sidebar untuk Kategori -->
+                <aside class="w-full lg:w-1/4 xl:w-1/5">
+                    <div class="bg-white p-4 rounded-lg shadow-md sticky top-24">
+                        <h2 class="text-lg font-bold text-gray-800 mb-4 pb-2 border-b">Kategori Produk</h2>
+                        <nav id="category-navigation" class="flex flex-col space-y-2">
+                            <a href="#" class="category-link flex items-center space-x-3 p-3 rounded-md hover:bg-red-50 text-gray-700" data-category="all">
+                                <img src="https://img.icons8.com/fluency/48/online-store.png" class="h-6 w-6" alt="Toko Icon"/>
+                                <span class="font-semibold">Semua Produk</span>
+                            </a>
+                            <a href="#" class="category-link flex items-center space-x-3 p-3 rounded-md hover:bg-red-50 text-gray-700" data-category="tv_audio">
+                                <img src="https://img.icons8.com/fluency/48/000000/retro-tv.png" class="h-6 w-6" alt="TV Icon"/>
+                                <span class="font-semibold">Televisi & Audio</span>
+                            </a>
+                            <a href="#" class="category-link flex items-center space-x-3 p-3 rounded-md hover:bg-red-50 text-gray-700" data-category="kulkas">
+                                <img src="https://img.icons8.com/fluency/48/000000/fridge.png" class="h-6 w-6" alt="Kulkas Icon"/>
+                                <span class="font-semibold">Kulkas & Freezer</span>
+                            </a>
+                            <a href="#" class="category-link flex items-center space-x-3 p-3 rounded-md hover:bg-red-50 text-gray-700" data-category="ac">
+                                <img src="https://img.icons8.com/fluency/48/000000/air-conditioner.png" class="h-6 w-6" alt="AC Icon"/>
+                                <span class="font-semibold">Pendingin Ruangan</span>
+                            </a>
+                            <a href="#" class="category-link flex items-center space-x-3 p-3 rounded-md hover:bg-red-50 text-gray-700" data-category="mesin_cuci">
+                                <img src="https://img.icons8.com/fluency/48/000000/washing-machine.png" class="h-6 w-6" alt="Mesin Cuci Icon"/>
+                                <span class="font-semibold">Mesin Cuci</span>
+                            </a>
+                            <a href="#" class="category-link flex items-center space-x-3 p-3 rounded-md hover:bg-red-50 text-gray-700" data-category="handphone">
+                                <img src="https://img.icons8.com/fluency/48/000000/touchscreen-smartphone.png" class="h-6 w-6" alt="Handphone Icon"/>
+                                <span class="font-semibold">Handphone</span>
+                            </a>
+                            <a href="#" class="category-link flex items-center space-x-3 p-3 rounded-md hover:bg-red-50 text-gray-700" data-category="komputer">
+                                <img src="https://img.icons8.com/fluency/48/000000/laptop.png" class="h-6 w-6" alt="Komputer Icon"/>
+                                <span class="font-semibold">Komputer</span>
+                            </a>
+                        </nav>
+                    </div>
+                </aside>
 
-            <!-- Product Section -->
-            <section>
-                <h2 class="text-2xl font-bold text-gray-800 mb-6">Produk Unggulan</h2>
-                <!-- Product Grid -->
-                <div id="product-grid" class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-6"></div>
-            </section>
+                <!-- Konten Produk -->
+                <div class="w-full lg:w-3/4 xl:w-4/5">
+                    <section>
+                        <h2 class="text-2xl font-bold text-gray-800 mb-6">Produk Unggulan</h2>
+                        <!-- Product Grid -->
+                        <div id="product-grid" class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6"></div>
+                    </section>
+                </div>
+            </div>
         </div>
     </main>
 

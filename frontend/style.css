@@ -74,6 +74,6 @@
     }
     /* Gaya untuk kategori aktif di toko elektronik */
     .category-link.active {
-        @apply ring-2 ring-accent ring-offset-2;
+        @apply bg-red-100 text-accent font-bold;
     }
 }
