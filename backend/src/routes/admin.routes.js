@@ -148,7 +148,7 @@ router.delete('/logistics-by-ref/:ref', protect, authorize(logisticsPermission),
 // Otorisasi spesifik (viewSettings) hanya diperlukan untuk mengubah data (PUT).
 router.get('/company-info', protect, adminController.getCompanyInfo); // Menggunakan adminController yang sudah di-refactor
 router.put('/company-info', protect, authorize(['manageCooperativeProfile']), upload.single('logo'), adminController.updateCompanyInfo);
-
+ 
 // Testimonial Management
 const testimonialPermission = ['manageTestimonials'];
 router.get('/testimonials', protect, authorize(testimonialPermission), adminController.getTestimonials);
