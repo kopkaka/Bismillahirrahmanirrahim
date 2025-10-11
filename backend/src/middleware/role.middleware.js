@@ -1,30 +1,28 @@
-const authorize = (requiredPermissions) => {
-    // The middleware is no longer async as it doesn't query the DB.
+const authorize = (requiredItems) => {
     return (req, res, next) => {
-        // Ensure req.user exists and has the necessary properties set by auth.middleware.js
         if (!req.user || !req.user.role || !req.user.permissions) {
             return res.status(403).json({ error: 'Akses ditolak. Informasi otorisasi tidak lengkap.' });
         }
 
-        const { role, permissions: userPermissions } = req.user;
+        const { role: userRole, permissions: userPermissions } = req.user;
 
-        // --- Improvement: Input validation for the middleware itself ---
-        // This helps catch configuration errors during development.
-        if (!Array.isArray(requiredPermissions) || requiredPermissions.length === 0) {
-            // This is a server configuration error, not a client error.
+        if (!Array.isArray(requiredItems) || requiredItems.length === 0) {
             console.error('Authorization error: requiredPermissions must be a non-empty array.');
             return res.status(500).json({ error: 'Kesalahan konfigurasi otorisasi server.' });
         }
 
-        // --- Improvement: Check against cached permissions from the JWT ---
-        // This is much faster as it avoids a database query on every request.
-        // It checks if the user's permissions array has at least one of the required permissions (OR logic).
-        const hasPermission = requiredPermissions.some(permission => userPermissions.includes(permission));
+        // --- LOGIKA BARU ---
+        // Cek apakah peran pengguna termasuk dalam item yang diperlukan.
+        const hasRequiredRole = requiredItems.includes(userRole);
 
-        if (hasPermission) {
-            next(); // Permission found, proceed.
+        // Cek apakah pengguna memiliki setidaknya salah satu izin yang diperlukan.
+        const hasRequiredPermission = requiredItems.some(permission => userPermissions.includes(permission));
+
+        // Izinkan akses jika pengguna memiliki peran yang diperlukan ATAU izin yang diperlukan.
+        if (hasRequiredRole || hasRequiredPermission) {
+            next();
         } else {
-            res.status(403).json({ error: 'Akses ditolak. Anda tidak memiliki izin untuk melakukan tindakan ini.' });
+            res.status(403).json({ error: 'Akses ditolak. Anda tidak memiliki izin yang diperlukan.' });
         }
     };
 };
