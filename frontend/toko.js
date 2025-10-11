@@ -256,6 +256,12 @@ document.addEventListener('DOMContentLoaded', () => {
                 return;
             }
 
+            // Tampilkan Promo Modal jika ini adalah halaman aplikasi dan belum pernah ditampilkan di sesi ini
+            if (shopType === 'aplikasi' && !sessionStorage.getItem('promoModalShown')) {
+                showPromoModal();
+                sessionStorage.setItem('promoModalShown', 'true'); // Tandai sebagai sudah ditampilkan untuk sesi ini
+            }
+
             handleCategoryDisplay(); // Tampilkan konten berdasarkan URL saat halaman dimuat
         } catch (error) {
             console.error('Error:', error);
@@ -314,6 +320,35 @@ document.addEventListener('DOMContentLoaded', () => {
     openCategorySidebarBtn?.addEventListener('click', openCategorySidebar);
     closeCategorySidebarBtn?.addEventListener('click', closeCategorySidebar);
     categorySidebarOverlay?.addEventListener('click', closeCategorySidebar);
+
+    // --- PROMO MODAL FUNCTIONS ---
+    const showPromoModal = () => {
+        if (promoModal) {
+            promoModal.classList.remove('hidden');
+            // Gunakan timeout singkat untuk memungkinkan properti display berubah sebelum memulai transisi
+            setTimeout(() => {
+                const modalContent = promoModal.querySelector('[role="dialog"]');
+                if (modalContent) {
+                    modalContent.classList.remove('scale-95', 'opacity-0');
+                    modalContent.classList.add('scale-100', 'opacity-100');
+                }
+            }, 10);
+        }
+    };
+
+    const hidePromoModal = () => {
+        if (promoModal) {
+            const modalContent = promoModal.querySelector('[role="dialog"]');
+            if (modalContent) {
+                modalContent.classList.remove('scale-100', 'opacity-100');
+                modalContent.classList.add('scale-95', 'opacity-0');
+            }
+            // Tunggu transisi selesai sebelum menyembunyikan elemen
+            setTimeout(() => {
+                promoModal.classList.add('hidden');
+            }, 200); // Sesuaikan dengan durasi transisi di HTML
+        }
+    };
 
     // Event Listeners untuk Promo Modal
     closePromoModalBtn?.addEventListener('click', hidePromoModal);
