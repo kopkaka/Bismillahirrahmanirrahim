@@ -2926,10 +2926,11 @@ const getBalanceSheetSummary = async (req, res) => {
 
         // Query for asset, liability, and equity balances
         const balanceQuery = `
+            -- FIX: Replaced FILTER clause with CASE statement for broader PostgreSQL version compatibility (pre-9.4).
             SELECT
-                COALESCE(SUM(je.debit - je.credit) FILTER (WHERE coa.account_type = 'Aset'), 0) as assets,
-                COALESCE(SUM(je.credit - je.debit) FILTER (WHERE coa.account_type = 'Kewajiban'), 0) as liabilities,
-                COALESCE(SUM(je.credit - je.debit) FILTER (WHERE coa.account_type = 'Ekuitas'), 0) as equity
+                COALESCE(SUM(CASE WHEN coa.account_type = 'Aset' THEN je.debit - je.credit ELSE 0 END), 0) as assets,
+                COALESCE(SUM(CASE WHEN coa.account_type = 'Kewajiban' THEN je.credit - je.debit ELSE 0 END), 0) as liabilities,
+                COALESCE(SUM(CASE WHEN coa.account_type = 'Ekuitas' THEN je.credit - je.debit ELSE 0 END), 0) as equity
             FROM chart_of_accounts coa
             LEFT JOIN journal_entries je ON je.account_id = coa.id
             LEFT JOIN general_journal gj ON je.journal_id = gj.id AND gj.entry_date <= $1
@@ -2938,10 +2939,11 @@ const getBalanceSheetSummary = async (req, res) => {
 
         // Query for net income
         const netIncomeQuery = `
+            -- FIX: Replaced FILTER clause with CASE statement for compatibility.
             SELECT COALESCE(SUM(
-                (je.credit - je.debit) FILTER (WHERE coa.account_type = 'Pendapatan')
+                CASE WHEN coa.account_type = 'Pendapatan' THEN je.credit - je.debit ELSE 0 END
             ), 0) - COALESCE(SUM(
-                (je.debit - je.credit) FILTER (WHERE coa.account_type IN ('HPP', 'Biaya'))
+                CASE WHEN coa.account_type IN ('HPP', 'Biaya') THEN je.debit - je.credit ELSE 0 END
             ), 0) as total_net_income
             FROM chart_of_accounts coa
             LEFT JOIN journal_entries je ON je.account_id = coa.id
@@ -2982,29 +2984,27 @@ const getBalanceSheet = async (req, res) => {
     const prevYearEndDate = `${year - 1}-12-31`;
 
     try {        
-        // FIX: This single, optimized query replaces multiple separate queries.
-        // It calculates both beginning and ending balances for all account types in one pass.
-        // By starting from journal_entries and using FILTER, it's significantly more performant
-        // and ensures that equity calculations (including net income) are accurate for both periods.
+        // FIX: Replaced FILTER clause with CASE statement for broader PostgreSQL version compatibility (pre-9.4).
+        // This single, optimized query calculates both beginning and ending balances for all account types in one pass.
         const reportQuery = `
             SELECT
                 coa.account_type,
                 coa.account_name,
                 coa.account_number,
                 -- Calculate beginning balance (up to the end of the previous year)
-                COALESCE(SUM(
-                    CASE
+                COALESCE(SUM(CASE WHEN gj.entry_date <= $2 THEN
+                    (CASE
                         WHEN coa.account_type IN ('Aset', 'HPP', 'Biaya') THEN je.debit - je.credit
                         ELSE je.credit - je.debit
-                    END
-                ) FILTER (WHERE gj.entry_date <= $2), 0) as beginning_balance,
+                    END)
+                ELSE 0 END), 0) as beginning_balance,
                 -- Calculate ending balance (up to the selected end date)
-                COALESCE(SUM(
-                    CASE
+                COALESCE(SUM(CASE WHEN gj.entry_date <= $1 THEN
+                    (CASE
                         WHEN coa.account_type IN ('Aset', 'HPP', 'Biaya') THEN je.debit - je.credit
                         ELSE je.credit - je.debit
-                    END
-                ) FILTER (WHERE gj.entry_date <= $1), 0) as ending_balance
+                    END)
+                ELSE 0 END), 0) as ending_balance
             FROM chart_of_accounts coa
             LEFT JOIN journal_entries je ON je.account_id = coa.id
             LEFT JOIN general_journal gj ON je.journal_id = gj.id AND gj.entry_date <= $1 -- Filter dates in JOIN for efficiency
