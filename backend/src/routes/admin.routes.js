@@ -28,6 +28,8 @@ const supplierRoutes = require('./supplier.routes.js');
 
 // Dashboard
 router.get('/stats', protect, authorize(['viewDashboard']), adminController.getDashboardStats);
+// New endpoint to load all initial dashboard data in one call
+router.get('/initial-data', protect, authorize(['viewDashboard']), adminController.getInitialAdminData);
 router.get('/cashflow-summary', protect, authorize(['viewDashboard']), adminController.getCashFlowSummary);
 router.get('/member-growth', protect, authorize(['viewDashboard']), adminController.getMemberGrowth);
 router.get('/balance-sheet-summary', protect, authorize(['viewDashboard']), adminController.getBalanceSheetSummary);
