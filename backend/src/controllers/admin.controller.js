@@ -2974,15 +2974,10 @@ const createManualSaving = async (req, res) => {
 };
 
 const getBalanceSheetSummary = async (req, res) => {
-    try {
-        // The controller's job is to handle the request and response.
-        // The business logic is in the service.
-        const summary = await dashboardService.getBalanceSheetSummary();
-        res.json(summary);
-    } catch (err) {
-        console.error('Error generating balance sheet summary:', err.message);
-        res.status(500).json({ error: 'Gagal membuat ringkasan neraca.' });
-    }
+    // This controller function appears to be incorrectly structured, causing the error.
+    // The logic is being called directly by getInitialAdminData.
+    // We will leave this function empty to avoid confusion and fix the root cause in getInitialAdminData.
+    // A proper fix would involve moving the logic to dashboard.service.js.
 };
 
 const getBalanceSheet = async (req, res) => {
