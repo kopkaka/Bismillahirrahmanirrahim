@@ -45,11 +45,11 @@
                                 <span class="font-semibold">Semua Aplikasi</span>
                             </a>
                             <a href="#" class="category-link flex items-center space-x-3 p-3 rounded-md hover:bg-red-50 text-gray-700" data-category="produktivitas">
-                                <img src="https://img.icons8.com/fluency/48/ms-office.png" class="h-6 w-6" alt="Productivity Icon"/>
+                                <img src="https://img.icons8.com/fluency/48/000000/task.png" class="h-6 w-6" alt="Productivity Icon"/>
                                 <span class="font-semibold">Produktifitas</span>
                             </a>
                             <a href="#" class="category-link flex items-center space-x-3 p-3 rounded-md hover:bg-red-50 text-gray-700" data-category="desain">
-                                <img src="https://img.icons8.com/fluency/48/adobe-photoshop.png" class="h-6 w-6" alt="Design Icon"/>
+                                <img src="https://img.icons8.com/fluency/48/000000/paint-palette.png" class="h-6 w-6" alt="Design Icon"/>
                                 <span class="font-semibold">Desain & Kreatif</span>
                             </a>
                         </nav>
@@ -57,17 +57,7 @@
                 </aside>
 
                 <!-- Konten Produk -->
-                <div class="w-full lg:w-3/4 xl:w-4/5">
-                    <!-- Promotional Section -->
-                    <div class="relative bg-gradient-to-r from-green-500 to-teal-500 text-white p-8 rounded-xl shadow-2xl mb-12 overflow-hidden">
-                        <div class="absolute -right-10 -bottom-10"><svg class="w-48 h-48 text-white/20" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v.01M12 6v-1m0-1V4m0 2.01M12 14v4m0 0v1m0-1.01M12 16.01V14m0 6a9 9 0 110-18 9 9 0 010 18z"></path></svg></div>
-                        <div class="relative z-10">
-                            <h2 class="text-2xl font-bold">Program Mitra Penjualan: Raih Keuntungan Ekstra!</h2>
-                            <p class="mt-2 text-lg">Setiap anggota yang berhasil menjual produk aplikasi akan mendapatkan komisi sebesar <strong class="text-4xl font-extrabold">19%</strong> dari harga jual!</p>
-                            <p class="mt-4 font-semibold">Keuntungan akan langsung kami tambahkan ke saldo <strong>Simpanan Sukarela</strong> Anda. Ayo, tawarkan ke rekan Anda dan tingkatkan tabungan Anda bersama KOPKAKA!</p>
-                        </div>
-                    </div>
-
+                <div class="w-full lg:w-3/4 xl:w-4/5"> 
                     <!-- Product Grid Section -->
                     <section id="katalog">
                         <div class="flex items-center justify-between mb-6">
@@ -86,6 +76,26 @@
         </div>
         <!-- Overlay untuk sidebar mobile -->
         <div id="category-sidebar-overlay" class="fixed inset-0 bg-black bg-opacity-50 z-50 hidden lg:hidden"></div>
+    </main>
+
+    <!-- Promo Modal -->
+    <div id="promo-modal" class="fixed inset-0 bg-gray-800 bg-opacity-75 flex items-center justify-center p-4 hidden z-50">
+        <!-- Modal panel -->
+        <div class="bg-white rounded-lg shadow-xl w-full max-w-md p-6 transform transition-all duration-200 scale-95 opacity-0" role="dialog" aria-modal="true" aria-labelledby="promo-modal-title">
+            <div class="flex justify-end mb-4">
+                <button type="button" id="close-promo-modal-btn" class="text-gray-400 hover:text-gray-600 text-2xl leading-none focus:outline-none">&times;</button>
+            </div>
+            <div class="relative bg-gradient-to-r from-green-500 to-teal-500 text-white p-8 rounded-xl shadow-2xl overflow-hidden">
+                <div class="absolute -right-10 -bottom-10">
+                    <svg class="w-48 h-48 text-white/20" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v.01M12 6v-1m0-1V4m0 2.01M12 14v4m0 0v1m0-1.01M12 16.01V14m0 6a9 9 0 110-18 9 9 0 010 18z"></path></svg>
+                </div>
+                <div class="relative z-10">
+                    <h2 class="text-2xl font-bold" id="promo-modal-title">Program Mitra Penjualan: Raih Keuntungan Ekstra!</h2>
+                    <p class="mt-2 text-lg">Setiap anggota yang berhasil menjual produk aplikasi akan mendapatkan komisi sebesar <strong class="text-4xl font-extrabold">19%</strong> dari harga jual!</p>
+                    <p class="mt-4 font-semibold">Keuntungan akan langsung kami tambahkan ke saldo <strong>Simpanan Sukarela</strong> Anda. Ayo, tawarkan ke rekan Anda dan tingkatkan tabungan Anda bersama KOPKAKA!</p>
+                </div>
+            </div>
+        </div>
     </main>
 
     <!-- Cooperative Number Modal -->

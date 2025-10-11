@@ -13,6 +13,10 @@ document.addEventListener('DOMContentLoaded', () => {
     const coopNumberError = document.getElementById('coop-number-error');
     const creditModal = document.getElementById('credit-application-modal');
     const creditForm = document.getElementById('credit-application-form');
+
+    // --- PROMO MODAL ELEMENTS ---
+    const promoModal = document.getElementById('promo-modal');
+    const closePromoModalBtn = document.getElementById('close-promo-modal-btn');
     const categoryNav = document.getElementById('category-navigation');
 
     // --- ELEMEN SIDEBAR KATEGORI MOBILE ---
@@ -310,4 +314,13 @@ document.addEventListener('DOMContentLoaded', () => {
     openCategorySidebarBtn?.addEventListener('click', openCategorySidebar);
     closeCategorySidebarBtn?.addEventListener('click', closeCategorySidebar);
     categorySidebarOverlay?.addEventListener('click', closeCategorySidebar);
+
+    // Event Listeners untuk Promo Modal
+    closePromoModalBtn?.addEventListener('click', hidePromoModal);
+    promoModal?.addEventListener('click', (e) => {
+        // Tutup modal jika klik di luar konten modal (pada overlay)
+        if (e.target === promoModal) {
+            hidePromoModal();
+        }
+    });
 });
