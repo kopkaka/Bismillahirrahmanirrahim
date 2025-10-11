@@ -1448,56 +1448,6 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     };
 
-    const showAdminLoanCommitment = async (loanId) => {
-        const modal = document.getElementById('loan-commitment-modal');
-        if (!modal) return;
-
-        // Reset and show modal with loading state
-        modal.classList.remove('hidden');
-        const content = document.getElementById('commitment-letter-content');
-        content.style.opacity = '0.5';
-
-        // Hide signature pad and related buttons, show admin controls
-        document.getElementById('admin-signature-controls').classList.remove('hidden');
-
-        try {
-            // Fetch loan details using the specific endpoint
-            const { summary, installments } = await apiFetch(`${API_URL}/admin/loans/${loanId}/details`);
-
-            // Populate modal with fetched data
-            document.getElementById('commitment-member-name-text').textContent = `: ${summary.memberName}`;
-            document.getElementById('commitment-coop-number-text').textContent = `: ${summary.cooperativeNumber || 'N/A'}`;
-            document.getElementById('commitment-loan-amount-text').textContent = `: ${formatCurrency(summary.amount)}`;
-            
-            // Correctly display the loan product name and tenor
-            document.getElementById('commitment-loan-term-text').textContent = `: ${summary.loanTypeName} - ${summary.tenor} bulan`;
-
-            const totalRepayment = installments.reduce((sum, inst) => sum + parseFloat(inst.amount), 0);
-            document.getElementById('commitment-total-repayment-text').textContent = `: ${formatCurrency(totalRepayment)}`;
-
-            // Generate and display amortization table
-            const amortizationContainer = document.getElementById('admin-commitment-amortization-container');
-            amortizationContainer.innerHTML = generateAmortizationForModal(parseFloat(summary.amount), summary.tenor, summary.interestRate).tableHtml;
-
-            document.getElementById('commitment-current-date').textContent = formatDate(summary.startDate);
-            document.getElementById('commitment-signature-name-text').textContent = summary.memberName;
-
-            // Display the member's signature image
-            const signatureContainer = document.getElementById('member-signature-container');
-            if (summary.commitment_signature_path) {
-                const signatureUrl = `${API_URL.replace('/api', '')}/${summary.commitment_signature_path.replace(/\\/g, '/')}`;
-                signatureContainer.innerHTML = `<img src="${signatureUrl}" alt="Tanda Tangan Anggota" class="w-full h-40 object-contain bg-gray-50 rounded-md">`;
-            } else {
-                signatureContainer.innerHTML = `<p class="text-gray-500 text-center">Tanda tangan tidak tersedia.</p>`;
-            }
-
-            content.style.opacity = '1';
-        } catch (error) {
-            alert(`Gagal memuat detail komitmen: ${error.message}`);
-            modal.classList.add('hidden');
-        }
-    };
-
     const generateAmortization = (plafon, tenor, annualInterestRate) => {
         const amortizationTableBody = document.getElementById('amortization-preview-table-body');
         const amortizationTableFooter = document.getElementById('amortization-preview-table-footer');

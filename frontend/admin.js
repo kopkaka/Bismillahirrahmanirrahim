@@ -4942,86 +4942,6 @@ const renderCashFlowChart = (data) => {
         }
     };
 
-    // --- FUNGSI UNTUK KELOLA ATURAN SHU ---
-    const setupShuRules = () => {
-        const form = document.getElementById('shu-rules-form');
-        if (!form) return;
-    
-        const yearSelect = document.getElementById('shu-rules-year');
-        const inputs = form.querySelectorAll('.shu-percentage-input');
-        const totalDisplay = document.getElementById('shu-total-percentage');
-        const errorDisplay = document.getElementById('shu-percentage-error');
-    
-        const updateTotal = () => {
-            let total = 0;
-            inputs.forEach(input => {
-                total += parseFloat(input.value) || 0;
-            });
-            totalDisplay.textContent = `${total.toFixed(2)}%`;
-            if (Math.abs(total - 100) > 0.01) {
-                totalDisplay.classList.add('text-red-600');
-                errorDisplay.classList.remove('hidden');
-            } else {
-                totalDisplay.classList.remove('text-red-600');
-                errorDisplay.classList.add('hidden');
-            }
-        };
-    
-        const populateForm = (data) => {
-            document.getElementById('shu-member-business-service').value = data.member_business_service_percentage;
-            document.getElementById('shu-member-capital-service').value = data.member_capital_service_percentage;
-            document.getElementById('shu-reserve-fund').value = data.reserve_fund_percentage;
-            document.getElementById('shu-management-fund').value = data.management_fund_percentage;
-            document.getElementById('shu-education-fund').value = data.education_fund_percentage;
-            document.getElementById('shu-social-fund').value = data.social_fund_percentage;
-            updateTotal();
-        };
-    
-        const loadRulesForYear = async (year) => {
-            try {
-                const data = await apiFetch(`${ADMIN_API_URL}/shu-rules/${year}`);
-                populateForm(data);
-            } catch (error) {
-                alert(`Terjadi kesalahan: ${error.message}`);
-            }
-        };
-    
-        // Populate year dropdown
-        yearSelect.innerHTML = ''; // Clear previous options
-        const currentYear = new Date().getFullYear();
-        for (let i = currentYear + 1; i >= currentYear - 5; i--) {
-            const option = document.createElement('option');
-            option.value = i;
-            option.textContent = i;
-            yearSelect.appendChild(option);
-        }
-        yearSelect.value = currentYear;
-    
-        // Add event listeners
-        yearSelect.addEventListener('change', () => loadRulesForYear(yearSelect.value));
-        inputs.forEach(input => input.addEventListener('input', updateTotal));
-    
-        form.addEventListener('submit', async (e) => {
-            e.preventDefault();
-            const submitBtn = form.querySelector('button[type="submit"]');
-            let total = 0;
-            inputs.forEach(input => { total += parseFloat(input.value) || 0; });
-    
-            if (Math.abs(total - 100) > 0.01) { alert('Total persentase harus tepat 100%.'); return; }
-    
-            const body = { year: yearSelect.value, member_business_service_percentage: document.getElementById('shu-member-business-service').value, member_capital_service_percentage: document.getElementById('shu-member-capital-service').value, reserve_fund_percentage: document.getElementById('shu-reserve-fund').value, management_fund_percentage: document.getElementById('shu-management-fund').value, education_fund_percentage: document.getElementById('shu-education-fund').value, social_fund_percentage: document.getElementById('shu-social-fund').value };
-    
-            submitBtn.disabled = true; submitBtn.textContent = 'Menyimpan...';
-            try {
-                await apiFetch(`${ADMIN_API_URL}/shu-rules`, { method: 'POST', body: JSON.stringify(body) });
-                alert(`Aturan SHU untuk tahun ${body.year} berhasil disimpan.`);
-            } catch (error) { alert(`Terjadi kesalahan: ${error.message}`); } finally { submitBtn.disabled = false; submitBtn.textContent = 'Simpan Aturan'; }
-        });
-    
-        // Initial load
-        loadRulesForYear(currentYear);
-    };
-
     // --- FUNGSI UNTUK POSTING SHU ---
     const setupPostShuPage = () => {
         const yearSelect = document.getElementById('shu-calc-year');
@@ -7346,6 +7266,100 @@ const renderCashFlowChart = (data) => {
             } catch (error) { alert(`Error: ${error.message}`); console.error(error);
             } finally { confirmPaymentBtn.disabled = false; confirmPaymentBtn.textContent = 'Konfirmasi Pembayaran'; }
         });
+    };
+
+    // --- FUNGSI UNTUK KELOLA ATURAN SHU ---
+    const setupShuRules = () => {
+        const form = document.getElementById('shu-rules-form');
+        if (!form) return;
+    
+        const yearSelect = document.getElementById('shu-rules-year');
+        const inputs = form.querySelectorAll('.shu-percentage-input');
+        const totalDisplay = document.getElementById('shu-total-percentage');
+        const errorDisplay = document.getElementById('shu-percentage-error');
+    
+        const updateTotal = () => {
+            let total = 0;
+            inputs.forEach(input => {
+                total += parseFloat(input.value) || 0;
+            });
+            totalDisplay.textContent = `${total.toFixed(2)}%`;
+            if (Math.abs(total - 100) > 0.01) {
+                totalDisplay.classList.add('text-red-600');
+                errorDisplay.classList.remove('hidden');
+            } else {
+                totalDisplay.classList.remove('text-red-600');
+                errorDisplay.classList.add('hidden');
+            }
+        };
+    
+        const populateForm = (data) => {
+            document.getElementById('shu-member-business-service').value = data.member_business_service_percentage;
+            document.getElementById('shu-member-capital-service').value = data.member_capital_service_percentage;
+            document.getElementById('shu-reserve-fund').value = data.reserve_fund_percentage;
+            document.getElementById('shu-management-fund').value = data.management_fund_percentage;
+            document.getElementById('shu-education-fund').value = data.education_fund_percentage;
+            document.getElementById('shu-social-fund').value = data.social_fund_percentage;
+            updateTotal();
+        };
+    
+        const loadRulesForYear = async (year) => {
+            try {
+                const data = await apiFetch(`${ADMIN_API_URL}/shu-rules/${year}`);
+                populateForm(data);
+            } catch (error) {
+                alert(`Terjadi kesalahan: ${error.message}`);
+            }
+        };
+    
+        // Populate year dropdown
+        yearSelect.innerHTML = ''; // Clear previous options
+        const currentYear = new Date().getFullYear();
+        for (let i = currentYear + 1; i >= currentYear - 5; i--) {
+            const option = document.createElement('option');
+            option.value = i;
+            option.textContent = i;
+            yearSelect.appendChild(option);
+        }
+        yearSelect.value = currentYear;
+    
+        // Add event listeners
+        yearSelect.addEventListener('change', () => loadRulesForYear(yearSelect.value));
+        inputs.forEach(input => input.addEventListener('input', updateTotal));
+    
+        form.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const submitBtn = form.querySelector('button[type="submit"]');
+            let total = 0;
+            inputs.forEach(input => { total += parseFloat(input.value) || 0; });
+    
+            if (Math.abs(total - 100) > 0.01) { alert('Total persentase harus tepat 100%.'); return; }
+    
+            const body = {
+                year: yearSelect.value,
+                rules: {
+                    member_business_service_percentage: document.getElementById('shu-member-business-service').value,
+                    member_capital_service_percentage: document.getElementById('shu-member-capital-service').value,
+                    reserve_fund_percentage: document.getElementById('shu-reserve-fund').value,
+                    management_fund_percentage: document.getElementById('shu-management-fund').value,
+                    education_fund_percentage: document.getElementById('shu-education-fund').value,
+                    social_fund_percentage: document.getElementById('shu-social-fund').value
+                }
+            };
+    
+            submitBtn.disabled = true; submitBtn.textContent = 'Menyimpan...';
+            try {
+                // FIX: The body structure was simplified to match the backend expectation.
+                await apiFetch(`${ADMIN_API_URL}/shu-rules`, {
+                    method: 'POST',
+                    body: JSON.stringify(body)
+                });
+                alert(`Aturan SHU untuk tahun ${body.year} berhasil disimpan.`);
+            } catch (error) { alert(`Terjadi kesalahan: ${error.message}`); } finally { submitBtn.disabled = false; submitBtn.textContent = 'Simpan Aturan'; }
+        });
+    
+        // Initial load
+        loadRulesForYear(currentYear);
     };
 
     // --- INISIALISASI ---
