@@ -30,29 +30,35 @@ document.addEventListener('DOMContentLoaded', () => {
     let directCart = [];
     let orderIdToComplete = null; // FIX: Declare globally to be accessible by all functions
 
-    // Helper function to check permissions
-    const hasPerm = (key) => userPermissions.has(key);
-
     const applyUIPermissions = () => {
-        // This function controls the visibility of UI elements based on the user's permissions.
-        // It looks for elements with a `data-permission` attribute.
+        const hasPerm = (key) => userPermissions.has(key);
 
-        const permissionControlledElements = document.querySelectorAll('[data-permission]');
+        // Sembunyikan menu Beranda khusus untuk Kasir
+        if (userRole === 'kasir') {
+            document.querySelector('.sidebar-link[data-target="dashboard"]')?.remove();
+        } else if (!hasPerm('viewDashboard')) { // Untuk role lain, sembunyikan jika tidak ada izin
+            document.querySelector('.sidebar-link[data-target="dashboard"]')?.remove();
+        }
 
-        permissionControlledElements.forEach(el => {
-            const requiredPermission = el.dataset.permission;
+        // Sembunyikan menu berdasarkan hak akses yang diperlukan
+        if (!hasPerm('viewApprovals')) document.querySelector('.sidebar-link[data-target="approvals"]')?.remove();
+        if (!hasPerm('viewMembers')) document.querySelector('.sidebar-link[data-target="members"]')?.remove();
+        if (!hasPerm('viewSavings')) document.querySelector('.sidebar-link[data-target="savings"]')?.remove();
+        if (!hasPerm('viewLoans')) document.querySelector('.sidebar-link[data-target="loans"]')?.remove();
 
-            // If an element requires a permission, we check if the user has it.
-            // The 'admin' role bypasses this check as it has all permissions.
-            if (requiredPermission) {
-                if (hasPerm(requiredPermission)) {
-                    el.classList.remove('hidden'); // Show element if permission exists
-                } else {
-                    el.classList.add('hidden'); // Hide element if permission is missing
-                }
-            }
-        });
+        // Sembunyikan kartu ringkasan di dasbor jika tidak memiliki hak akses
+        if (!hasPerm('viewMembers')) document.querySelector('#total-members')?.closest('.bg-white')?.remove();
+        if (!hasPerm('viewSavings')) document.querySelector('#total-savings')?.closest('.bg-white')?.remove();
+        if (!hasPerm('viewLoans')) document.querySelector('#total-loans')?.closest('.bg-white')?.remove();
+        if (!hasPerm('viewApprovals')) document.querySelector('#pending-members-count')?.closest('.bg-white')?.remove();
+
+        // Hide sidebar links based on permissions
+        if (!hasPerm('viewUsahaKoperasi')) document.querySelector('.sidebar-link[data-target="usaha-koperasi"]')?.remove();
+        if (!hasPerm('viewAccounting')) document.querySelector('.sidebar-link[data-target="accounting"]')?.remove();
+        if (!hasPerm('viewReports')) document.querySelector('.sidebar-link[data-target="reports"]')?.remove();
+        if (!hasPerm('viewSettings')) document.querySelector('.sidebar-link[data-target="settings"]')?.parentElement.remove();
     };
+
     const checkAdminAuth = async () => {
         if (!token || !['admin', 'akunting', 'manager', 'kasir'].includes(userRole)) {
             alert('Akses ditolak. Silakan masuk sebagai staf.');
@@ -89,29 +95,10 @@ document.addEventListener('DOMContentLoaded', () => {
         return "Baru saja";
     };
 
-    const apiFetch = async (endpoint, options = {}, retries = 1, timeout = 60000) => {
+    const apiFetch = async (endpoint, options = {}, retries = 1) => {
         const currentToken = localStorage.getItem('token');
         const headers = { 'Authorization': `Bearer ${currentToken}`, ...options.headers };
 
-        // --- IMPROVEMENT: Add AbortController for request timeout ---
-        const controller = new AbortController();
-        const timeoutId = setTimeout(() => {
-            controller.abort();
-            console.error(`Request to ${endpoint} timed out after ${timeout / 1000}s.`);
-        }, timeout);
-
-        const fetchOptions = {
-            ...options,
-            headers,
-            signal: controller.signal // Link the abort signal to the fetch request
-        };
-
-        // Do not set Content-Type for FormData, browser will do it with boundary
-        if (!(options.body instanceof FormData)) {
-            headers['Content-Type'] = 'application/json';
-        }
-
-        /*
         // Do not set Content-Type for FormData, browser will do it with boundary
         if (!(options.body instanceof FormData)) {
             headers['Content-Type'] = 'application/json';
@@ -119,10 +106,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
         try {
             const response = await fetch(endpoint, { ...options, headers });
-            */
 
-        try {
-            const response = await fetch(endpoint, fetchOptions);
             // Handle critical auth errors first (session expired, etc.)
             if (response.status === 401 || response.status === 403) { // Unauthorized or Forbidden
                 alert('Sesi Anda telah berakhir atau tidak valid. Silakan masuk kembali.');
@@ -148,25 +132,14 @@ document.addEventListener('DOMContentLoaded', () => {
 
             return responseData; // Return the parsed JSON data directly.
         } catch (error) {
-            // --- IMPROVEMENT: Retry on timeout (AbortError) for cold starts ---
-            if (error.name === 'AbortError' && retries > 0) {
-                console.warn(`Request timed out. Retrying... (${retries} attempts left)`);
-                await new Promise(res => setTimeout(res, 1000));
-                return apiFetch(endpoint, options, retries - 1, timeout);
-            } else if (error.name === 'AbortError') {
-                throw new Error('Permintaan ke server memakan waktu terlalu lama (timeout).');
-            }
-
-            if (error instanceof TypeError && error.message === 'Failed to fetch') {
-                if (retries > 0) {
+            // Check if it's a network error and if we have retries left
+            if (error instanceof TypeError && error.message === 'Failed to fetch' && retries > 0) {
                 console.warn(`Network error detected. Retrying... (${retries} attempts left)`);
                 // Wait for a short period before retrying
                 await new Promise(res => setTimeout(res, 1000));
-                    return apiFetch(endpoint, options, retries - 1, timeout);
-                }
-                throw new Error('Gagal terhubung ke server. Periksa koneksi internet Anda.');
+                return apiFetch(endpoint, options, retries - 1);
             }
-            // For all other errors, re-throw them to be caught by the caller.
+            // If it's not a network error or retries are exhausted, throw the error
             throw error;
         }
     };
@@ -699,20 +672,25 @@ const renderCashFlowChart = (data) => {
     // --- FUNGSI UNTUK DASHBOARD ---
     const loadDashboardData = async () => {
         try {
-            // OPTIMIZATION: Fetch all initial dashboard data in a single request
-            const initialData = await apiFetch(`${ADMIN_API_URL}/initial-data`);
-
-            const { stats, cashFlow, memberGrowth, balanceSheet } = initialData;
+            // 1. Ambil statistik umum (simpanan, pinjaman, pendaftar baru)
+            const stats = await apiFetch(`${ADMIN_API_URL}/stats`); // Pastikan endpoint ini benar
 
             document.getElementById('total-savings').textContent = formatCurrency(stats.totalSavings);
             document.getElementById('total-loans').textContent = formatCurrency(stats.totalActiveLoans);
             document.getElementById('pending-members-count').textContent = stats.pendingMembers || 0;
             document.getElementById('total-members').textContent = stats.totalMembers || 0;
 
-            // Render charts with the data we just fetched
-            renderCashFlowChart(cashFlow);
-            renderMemberGrowthChart(memberGrowth);
-            renderBalanceSheetChart(balanceSheet);
+            // Muat data untuk grafik arus kas (default 30 hari terakhir)
+            const cashFlowData = await apiFetch(`${ADMIN_API_URL}/cashflow-summary`);
+            renderCashFlowChart(cashFlowData);
+
+            // Muat data untuk grafik pertumbuhan anggota
+            const memberGrowthData = await apiFetch(`${ADMIN_API_URL}/member-growth`);
+            renderMemberGrowthChart(memberGrowthData);
+
+            // Muat data untuk grafik neraca
+            const balanceSheetData = await apiFetch(`${ADMIN_API_URL}/balance-sheet-summary`);
+            renderBalanceSheetChart(balanceSheetData);
 
             setupIncomeStatementChartFilter(); // Panggil fungsi filter untuk grafik laba rugi di dasbor
 
@@ -843,11 +821,9 @@ const renderCashFlowChart = (data) => {
                 }
 
                 let adminActions = '';
-                // Gunakan hak akses, bukan role
-                if (hasPerm('manageSavings')) {
-                    // Tombol ubah hanya muncul untuk status Pending
-                    if (saving.status === 'Pending') { adminActions += `<button class="edit-saving-btn text-indigo-600 hover:text-indigo-900" data-id="${saving.id}">Ubah</button>`; }
-                    adminActions += `<button class="delete-saving-btn text-red-600 hover:text-red-900 ml-2" data-id="${saving.id}">Hapus</button>`;
+                if (userRole === 'admin') {
+                    if (saving.status === 'Pending') adminActions += `<button class="edit-saving-btn text-indigo-600 hover:text-indigo-900" data-id="${saving.id}">Ubah</button>`;
+                    adminActions += `<button class="delete-saving-btn text-red-600 hover:text-red-900" data-id="${saving.id}">Hapus</button>`;
                 }
 
                 row.innerHTML = `
@@ -925,11 +901,9 @@ const renderCashFlowChart = (data) => {
                 const monthlyInstallment = loan.monthlyInstallment || 0;
                 const totalPayment = loan.totalPayment || 0;
                 const statusClass = loan.status === 'Approved' ? 'bg-green-100 text-green-800' : (loan.status === 'Rejected' ? 'bg-red-100 text-red-800' : (loan.status === 'Lunas' ? 'bg-blue-100 text-blue-800' : 'bg-yellow-100 text-yellow-800'));
-                
-                // Gunakan hak akses, bukan role
-                const adminActions = hasPerm('manageLoans') && loan.status === 'Pending'
+                const adminActions = userRole === 'admin' && loan.status === 'Pending'
                     ? `<button class="edit-loan-btn text-indigo-600 hover:text-indigo-900" data-id="${loan.id}">Ubah</button>
-                       <button class="delete-loan-btn text-red-600 hover:text-red-900 ml-2" data-id="${loan.id}">Hapus</button>`
+                       <button class="delete-loan-btn text-red-600 hover:text-red-900" data-id="${loan.id}">Hapus</button>`
                     : '';
                 row.innerHTML = `
                     <td class="px-6 py-4 text-sm text-gray-900">${loan.memberName}</td>
@@ -1236,10 +1210,10 @@ const renderCashFlowChart = (data) => {
                 const statusClass = inst.status === 'Lunas' ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800';
 
                 let actionButton = '';
-                if (inst.status === 'Lunas' && hasPerm('manageLoanPayments')) {
-                    // Tombol Batalkan jika sudah lunas
+                if (inst.status === 'Lunas' && userRole === 'admin') {
+                    // Tombol Batalkan untuk admin jika sudah lunas
                     actionButton = `<button class="cancel-installment-btn text-sm bg-red-600 text-white py-1 px-3 rounded-md hover:bg-red-700" data-payment-id="${inst.paymentId}" data-loan-id="${summary.id}">Batalkan</button>`;
-                } else if (inst.status !== 'Lunas' && isLoanPayable && hasPerm('manageLoanPayments')) {
+                } else if (inst.status !== 'Lunas' && isLoanPayable && ['admin', 'akunting'].includes(userRole)) {
                     // Tombol Bayar jika belum lunas
                     actionButton = `<button class="pay-installment-btn text-sm bg-green-600 text-white py-1 px-3 rounded-md hover:bg-green-700" data-loan-id="${summary.id}" data-installment-number="${inst.installmentNumber}">Bayar</button>`;
                 } else if (inst.status !== 'Lunas') {
@@ -1734,7 +1708,7 @@ const renderCashFlowChart = (data) => {
                 const row = tableBody.insertRow();
                 let actionButtons = `<span class="text-xs text-gray-400">Tidak ada aksi</span>`;
 
-                if (hasPerm('approveSaving')) {
+                if (['admin', 'akunting'].includes(userRole)) {
                     actionButtons = `<button class="approve-btn text-green-600" data-id="${item.id}" data-type="savings" data-new-status="Approved">Setujui</button>
                                      <button class="reject-btn text-red-600" data-id="${item.id}" data-type="savings" data-new-status="Rejected">Tolak</button>`;
                 }
@@ -1787,7 +1761,7 @@ const renderCashFlowChart = (data) => {
                 const row = tableBody.insertRow();
                 let actionButtons = `<span class="text-xs text-gray-400">Tidak ada aksi</span>`;
 
-                if (hasPerm('approveSaving')) {
+                if (['admin', 'akunting'].includes(userRole)) {
                     actionButtons = `<button class="approve-btn text-green-600" data-id="${item.id}" data-type="savings" data-new-status="Approved">Setujui</button>
                                      <button class="reject-btn text-red-600" data-id="${item.id}" data-type="savings" data-new-status="Rejected">Tolak</button>`;
                 }
@@ -1834,10 +1808,10 @@ const renderCashFlowChart = (data) => {
                     // Tombol Detail diubah menjadi tombol Surat Komitmen
                     actionButtons = `<button class="commitment-letter-btn text-blue-600 hover:text-blue-900" data-loan-id="${item.id}">Lihat Komitmen</button>`;
 
-                    if (item.status === 'Pending' && hasPerm('approveLoanAccounting')) {
+                    if (item.status === 'Pending' && ['admin', 'akunting'].includes(userRole)) {
                         actionButtons += `<button class="approve-btn text-green-600 ml-2" data-id="${item.id}" data-type="loans" data-new-status="Approved by Accounting">Setujui (Akunting)</button>
                                           <button class="reject-btn text-red-600" data-id="${item.id}" data-type="loans" data-new-status="Rejected">Tolak</button>`;
-                    } else if (item.status === 'Approved by Accounting' && hasPerm('approveLoanManager')) {
+                    } else if (item.status === 'Approved by Accounting' && ['admin', 'manager'].includes(userRole)) {
                         actionButtons += `<button class="approve-btn text-green-600" data-id="${item.id}" data-type="loans" data-new-status="Approved">Finalisasi (Manager)</button>
                                           <button class="reject-btn text-red-600" data-id="${item.id}" data-type="loans" data-new-status="Rejected">Tolak</button>`;
                     }
@@ -1882,13 +1856,10 @@ const renderCashFlowChart = (data) => {
                     ? `<a href="${API_URL.replace('/api', '')}/${payment.proof_path.replace(/\\/g, '/')}" target="_blank" class="text-blue-600 hover:underline">Lihat</a>`
                     : '-';
                 
-                let actionButtons = '-';
-                if (hasPerm('manageLoanPayments')) {
-                    actionButtons = `
-                        <button class="approve-btn text-green-600" data-id="${payment.id}" data-type="loan-payments" data-new-status="Approved">Setujui</button>
-                        <button class="reject-btn text-red-600" data-id="${payment.id}" data-type="loan-payments" data-new-status="Rejected">Tolak</button>
-                    `;
-                }
+                const actionButtons = `
+                    <button class="approve-btn text-green-600" data-id="${payment.id}" data-type="loan-payments" data-new-status="Approved">Setujui</button>
+                    <button class="reject-btn text-red-600" data-id="${payment.id}" data-type="loan-payments" data-new-status="Rejected">Tolak</button>
+                `;
     
                 row.innerHTML = `
                     <td class="px-6 py-4 text-sm text-gray-900">${payment.member_name}</td>
@@ -2205,8 +2176,8 @@ const renderCashFlowChart = (data) => {
                     <button class="view-order-details-btn text-blue-600 hover:underline" data-order-id="${order.order_id}">Detail</button>
                     <button class="confirm-takeaway-btn text-green-600 hover:underline" data-order-id="${order.order_id}" data-sale-id="${order.id}">Proses di Kasir</button>
                 `;
-                // FIX: Gunakan hak akses yang lebih spesifik, bukan 'deleteData'
-                if (hasPerm('manageSales')) {
+
+                if (userRole === 'admin') {
                     actionButtons += `<button class="cancel-order-btn text-red-600 hover:underline ml-2" data-order-id="${order.order_id}">Batalkan</button>`;
                 }
 
@@ -2318,12 +2289,12 @@ const renderCashFlowChart = (data) => {
         const totalEl = document.getElementById('direct-cashier-total');
         const completeBtn = document.getElementById('direct-cashier-complete-btn');
 
-        if (!cartBody || !totalEl || !completeBtn) return; // FIX: Add null check for completeBtn
+        if (!cartBody || !totalEl || !completeBtn) return;
 
         cartBody.innerHTML = '';
         if (directCart.length === 0) {
-            cartBody.innerHTML = `<div class="text-center py-10 text-gray-500"><svg class="mx-auto h-12 w-12 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z" /></svg><p class="mt-2 text-sm">Keranjang kosong</p></div>`;
-            completeBtn.disabled = true;
+            cartBody.innerHTML = `<div class="text-center py-10 text-gray-500"><svg class="mx-auto h-12 w-12 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z" /></svg><p class="mt-2 text-sm">Keranjang kosong</p></div>`;
+            completeBtn.parentElement.classList.add('hidden');
             totalEl.textContent = formatCurrency(0);
             return;
         }
@@ -2344,12 +2315,14 @@ const renderCashFlowChart = (data) => {
             cartBody.appendChild(itemEl);
         });
         totalEl.textContent = formatCurrency(total);
+        completeBtn.parentElement.classList.remove('hidden');
+
+        // FIX: Enable the button if the cart is not empty.
         completeBtn.disabled = directCart.length === 0;
     };
 
     // --- CASHIER FUNCTIONALITY ---
-    // These are now handled inside setupCashierVerificationModalListeners
-    // const cashierVerifyBtn = document.getElementById('cashier-verify-btn');
+    const cashierVerifyBtn = document.getElementById('cashier-verify-btn');
     const cashierBarcodeInp = document.getElementById('cashier-barcode-input');
     const cashierResultContainer = document.getElementById('cashier-result-container');
     const cashierErrorContainer = document.getElementById('cashier-error-container');
@@ -2357,7 +2330,7 @@ const renderCashFlowChart = (data) => {
 
 
     // --- NEW PAYMENT MODAL ELEMENTS ---
-    // These are now handled inside showPaymentModal
+    const paymentModal = document.getElementById('direct-cashier-payment-modal'); // Menggunakan modal yang sudah ada
     const closePaymentModalBtn = document.getElementById('close-payment-modal-btn');
     const cancelPaymentModalBtn = document.getElementById('cancel-payment-modal-btn');
     const confirmPaymentBtn = document.getElementById('confirm-payment-btn');
@@ -2372,7 +2345,7 @@ const renderCashFlowChart = (data) => {
         }
     
         // Simpan data pesanan yang valid untuk diselesaikan nanti
-        orderToComplete = orderData;
+        // orderToComplete is now global
     
         // Tampilkan data ke elemen HTML
         document.getElementById('cashier-order-id').textContent = orderData.orderId;
@@ -2408,6 +2381,7 @@ const renderCashFlowChart = (data) => {
         const modal = document.getElementById('cashier-verification-modal');
         if (!modal) return;
     
+        const cashierProceedToPaymentBtn = document.getElementById('cashier-proceed-to-payment-btn');
         const closeBtn = document.getElementById('close-cashier-verification-modal');
         const barcodeInput = document.getElementById('cashier-barcode-input');
     
@@ -2442,7 +2416,6 @@ const renderCashFlowChart = (data) => {
         });    
 
         // Handle "Lanjutkan ke Pembayaran" button
-        const cashierProceedToPaymentBtn = document.getElementById('cashier-proceed-to-payment-btn');
         cashierProceedToPaymentBtn?.addEventListener('click', async () => {
             if (!orderToComplete || !orderToComplete.orderId) {
                 alert('Tidak ada pesanan yang terverifikasi untuk diselesaikan.');
@@ -2451,9 +2424,7 @@ const renderCashFlowChart = (data) => {
     
             // Close the verification modal
             modal.classList.add('hidden');
-            if (html5QrCode && html5QrCode.isScanning) {
-                html5QrCode.stop().catch(err => console.log("QR scanner stop failed, likely already stopped."));
-            }
+            if (html5QrCode && html5QrCode.isScanning) html5QrCode.stop();
             
             // Panggil fungsi modal pembayaran yang sudah direfaktor
             showPaymentModal(orderToComplete.total, orderToComplete.orderId);
@@ -2462,7 +2433,7 @@ const renderCashFlowChart = (data) => {
         // QR Scanner Logic
         const startScanBtn = document.getElementById('start-scan-btn');
         if (startScanBtn) {
-            startScanBtn.addEventListener('click', () => {
+            startScanBtn.addEventListener('click', () => { // FIX: Use correct function name
                 if (!html5QrCode) {
                     html5QrCode = new Html5Qrcode("qr-reader");
                 }
@@ -2637,7 +2608,7 @@ const renderCashFlowChart = (data) => {
     };
 
     // --- FUNGSI UNTUK KASIR UMUM (NON-ANGGOTA) ---
-    const setupDirectCashier = async () => {
+    const setupDirectCashier = () => {
         const productGrid = document.getElementById('direct-cashier-product-grid'); // FIX: Use correct element ID
         const totalEl = document.getElementById('direct-cashier-total');
         const completeBtn = document.getElementById('direct-cashier-complete-btn');
@@ -2688,15 +2659,10 @@ const renderCashFlowChart = (data) => {
         };
         const addToCart = (productId, quantity = 1) => {
             const selectedProduct = directCashierProducts.find(p => p.id.toString() === productId);
-            if (!selectedProduct || selectedProduct.stock <= 0) return;
+            if (!selectedProduct) return;
 
             const existingItem = directCart.find(item => item.productId === selectedProduct.id);
             if (existingItem) {
-                // Check against available stock
-                if (existingItem.quantity >= selectedProduct.stock) {
-                    alert(`Stok untuk ${selectedProduct.name} tidak mencukupi.`);
-                    return;
-                }
                 existingItem.quantity += quantity;
             } else {
                 directCart.push({ productId: selectedProduct.id, name: selectedProduct.name, price: selectedProduct.price, quantity });
@@ -2709,12 +2675,7 @@ const renderCashFlowChart = (data) => {
             if (!item) return;
 
             if (action === 'increase') {
-                const productInStock = directCashierProducts.find(p => p.id === item.productId);
-                if (item.quantity < productInStock.stock) {
-                    item.quantity++;
-                } else {
-                    alert(`Stok untuk ${item.name} tidak mencukupi.`);
-                }
+                item.quantity++;
             } else if (action === 'decrease') {
                 item.quantity--;
                 if (item.quantity <= 0) {
@@ -2724,10 +2685,12 @@ const renderCashFlowChart = (data) => {
             renderDirectCart();
         };
 
+        // FIX: Cek apakah event listener sudah pernah ditambahkan.
+        // Jika sudah, jangan tambahkan lagi untuk mencegah duplikasi.
         if (productGrid.dataset.listenerAttached === 'true') {
-            return;
+            return; // Hentikan eksekusi fungsi jika listener sudah ada.
         }
-        productGrid.dataset.listenerAttached = 'true';
+        productGrid.dataset.listenerAttached = 'true'; // Tandai bahwa listener sudah ditambahkan.
 
         productGrid.addEventListener('click', (e) => {
             const button = e.target.closest('.add-to-direct-cart-btn');
@@ -2739,7 +2702,7 @@ const renderCashFlowChart = (data) => {
 
         cartBody.addEventListener('click', (e) => {
             if (e.target.closest('.remove-direct-cart-item-btn')) {
-                const index = parseInt(e.target.closest('.remove-direct-cart-item-btn').dataset.index, 10);
+                const index = parseInt(e.target.dataset.index, 10);
                 directCart.splice(index, 1);
                 renderDirectCart();
             }
@@ -2759,15 +2722,10 @@ const renderCashFlowChart = (data) => {
         });
 
         // Initial load
-        try {
-            const products = await apiFetch(`${ADMIN_API_URL}/products?shop=sembako`);
+        apiFetch(`${ADMIN_API_URL}/products?shop=sembako`).then(products => {
             directCashierProducts = products;
             renderProductGrid();
-        } catch (error) {
-            console.error("Failed to load products for direct cashier:", error);
-            productGrid.innerHTML = `<p class="col-span-full text-center text-red-500">Gagal memuat produk.</p>`;
-        }
-
+        });
 
         searchInput.addEventListener('input', renderProductGrid);
     };
@@ -3034,33 +2992,22 @@ const renderCashFlowChart = (data) => {
             const body = {};
             fields.forEach(field => {
                 // The original selector logic was too generic and failed on complex field names.
+                // This new logic is more robust.
                 const dashedField = field.replace(/_/g, '-');
                 
                 // 1. Try a more specific selector first, looking for an ID that ENDS with the field name.
                 // e.g., for 'account_number', it looks for an ID ending in 'account-number-input'.
                 let element = form.querySelector(`[id$="${dashedField}-input"]`) || form.querySelector(`[id$="${dashedField}-select"]`);
 
-                // 2. Add special cases for inconsistent IDs
+                // 2. Add a special case for inconsistent IDs like 'parent-account-select' for the 'parent_id' field.
                 if (field === 'parent_id' && !element) {
                     element = form.querySelector('#parent-account-select');
                 }
+                // FIX: Tambahkan kasus khusus untuk dropdown tipe pinjaman di modal tenor
                 if (field === 'loan_type_id' && !element) {
                     element = form.querySelector('#loan-term-loantype-select');
                 }
-                if (field === 'name' && endpoint === 'accounttypes' && !element) {
-                    element = form.querySelector('#account-type-name-input');
-                }
-                if (field === 'name' && endpoint === 'suppliers' && !element) {
-                    element = form.querySelector('#name-input');
-                }
-                if (field === 'contact_person' && !element) {
-                    element = form.querySelector('#contact-person-input');
-                }
-                if (field === 'phone' && endpoint === 'suppliers' && !element) {
-                    element = form.querySelector('#phone-input');
-                }
-
-                // Special cases for loan term modal
+                // FIX: Add specific selectors for loan term modal fields that don't follow the generic pattern
                 if (field === 'tenor_months' && !element) {
                     element = form.querySelector('#loan-term-tenor-input');
                 }
@@ -3068,11 +3015,15 @@ const renderCashFlowChart = (data) => {
                     element = form.querySelector('#loan-term-interest-input');
                 }
 
+
                 if (element) {
                     if (element.type === 'checkbox') {
-                        body[field] = element.checked;
+                        // FIX: Konversi boolean ke string untuk kompatibilitas backend yang lebih baik.
+                        body[field] = String(element.checked);
                     } else if (element.type === 'number') {
                         // Sanitize number input: replace comma with dot for decimal values
+                        // This handles locales where comma is used as a decimal separator.
+                        // FIX: Ensure value is a string before calling replace to avoid errors on empty inputs.
                         body[field] = String(element.value).replace(',', '.');
                     } else {
                         body[field] = element.value;
@@ -3080,41 +3031,11 @@ const renderCashFlowChart = (data) => {
                 }
             });
 
-        // Check for file inputs and switch to FormData if necessary
-        const fileInputs = fields.map(field => {
-            const dashedField = field.replace(/_/g, '-');
-            return form.querySelector(`[id$="${dashedField}-input"][type="file"]`);
-        }).filter(Boolean); // Filter out nulls
-
-        const endpointsWithFiles = ['employers', 'partners', 'testimonials'];
-        const alwaysUseFormData = endpointsWithFiles.includes(endpoint);
-        
-        let requestBody;
-        let useFormData = alwaysUseFormData || fileInputs.some(input => input.files.length > 0);
-
-        if (useFormData) {
-            requestBody = new FormData();
-            // Append all simple fields to FormData directly from the 'body' object
-            for (const key in body) {
-                requestBody.append(key, body[key]);
-            }
-            // Append new file(s) if they exist
-            fileInputs.forEach(input => {
-                if (input.files[0]) {
-                    const fieldName = input.name; // Use the 'name' attribute of the input
-                    requestBody.append(fieldName, input.files[0]);
-                }
-            });
-
-        } else {
-            requestBody = JSON.stringify(body);
-        }
-
             const url = id ? `${finalEndpoint}/${id}` : `${finalEndpoint}`;
             const method = id ? 'PUT' : 'POST';
 
             try {
-            await apiFetch(url, { method, body: requestBody });
+                await apiFetch(url, { method, body: JSON.stringify(body) });
                 modal.classList.add('hidden');
                 loadData();
             } catch (error) { alert(error.message); }
@@ -3138,28 +3059,20 @@ const renderCashFlowChart = (data) => {
                     const dashedField = field.replace(/_/g, '-');
                     
                     // 1. Coba selector yang lebih spesifik, mencari ID yang BERAKHIR dengan nama field.
-                let inputElement = form.querySelector(`[id$="${dashedField}-input"]`) || form.querySelector(`[id$="${dashedField}-select"]`);
+                    let inputElement = form.querySelector(`[id$="${dashedField}-input"]`) || form.querySelector(`[id$="${dashedField}-select"]`);
 
                     // 2. Tambahkan kasus khusus untuk ID yang tidak konsisten seperti 'parent-account-select'.
-                if (field === 'parent_id' && !inputElement) {
-                    inputElement = form.querySelector('#parent-account-select');
-                }
+                    if (field === 'parent_id' && !inputElement) {
+                        inputElement = form.querySelector('#parent-account-select');
+                    }
+                // FIX: Tambahkan kasus khusus untuk dropdown tipe pinjaman di modal tenor
                 if (field === 'loan_type_id' && !inputElement) {
                     inputElement = form.querySelector('#loan-term-loantype-select');
-                }
-                if (field === 'name' && endpoint === 'accounttypes' && !inputElement) {
-                    inputElement = form.querySelector('#account-type-name-input');
                 }
 
                     if (inputElement) {
                         const value = item[field];
-                        if (inputElement.type === 'checkbox') {
-                            // Handle boolean values for checkboxes
-                            inputElement.checked = value === true || value === 'true';
-                        } else {
-                            // Handle other input types
-                            inputElement.value = value === null || value === undefined ? '' : value;
-                        }
+                        inputElement.value = value === null || value === undefined ? '' : value;
                     }
                 });
                 modalTitle.textContent = `Ubah ${title}`;
@@ -3282,7 +3195,7 @@ const renderCashFlowChart = (data) => {
         endpoint: 'employers',
         title: 'Perusahaan',
         fields: ['name', 'address', 'phone', 'contract_number', 'document_url'],
-        renderRow: (item) => `
+        renderRow: (item, role) => `
             <tr>
                 <td class="px-6 py-4 text-sm text-gray-900">${item.name}</td>
                 <td class="px-6 py-4 text-sm text-gray-500">${item.address || '-'}</td>
@@ -3293,7 +3206,7 @@ const renderCashFlowChart = (data) => {
                 </td>
                 <td class="px-6 py-4 text-sm font-medium space-x-2">
                     <button class="edit-perusahaan-btn text-indigo-600 hover:text-indigo-900" data-id="${item.id}">Ubah</button>
-                    ${hasPerm('deleteData') ? `<button class="delete-perusahaan-btn text-red-600 hover:text-red-900" data-id="${item.id}">Hapus</button>` : ''}
+                    ${role === 'admin' ? `<button class="delete-perusahaan-btn text-red-600 hover:text-red-900" data-id="${item.id}">Hapus</button>` : ''}
                 </td>
             </tr>`,
     });
@@ -3307,12 +3220,12 @@ const renderCashFlowChart = (data) => {
         endpoint: 'positions',
         title: 'Jabatan',
         fields: ['name'],
-        renderRow: (item) => `
+        renderRow: (item, role) => `
             <tr>
                 <td class="px-6 py-4 text-sm text-gray-900">${item.name}</td>
                 <td class="px-6 py-4 text-sm font-medium space-x-2">
                     <button class="edit-jabatan-btn text-indigo-600 hover:text-indigo-900" data-id="${item.id}">Ubah</button>
-                    ${hasPerm('deleteData') ? `<button class="delete-jabatan-btn text-red-600 hover:text-red-900 ml-2" data-id="${item.id}">Hapus</button>` : ''}
+                    ${role === 'admin' ? `<button class="delete-jabatan-btn text-red-600 hover:text-red-900" data-id="${item.id}">Hapus</button>` : ''}
                 </td>
             </tr>`
     });
@@ -3326,13 +3239,13 @@ const renderCashFlowChart = (data) => {
         endpoint: 'savingtypes',
         title: 'Tipe Simpanan',
         fields: ['name', 'description'],
-        renderRow: (item) => `
+        renderRow: (item, role) => `
             <tr>
                 <td class="px-6 py-4 text-sm text-gray-900">${item.name}</td>
                 <td class="px-6 py-4 text-sm text-gray-500">${item.description || '-'}</td>
                 <td class="px-6 py-4 text-sm font-medium space-x-2">
                     <button class="edit-tipe-simpanan-btn text-indigo-600 hover:text-indigo-900" data-id="${item.id}">Ubah</button>
-                    ${hasPerm('deleteData') ? `<button class="delete-tipe-simpanan-btn text-red-600 hover:text-red-900 ml-2" data-id="${item.id}">Hapus</button>` : ''}
+                    ${role === 'admin' ? `<button class="delete-tipe-simpanan-btn text-red-600 hover:text-red-900" data-id="${item.id}">Hapus</button>` : ''}
                 </td>
             </tr>`
     });
@@ -3346,13 +3259,13 @@ const renderCashFlowChart = (data) => {
         endpoint: 'loantypes',
         title: 'Tipe Pinjaman',
         fields: ['name', 'description'],
-        renderRow: (item) => `
+        renderRow: (item, role) => `
             <tr>
                 <td class="px-6 py-4 text-sm text-gray-900">${item.name}</td>
                 <td class="px-6 py-4 text-sm text-gray-500">${item.description || '-'}</td>
                 <td class="px-6 py-4 text-sm font-medium space-x-2">
                     <button class="edit-tipe-pinjaman-btn text-indigo-600 hover:text-indigo-900" data-id="${item.id}">Ubah</button>
-                    ${hasPerm('deleteData') ? `<button class="delete-tipe-pinjaman-btn text-red-600 hover:text-red-900 ml-2" data-id="${item.id}">Hapus</button>` : ''}
+                    ${role === 'admin' ? `<button class="delete-tipe-pinjaman-btn text-red-600 hover:text-red-900" data-id="${item.id}">Hapus</button>` : ''}
                 </td>
             </tr>`
     });
@@ -3376,7 +3289,7 @@ const renderCashFlowChart = (data) => {
                 select.value = item.loan_type_id;
             // Isi nilai untuk tenor dan bunga secara manual
             document.getElementById('loan-term-tenor-input').value = item.tenor_months;
-            document.getElementById('loan-term-interest-input').value = item.interest_rate; // This was missing
+            document.getElementById('loan-term-interest-input').value = item.interest_rate;
         },
         renderRow: (item, role) => `
             <tr>
@@ -3385,7 +3298,7 @@ const renderCashFlowChart = (data) => {
                 <td class="px-6 py-4 text-sm text-gray-500">${item.interest_rate}%</td>
                 <td class="px-6 py-4 text-sm font-medium space-x-2">
                     <button class="edit-tenor-pinjaman-btn text-indigo-600 hover:text-indigo-900" data-id="${item.id}">Ubah</button>
-                    ${hasPerm('deleteData') ? `<button class="delete-tenor-pinjaman-btn text-red-600 hover:text-red-900 ml-2" data-id="${item.id}">Hapus</button>` : ''}
+                    ${role === 'admin' ? `<button class="delete-tenor-pinjaman-btn text-red-600 hover:text-red-900" data-id="${item.id}">Hapus</button>` : ''}
                 </td>
             </tr>`
     });
@@ -3427,7 +3340,7 @@ const renderCashFlowChart = (data) => {
                 <td class="px-6 py-4 text-sm text-gray-500">${item.account_type}</td>
                 <td class="px-6 py-4 text-sm font-medium space-x-2">
                     <button class="edit-akun-btn text-indigo-600 hover:text-indigo-900" data-id="${item.id}">Ubah</button>
-                    ${hasPerm('deleteData') ? `<button class="delete-akun-btn text-red-600 hover:text-red-900 ml-2" data-id="${item.id}">Hapus</button>` : ''}
+                    ${role === 'admin' ? `<button class="delete-akun-btn text-red-600 hover:text-red-900" data-id="${item.id}">Hapus</button>` : ''}
                 </td>
             </tr>`;
         }
@@ -3441,11 +3354,13 @@ const renderCashFlowChart = (data) => {
         addBtn: document.getElementById('show-add-account-type-form-btn'),
         endpoint: 'accounttypes',
         title: 'Tipe Akun',
-        fields: ['name'], // Only one field
+        fields: ['name'],
+        // FIX: onEdit ditambahkan untuk menangani nama field yang tidak standar di modal
         onEdit: (item) => {
+            // ID input di modal adalah 'account-type-name-input', bukan 'name-input'
             const nameInput = document.getElementById('account-type-name-input');
             if (nameInput) {
-                nameInput.value = item.name; // Correctly set the value
+                nameInput.value = item.name;
             }
         },
         renderRow: (item, role) => `
@@ -3453,7 +3368,7 @@ const renderCashFlowChart = (data) => {
                 <td class="px-6 py-4 text-sm text-gray-900">${item.name}</td>
                 <td class="px-6 py-4 text-sm font-medium space-x-2">
                     <button class="edit-tipe-akun-btn text-indigo-600 hover:text-indigo-900" data-id="${item.id}">Ubah</button>
-                    ${hasPerm('deleteData') ? `<button class="delete-tipe-akun-btn text-red-600 hover:text-red-900 ml-2" data-id="${item.id}">Hapus</button>` : ''}
+                    ${role === 'admin' ? `<button class="delete-tipe-akun-btn text-red-600 hover:text-red-900" data-id="${item.id}">Hapus</button>` : ''}
                 </td>
             </tr>`
     });
@@ -3475,7 +3390,7 @@ const renderCashFlowChart = (data) => {
                 <td class="px-6 py-4 text-sm text-gray-500">${item.phone || '-'}</td>
                 <td class="px-6 py-4 text-sm font-medium space-x-2">
                     <button class="edit-supplier-btn text-indigo-600 hover:text-indigo-900" data-id="${item.id}">Ubah</button>
-                    ${hasPerm('deleteData') ? `<button class="delete-supplier-btn text-red-600 hover:text-red-900 ml-2" data-id="${item.id}">Hapus</button>` : ''}
+                    ${role === 'admin' ? `<button class="delete-supplier-btn text-red-600 hover:text-red-900" data-id="${item.id}">Hapus</button>` : ''}
                 </td>
             </tr>`
     });
@@ -3497,9 +3412,40 @@ const renderCashFlowChart = (data) => {
                 <td class="px-6 py-4 text-sm text-gray-500">${item.default_unit || '-'}</td>
                 <td class="px-6 py-4 text-sm font-medium space-x-2">
                     <button class="edit-item-produk-btn text-indigo-600 hover:text-indigo-900" data-id="${item.id}">Ubah</button>
-                    ${hasPerm('deleteData') ? `<button class="delete-item-produk-btn text-red-600 hover:text-red-900 ml-2" data-id="${item.id}">Hapus</button>` : ''}
+                    ${role === 'admin' ? `<button class="delete-item-produk-btn text-red-600 hover:text-red-900" data-id="${item.id}">Hapus</button>` : ''}
                 </td>
             </tr>`
+    });
+
+
+    // 8. Kelola Pengumuman
+    const loadAnnouncements = setupSimpleCrud({
+        modal: document.getElementById('announcement-modal'),
+        form: document.getElementById('announcement-form'),
+        tableBody: document.getElementById('announcements-table-body'),
+        addBtn: document.getElementById('add-announcement-btn'),
+        endpoint: 'announcements',
+        title: 'Pengumuman',
+        fields: ['title', 'content', 'is_published'],
+        onAdd: () => {
+            // Set checkbox to checked by default for new announcements
+            document.getElementById('is-published-input').checked = true;
+        },
+        onEdit: (item) => {
+            // Handle checkbox state when editing
+            document.getElementById('is-published-input').checked = item.is_published;
+        },
+        renderRow: (item) => {
+            const statusClass = item.is_published ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800';
+            const statusText = item.is_published ? 'Dipublikasikan' : 'Draft';
+            return `
+            <tr>
+                <td class="px-6 py-4 text-sm font-medium text-gray-900">${item.title}</td>
+                <td class="px-6 py-4 text-sm text-gray-500">${formatDate(item.created_at)}</td>
+                <td class="px-6 py-4 text-sm"><span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${statusClass}">${statusText}</span></td>
+                <td class="px-6 py-4 text-sm font-medium space-x-2"><button class="edit-pengumuman-btn text-indigo-600 hover:text-indigo-900" data-id="${item.id}">Ubah</button><button class="delete-pengumuman-btn text-red-600 hover:text-red-900" data-id="${item.id}">Hapus</button></td>
+            </tr>`;
+        },
     });
 
     // --- FUNGSI UNTUK KELOLA MITRA ---
@@ -3537,7 +3483,8 @@ const renderCashFlowChart = (data) => {
                         <td class="px-6 py-4 text-sm font-medium text-gray-900">${item.name}</td>
                         <td class="px-6 py-4 text-sm"><span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${statusClass}">${statusText}</span></td>
                         <td class="px-6 py-4 text-sm font-medium space-x-2">
-                            <button class="edit-partner-btn text-indigo-600 hover:text-indigo-900" data-id="${item.id}">Ubah</button>${hasPerm('deleteData') ? `<button class="delete-partner-btn text-red-600 hover:text-red-900 ml-2" data-id="${item.id}">Hapus</button>` : ''}
+                            <button class="edit-partner-btn text-indigo-600 hover:text-indigo-900" data-id="${item.id}">Ubah</button>
+                            <button class="delete-partner-btn text-red-600 hover:text-red-900" data-id="${item.id}">Hapus</button>
                         </td>
                     `;
                 });
@@ -3611,6 +3558,89 @@ const renderCashFlowChart = (data) => {
         loadPartners();
     };
 
+    // --- FUNGSI UNTUK UPDATE TAMPILAN HEADER (LOGO) ---
+    const updateHeaderDisplay = (info) => {
+        const headerLogo = document.getElementById('header-logo-img');
+        if (!headerLogo) return;
+
+        if (info && info.logo_url) {
+            const webPath = info.logo_url.replace(/\\/g, '/');
+            // Base URL untuk aset adalah root server API, bukan path /api
+            const baseUrl = API_URL.replace('/api', '');
+            const fullLogoUrl = `${baseUrl}${webPath.startsWith('/') ? '' : '/'}${webPath}`;
+            headerLogo.src = fullLogoUrl;
+        } else {
+            // Fallback ke logo default jika logo_url tidak ada
+            headerLogo.src = 'logo/logo.png';
+        }
+    };
+
+    // --- FUNGSI UNTUK KELOLA PROFIL KOPERASI ---
+    const cooperativeProfileForm = document.getElementById('cooperative-profile-form');
+
+    const loadCooperativeProfile = async () => {
+        if (!cooperativeProfileForm) return;
+        try {
+            const info = await apiFetch(`${ADMIN_API_URL}/company-info`);
+
+            document.getElementById('coop-name-input').value = info.name || '';
+            document.getElementById('coop-address-input').value = info.address || '';
+            document.getElementById('coop-phone-input').value = info.phone || '';
+            
+            const logoPreview = document.getElementById('coop-logo-preview');
+            if (info.logo_url) {
+                const webPath = info.logo_url.replace(/\\/g, '/');
+                const fullLogoUrl = `${API_URL.replace('/api', '')}${webPath.startsWith('/') ? '' : '/'}${webPath}`;
+                logoPreview.src = fullLogoUrl;
+            } else {
+                logoPreview.src = 'https://placehold.co/100x100?text=Logo';
+            }
+
+            // Pratinjau untuk logo baru
+            document.getElementById('coop-logo-input').addEventListener('change', (e) => {
+                const file = e.target.files[0];
+                if (file) {
+                    const reader = new FileReader();
+                    reader.onload = (event) => {
+                        logoPreview.src = event.target.result;
+                    };
+                    reader.readAsDataURL(file);
+                }
+            });
+
+        } catch (error) {
+            alert(`Terjadi kesalahan: ${error.message}`);
+            console.error('Error loading cooperative profile:', error);
+        }
+    };
+
+    if (cooperativeProfileForm) {
+        cooperativeProfileForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const submitBtn = cooperativeProfileForm.querySelector('button[type="submit"]');
+            submitBtn.disabled = true;
+            submitBtn.textContent = 'Menyimpan...';
+
+            const formData = new FormData();
+            formData.append('name', document.getElementById('coop-name-input').value);
+            formData.append('address', document.getElementById('coop-address-input').value);
+            formData.append('phone', document.getElementById('coop-phone-input').value);
+
+            const logoInput = document.getElementById('coop-logo-input');
+            if (logoInput.files[0]) {
+                formData.append('logo', logoInput.files[0]); // 'logo' harus cocok dengan nama field multer di backend
+            }
+
+            try {
+                const updatedInfo = await apiFetch(`${ADMIN_API_URL}/company-info`, { method: 'PUT', body: formData });
+                updateHeaderDisplay(updatedInfo); // Perbarui logo di header
+                alert('Profil koperasi berhasil diperbarui.');
+
+            } catch (error) { alert(`Terjadi kesalahan: ${error.message}`); console.error('Error updating cooperative profile:', error);
+            } finally { submitBtn.disabled = false; submitBtn.textContent = 'Simpan Perubahan'; }
+        });
+    }
+
     // --- FUNGSI UNTUK KELOLA TESTIMONI ---
     const testimonialModal = document.getElementById('testimonial-modal');
     const testimonialForm = document.getElementById('testimonial-form');
@@ -3639,12 +3669,9 @@ const renderCashFlowChart = (data) => {
                     <td class="px-6 py-4 text-sm font-medium text-gray-900">${item.name}</td>
                     <td class="px-6 py-4 text-sm text-gray-500">${item.division || '-'}</td>
                     <td class="px-6 py-4 text-sm text-gray-500 max-w-md truncate" title="${item.text}">${item.text}</td>
-                    <td class="px-6 py-4 text-sm font-medium space-x-2">${
-                        hasPerm('manageTestimonials') ? `
+                    <td class="px-6 py-4 text-sm font-medium space-x-2">
                         <button class="edit-testimonial-btn text-indigo-600 hover:text-indigo-900" data-id="${item.id}">Ubah</button>
-                        <button class="delete-testimonial-btn text-red-600 hover:text-red-900 ml-2" data-id="${item.id}">Hapus</button>
-                        ` : '-'
-                    }
+                        <button class="delete-testimonial-btn text-red-600 hover:text-red-900" data-id="${item.id}">Hapus</button>
                     </td>
                 `;
             });
@@ -3799,9 +3826,8 @@ const renderCashFlowChart = (data) => {
                 <td class="px-6 py-4 text-sm text-gray-900">${item.name}</td>
                 <td class="px-6 py-4 text-sm"><span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${statusClass}">${statusText}</span></td>
                 <td class="px-6 py-4 text-sm font-medium space-x-2 whitespace-nowrap">
-                    <button class="edit-tipe-pembayaran-btn text-indigo-600 hover:text-indigo-900" data-id="${item.id}">Ubah</button>${
-                        hasPerm('deleteData') ? `<button class="delete-tipe-pembayaran-btn text-red-600 hover:text-red-900 ml-2" data-id="${item.id}">Hapus</button>` : ''
-                    }
+                    <button class="edit-tipe-pembayaran-btn text-indigo-600 hover:text-indigo-900" data-id="${item.id}">Ubah</button>
+                    <button class="delete-tipe-pembayaran-btn text-red-600 hover:text-red-900" data-id="${item.id}">Hapus</button>
                 </td>
             </tr>`;
         },
@@ -4899,6 +4925,86 @@ const renderCashFlowChart = (data) => {
         }
     };
 
+    // --- FUNGSI UNTUK KELOLA ATURAN SHU ---
+    const setupShuRules = () => {
+        const form = document.getElementById('shu-rules-form');
+        if (!form) return;
+    
+        const yearSelect = document.getElementById('shu-rules-year');
+        const inputs = form.querySelectorAll('.shu-percentage-input');
+        const totalDisplay = document.getElementById('shu-total-percentage');
+        const errorDisplay = document.getElementById('shu-percentage-error');
+    
+        const updateTotal = () => {
+            let total = 0;
+            inputs.forEach(input => {
+                total += parseFloat(input.value) || 0;
+            });
+            totalDisplay.textContent = `${total.toFixed(2)}%`;
+            if (Math.abs(total - 100) > 0.01) {
+                totalDisplay.classList.add('text-red-600');
+                errorDisplay.classList.remove('hidden');
+            } else {
+                totalDisplay.classList.remove('text-red-600');
+                errorDisplay.classList.add('hidden');
+            }
+        };
+    
+        const populateForm = (data) => {
+            document.getElementById('shu-member-business-service').value = data.member_business_service_percentage;
+            document.getElementById('shu-member-capital-service').value = data.member_capital_service_percentage;
+            document.getElementById('shu-reserve-fund').value = data.reserve_fund_percentage;
+            document.getElementById('shu-management-fund').value = data.management_fund_percentage;
+            document.getElementById('shu-education-fund').value = data.education_fund_percentage;
+            document.getElementById('shu-social-fund').value = data.social_fund_percentage;
+            updateTotal();
+        };
+    
+        const loadRulesForYear = async (year) => {
+            try {
+                const data = await apiFetch(`${ADMIN_API_URL}/shu-rules/${year}`);
+                populateForm(data);
+            } catch (error) {
+                alert(`Terjadi kesalahan: ${error.message}`);
+            }
+        };
+    
+        // Populate year dropdown
+        yearSelect.innerHTML = ''; // Clear previous options
+        const currentYear = new Date().getFullYear();
+        for (let i = currentYear + 1; i >= currentYear - 5; i--) {
+            const option = document.createElement('option');
+            option.value = i;
+            option.textContent = i;
+            yearSelect.appendChild(option);
+        }
+        yearSelect.value = currentYear;
+    
+        // Add event listeners
+        yearSelect.addEventListener('change', () => loadRulesForYear(yearSelect.value));
+        inputs.forEach(input => input.addEventListener('input', updateTotal));
+    
+        form.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const submitBtn = form.querySelector('button[type="submit"]');
+            let total = 0;
+            inputs.forEach(input => { total += parseFloat(input.value) || 0; });
+    
+            if (Math.abs(total - 100) > 0.01) { alert('Total persentase harus tepat 100%.'); return; }
+    
+            const body = { year: yearSelect.value, member_business_service_percentage: document.getElementById('shu-member-business-service').value, member_capital_service_percentage: document.getElementById('shu-member-capital-service').value, reserve_fund_percentage: document.getElementById('shu-reserve-fund').value, management_fund_percentage: document.getElementById('shu-management-fund').value, education_fund_percentage: document.getElementById('shu-education-fund').value, social_fund_percentage: document.getElementById('shu-social-fund').value };
+    
+            submitBtn.disabled = true; submitBtn.textContent = 'Menyimpan...';
+            try {
+                await apiFetch(`${ADMIN_API_URL}/shu-rules`, { method: 'POST', body: JSON.stringify(body) });
+                alert(`Aturan SHU untuk tahun ${body.year} berhasil disimpan.`);
+            } catch (error) { alert(`Terjadi kesalahan: ${error.message}`); } finally { submitBtn.disabled = false; submitBtn.textContent = 'Simpan Aturan'; }
+        });
+    
+        // Initial load
+        loadRulesForYear(currentYear);
+    };
+
     // --- FUNGSI UNTUK POSTING SHU ---
     const setupPostShuPage = () => {
         const yearSelect = document.getElementById('shu-calc-year');
@@ -5311,7 +5417,7 @@ const renderCashFlowChart = (data) => {
                 cellActions.className = 'px-6 py-4 text-sm font-medium space-x-2';
                 cellActions.innerHTML = `
                     <button class="edit-product-btn text-indigo-600 hover:text-indigo-900" data-id="${product.id}" data-shop-type="${shopType}">Ubah</button>
-                    ${hasPerm('manageProducts') ? `<button class="delete-product-btn text-red-600 hover:text-red-900 ml-2" data-id="${product.id}" data-shop-type="${shopType}">Hapus</button>` : ''}
+                    <button class="delete-product-btn text-red-600 hover:text-red-900" data-id="${product.id}" data-shop-type="${shopType}">Hapus</button>
                 `;
 
                 row.append(cellImage, cellName, cellDesc, cellPrice, cellStock, cellActions);
@@ -5464,11 +5570,15 @@ const renderCashFlowChart = (data) => {
         });
     });
 
+    // --- FUNGSI UNTUK KELOLA TOKO (USAHA KOPERASI) ---
+    // This function is defined earlier in the file. This is a duplicate.
+
+    // Event delegation for product actions
     document.querySelector('main').addEventListener('click', async (e) => {
         const button = e.target;
         const { id, shopType } = button.dataset;
 
-        if (button.matches('.edit-product-btn') && hasPerm('manageProducts')) {
+        if (button.matches('.edit-product-btn')) {
             const product = await apiFetch(`${ADMIN_API_URL}/products/${id}`);
             await showProductModal(product, shopType);
         }
@@ -5476,7 +5586,7 @@ const renderCashFlowChart = (data) => {
         if (button.matches('.delete-product-btn')) {
             if (confirm('Anda yakin ingin menghapus produk ini?')) {
                 try {
-                    // Pastikan shopType ada sebelum melanjutkan, dan user punya izin
+                    // Pastikan shopType ada sebelum melanjutkan
                     if (!shopType) {
                         console.error('shopType is missing from the delete button dataset.');
                         alert('Terjadi kesalahan: Tipe toko tidak ditemukan.');
@@ -6334,7 +6444,7 @@ const renderCashFlowChart = (data) => {
                     const statusClass = { 'Selesai': 'bg-green-100 text-green-800', 'Dibatalkan': 'bg-red-100 text-red-800' }[row.status] || 'bg-gray-100 text-gray-800';
                     
                     let actionButton = '-';
-                    if (row.status === 'Selesai' && hasPerm('manageSales')) {
+                    if (row.status === 'Selesai' && ['admin', 'akunting'].includes(userRole)) {
                         actionButton = `<button class="cancel-sale-btn text-red-600 hover:underline" data-id="${row.id}">Batalkan</button>`;
                     }
 
@@ -6358,7 +6468,7 @@ const renderCashFlowChart = (data) => {
         tableBody.addEventListener('click', async (e) => {
             if (e.target.matches('.cancel-sale-btn')) {
                 const saleId = e.target.dataset.id;
-            if (confirm('Anda yakin ingin membatalkan transaksi ini? Stok akan dikembalikan dan jurnal akan dihapus.')) {
+                if (confirm('Anda yakin ingin membatalkan transaksi ini? Stok akan dikembalikan dan jurnal akan dihapus.')) {
                     try {
                         await apiFetch(`${ADMIN_API_URL}/sales/${saleId}/cancel`, { method: 'POST' });
                         alert('Transaksi berhasil dibatalkan.');
@@ -6366,56 +6476,6 @@ const renderCashFlowChart = (data) => {
                     } catch (error) { alert(`Gagal membatalkan: ${error.message}`); }
                 }
             }
-        });
-    };
-
-    // --- FUNGSI UNTUK KELOLA PROFIL KOPERASI ---
-    const loadCooperativeProfile = () => {
-        const form = document.getElementById('cooperative-profile-form');
-        if (!form) return;
-
-        const nameInput = document.getElementById('company-info-name-input');
-        const addressInput = document.getElementById('company-info-address-input');
-        const phoneInput = document.getElementById('company-info-phone-input');
-        const logoInput = document.getElementById('company-info-logo-input');
-        const logoPreview = document.getElementById('company-info-logo-preview');
-
-        // Load current data
-        apiFetch(`${ADMIN_API_URL}/company-info`)
-            .then(data => {
-                nameInput.value = data.name || '';
-                addressInput.value = data.address || '';
-                phoneInput.value = data.phone || '';
-                if (data.logo_url) {
-                    const webPath = data.logo_url.replace(/\\/g, '/');
-                    const baseUrl = API_URL.replace('/api', '');
-                    logoPreview.src = `${baseUrl}${webPath.startsWith('/') ? '' : '/'}${webPath}`;
-                }
-            })
-            .catch(error => alert(`Gagal memuat profil koperasi: ${error.message}`));
-
-        // Preview for new logo
-        logoInput.addEventListener('change', (e) => {
-            const file = e.target.files[0];
-            if (file) {
-                const reader = new FileReader();
-                reader.onload = (event) => { logoPreview.src = event.target.result; };
-                reader.readAsDataURL(file);
-            }
-        });
-
-        // Form submission
-        form.addEventListener('submit', async (e) => {
-            e.preventDefault();
-            const formData = new FormData();
-            formData.append('name', nameInput.value);
-            formData.append('address', addressInput.value);
-            formData.append('phone', phoneInput.value);
-            if (logoInput.files[0]) {
-                formData.append('companyLogo', logoInput.files[0]);
-            }
-            try { await apiFetch(`${ADMIN_API_URL}/company-info`, { method: 'PUT', body: formData }); alert('Profil koperasi berhasil diperbarui.'); initializeHeader(); } 
-            catch (error) { alert(`Terjadi kesalahan: ${error.message}`); }
         });
     };
 
@@ -6434,7 +6494,7 @@ const renderCashFlowChart = (data) => {
         // --- FIX: Ambil judul halaman dari elemen yang diklik ---
         let pageTitleText = 'Beranda';
         if (clickedLink) {
-            // Kartu punya <h3>, link sidebar punya <span>
+            // Kartu biasanya punya <h3>, link sidebar punya <span>
             const titleElement = clickedLink.querySelector('h3, span');
             if (titleElement) pageTitleText = titleElement.textContent.trim();
         }
@@ -6496,11 +6556,13 @@ const renderCashFlowChart = (data) => {
                 'manage-loan-terms': loadLoanTerms, 
                 'manage-accounts': () => { loadAccounts(); loadAccountTypes(); },
                 'manage-suppliers': () => { loadSuppliers(); loadMasterProducts(); masterProductOptionsCache = null; },
+                'manage-cooperative-profile': loadCooperativeProfile,
                 'manage-saving-account-mapping': loadSavingAccountMapping, 
                 'manage-loan-account-mapping': loadLoanAccountMapping, 
                 'manage-payment-methods-main': () => { document.querySelector('.payment-method-tab-btn[data-target="payment-methods-list-tab"]').click(); },
                 'manage-shu-rules': setupShuRules,
-                'manage-cooperative-profile': loadCooperativeProfile,'manage-partners': setupPartnerManagement, 
+                'manage-announcements': loadAnnouncements,
+                'manage-partners': setupPartnerManagement, 
                 'manage-products': () => { document.querySelector('.product-tab-btn[data-target="products-sembako-tab"]').click(); } 
             }[targetId];
             if (loadFunction) loadFunction();
@@ -7269,117 +7331,11 @@ const renderCashFlowChart = (data) => {
         });
     };
 
-    // --- FUNGSI UNTUK KELOLA ATURAN SHU ---
-    const setupShuRules = () => {
-        const form = document.getElementById('shu-rules-form');
-        if (!form) return;
-
-        // FIX: Mencegah penambahan event listener berulang kali.
-        // Jika listener sudah ada, cukup muat ulang data untuk tahun yang dipilih.
-        if (form.dataset.listenerAttached) {
-            loadRulesForYear(document.getElementById('shu-rules-year').value);
-            return;
-        }
-        form.dataset.listenerAttached = 'true';
-    
-        const yearSelect = document.getElementById('shu-rules-year');
-        const inputs = form.querySelectorAll('.shu-percentage-input');
-        const totalDisplay = document.getElementById('shu-total-percentage');
-        const errorDisplay = document.getElementById('shu-percentage-error');
-    
-        const updateTotal = () => {
-            let total = 0;
-            inputs.forEach(input => {
-                total += parseFloat(input.value) || 0;
-            });
-            totalDisplay.textContent = `${total.toFixed(2)}%`;
-            if (Math.abs(total - 100) > 0.01) {
-                totalDisplay.classList.add('text-red-600');
-                errorDisplay.classList.remove('hidden');
-            } else {
-                totalDisplay.classList.remove('text-red-600');
-                errorDisplay.classList.add('hidden');
-            }
-        };
-    
-        const populateForm = (data) => {
-            document.getElementById('shu-member-business-service').value = data.member_business_service_percentage;
-            document.getElementById('shu-member-capital-service').value = data.member_capital_service_percentage;
-            document.getElementById('shu-reserve-fund').value = data.reserve_fund_percentage;
-            document.getElementById('shu-management-fund').value = data.management_fund_percentage;
-            document.getElementById('shu-education-fund').value = data.education_fund_percentage;
-            document.getElementById('shu-social-fund').value = data.social_fund_percentage;
-            updateTotal();
-        };
-    
-        const loadRulesForYear = async (year) => {
-            try {
-                const data = await apiFetch(`${ADMIN_API_URL}/shu-rules/${year}`);
-                populateForm(data);
-            } catch (error) {
-                alert(`Terjadi kesalahan: ${error.message}`);
-            }
-        };
-    
-        // Populate year dropdown
-        yearSelect.innerHTML = ''; // Clear previous options
-        const currentYear = new Date().getFullYear();
-        for (let i = currentYear + 1; i >= currentYear - 5; i--) {
-            const option = document.createElement('option');
-            option.value = i;
-            option.textContent = i;
-            yearSelect.appendChild(option);
-        }
-        yearSelect.value = currentYear;
-    
-        // Add event listeners
-        yearSelect.addEventListener('change', () => loadRulesForYear(yearSelect.value));
-        inputs.forEach(input => input.addEventListener('input', updateTotal));
-    
-        form.addEventListener('submit', async (e) => {
-            e.preventDefault();
-            const submitBtn = form.querySelector('button[type="submit"]');
-            let total = 0;
-            inputs.forEach(input => { total += parseFloat(input.value) || 0; });
-    
-            if (Math.abs(total - 100) > 0.01) { alert('Total persentase harus tepat 100%.'); return; }
-    
-            // FIX: Struktur body disederhanakan agar sesuai dengan yang diharapkan backend.
-            const body = {
-                year: yearSelect.value,
-                member_business_service_percentage: document.getElementById('shu-member-business-service').value,
-                member_capital_service_percentage: document.getElementById('shu-member-capital-service').value,
-                reserve_fund_percentage: document.getElementById('shu-reserve-fund').value,
-                management_fund_percentage: document.getElementById('shu-management-fund').value,
-                education_fund_percentage: document.getElementById('shu-education-fund').value,
-                social_fund_percentage: document.getElementById('shu-social-fund').value
-            };
-    
-            submitBtn.disabled = true; submitBtn.textContent = 'Menyimpan...';
-            try {
-                await apiFetch(`${ADMIN_API_URL}/shu-rules`, {
-                    method: 'POST',
-                    body: JSON.stringify(body)
-                });
-                alert(`Aturan SHU untuk tahun ${body.year} berhasil disimpan.`);
-            } catch (error) { alert(`Terjadi kesalahan: ${error.message}`); } finally { submitBtn.disabled = false; submitBtn.textContent = 'Simpan Aturan'; }
-        });
-    
-        // Initial load
-        loadRulesForYear(currentYear);
-    };
-
     // --- INISIALISASI ---
     const initializeHeader = async () => {
         try {
             const info = await apiFetch(`${ADMIN_API_URL}/company-info`);
-            const headerLogo = document.getElementById('header-logo-img');
-            if (headerLogo && info && info.logo_url) {
-                const webPath = info.logo_url.replace(/\\/g, '/');
-                const baseUrl = API_URL.replace('/api', '');
-                const fullLogoUrl = `${baseUrl}${webPath.startsWith('/') ? '' : '/'}${webPath}`;
-                headerLogo.src = fullLogoUrl;
-            }
+            updateHeaderDisplay(info);
         } catch (error) {
             console.error('Gagal memuat info koperasi untuk header:', error);
         }
