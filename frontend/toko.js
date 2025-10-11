@@ -13,6 +13,8 @@ document.addEventListener('DOMContentLoaded', () => {
     const coopNumberError = document.getElementById('coop-number-error');
     const creditModal = document.getElementById('credit-application-modal');
     const creditForm = document.getElementById('credit-application-form');
+    const categoryNav = document.getElementById('category-navigation');
+    let allProducts = []; // To store all fetched products
 
     let productToAdd = null; // Variable to hold the product when modal is shown
     
@@ -163,13 +165,50 @@ document.addEventListener('DOMContentLoaded', () => {
         `;
     };
 
+    const displayProducts = (productsToDisplay) => {
+        if (!productGrid) return;
+        productGrid.innerHTML = ''; // Kosongkan grid
+        if (productsToDisplay.length === 0) {
+            productGrid.innerHTML = `<p class="col-span-full text-center text-gray-500">Tidak ada produk yang ditemukan untuk kategori ini.</p>`;
+            return;
+        }
+        productsToDisplay.forEach(product => {
+            productGrid.innerHTML += createProductCard(product);
+        });
+    };
+
+    const filterProductsByCategory = (category) => {
+        const categoryKeywords = {
+            tv_audio: ['tv', 'led', 'audio', 'soundbar', 'speaker'],
+            kulkas: ['kulkas', 'freezer', 'refrigerator'],
+            ac: ['ac', 'air conditioner', 'pendingin'],
+            mesin_cuci: ['mesin cuci', 'washing machine'],
+            handphone: ['handphone', 'smartphone', 'iphone', 'samsung', 'oppo', 'vivo', 'xiaomi'],
+            komputer: ['laptop', 'komputer', 'pc', 'notebook']
+        };
+
+        if (category === 'all') {
+            displayProducts(allProducts);
+            return;
+        }
+
+        const keywords = categoryKeywords[category] || [];
+        const filtered = allProducts.filter(product => {
+            const productName = product.name.toLowerCase();
+            return keywords.some(keyword => productName.includes(keyword));
+        });
+
+        displayProducts(filtered);
+    };
+
     const loadPublicProducts = async (type) => {
         if (!productGrid || !type) {
             // console.error('Elemen #product-grid tidak ditemukan atau tipe toko tidak valid.');
             return;
         }
 
-        productGrid.innerHTML = '<p class="col-span-full text-center text-gray-500">Memuat produk...</p>';
+        displayProducts([]); // Clear grid and show loading/empty message
+        productGrid.innerHTML = '<p class="col-span-full text-center text-gray-500">Memuat produk...</p>'; // Loading message
 
         try {
             // Endpoint publik yang benar adalah /api/public/products
@@ -177,17 +216,20 @@ document.addEventListener('DOMContentLoaded', () => {
             if (!response.ok) {
                 throw new Error('Gagal memuat produk dari server.');
             }
-            const products = await response.json();
+            allProducts = await response.json();
 
-            if (products.length === 0) {
+            if (allProducts.length === 0) {
                 productGrid.innerHTML = `<p class="col-span-full text-center text-gray-500">Belum ada produk yang tersedia di toko ini.</p>`;
                 return;
             }
 
-            productGrid.innerHTML = ''; // Kosongkan grid
-            products.forEach(product => {
-                productGrid.innerHTML += createProductCard(product);
-            });
+            // Set default category filter to 'tv_audio'
+            const defaultCategory = 'tv_audio';
+            const defaultCategoryLink = categoryNav.querySelector(`[data-category="${defaultCategory}"]`);
+            if (defaultCategoryLink) {
+                defaultCategoryLink.classList.add('active');
+            }
+            filterProductsByCategory(defaultCategory);
 
         } catch (error) {
             console.error('Error:', error);
@@ -195,111 +237,27 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     };
 
-    // Event listener untuk tombol di dalam modal
-    if (saveCoopNumberBtn) {
-        saveCoopNumberBtn.addEventListener('click', async () => {
-            const coopNumber = coopNumberInput.value.trim();
-            if (coopNumber === '') {
-                coopNumberError.textContent = 'Nomor Koperasi tidak boleh kosong.';
-                coopNumberError.classList.remove('hidden');
-                return;
-            }
-            
-            // Tampilkan status loading pada tombol
-            const originalButtonText = saveCoopNumberBtn.textContent;
-            saveCoopNumberBtn.disabled = true;
-            saveCoopNumberBtn.textContent = 'Memvalidasi...';
-            coopNumberError.classList.add('hidden'); // Sembunyikan error lama
-
-            try {
-                // Panggil endpoint validasi di backend
-                const response = await fetch(`${API_URL}/auth/validate-coop-number`, {
-                    method: 'POST', // Pastikan rute ini menunjuk ke auth.controller.js yang baru
-                    headers: {
-                        'Content-Type': 'application/json',
-                    },
-                    body: JSON.stringify({ cooperativeNumber: coopNumber }),
-                });
-
-                const data = await response.json();
-
-                if (!response.ok || !data.valid) {
-                    throw new Error(data.error || 'Nomor Koperasi tidak valid atau tidak aktif.');
-                }
-
-                // Jika valid, simpan nomor dan nama pengguna
-                localStorage.setItem('cooperative_number', data.user.cooperative_number);
-                localStorage.setItem('cooperative_user_name', data.user.name);
-                
-                alert(`Selamat datang, ${data.user.name}!`);
-
-                if (productToAdd) {
-                    if (productToAdd.shopType === 'elektronik') {
-                        showCreditApplicationModal(productToAdd);
-                    } else {
-                        addToCart(productToAdd);
-                    }
-                }
-                hideCoopModal();
-            } catch (error) {
-                coopNumberError.textContent = error.message;
-                coopNumberError.classList.remove('hidden');
-            } finally {
-                saveCoopNumberBtn.disabled = false;
-                saveCoopNumberBtn.textContent = originalButtonText;
-            }
-        });
-    }
-
-    if (cancelCoopNumberBtn) {
-        cancelCoopNumberBtn.addEventListener('click', hideCoopModal);
-    }
-
-    if (creditModal) {
-        document.getElementById('close-credit-modal-btn').addEventListener('click', () => creditModal.classList.add('hidden'));
-
-        document.getElementById('credit-loan-term-select').addEventListener('change', (e) => {
-            const selectedOption = e.target.options[e.target.selectedIndex];
-            if (!selectedOption.value) {
-                document.getElementById('credit-amortization-preview-section').classList.add('hidden');
-                return;
-            }
-            const amount = productToAdd.price;
-            const tenor = parseInt(selectedOption.dataset.tenor, 10);
-            const interestRate = parseFloat(selectedOption.dataset.interest);
-            generateCreditAmortization(amount, tenor, interestRate);
-        });
-
-        creditForm.addEventListener('submit', (e) => {
-            e.preventDefault();
-            // Panggil fungsi yang ada di anggota.js untuk menampilkan modal komitmen
-            // Kita perlu memastikan fungsi `showLoanCommitmentModal` diekspos secara global atau diimpor
-            // Untuk sementara, kita panggil langsung jika tersedia di window
-            if (window.showLoanCommitmentModalFromToko) {
-                const loanData = {
-                    loan_term_id: document.getElementById('credit-loan-term-select').value,
-                    amount: productToAdd.price,
-                    bank_name: document.getElementById('credit-bank-name-input').value,
-                    bank_account_number: document.getElementById('credit-bank-account-input').value,
-                    // Tambahkan info produk untuk ditampilkan di surat komitmen
-                    product_name: productToAdd.name,
-                    product_id: productToAdd.id
-                };
-                const selectedOption = document.getElementById('credit-loan-term-select').options[document.getElementById('credit-loan-term-select').selectedIndex];
-                const tenor = parseInt(selectedOption.dataset.tenor, 10);
-                const interestRate = parseFloat(selectedOption.dataset.interest);
-
-                // Sembunyikan modal ini sebelum menampilkan modal komitmen
-                creditModal.classList.add('hidden');
-
-                // Panggil fungsi global dari anggota.js
-                window.showLoanCommitmentModalFromToko(loanData, tenor, interestRate);
-            } else {
-                alert('Fungsi untuk menampilkan surat komitmen tidak ditemukan. Silakan hubungi administrator.');
-            }
-        });
-    }
-
     // Perbarui jumlah item di keranjang saat halaman dimuat
     updateCartCount();
+
+    if (shopType) {
+        loadPublicProducts(shopType);
+    }
+
+    if (categoryNav) {
+        categoryNav.addEventListener('click', (e) => {
+            e.preventDefault();
+            const link = e.target.closest('.category-link');
+            if (!link) return;
+
+            // Hapus kelas aktif dari semua link
+            categoryNav.querySelectorAll('.category-link').forEach(l => l.classList.remove('active'));
+
+            // Tambahkan kelas aktif ke link yang diklik
+            link.classList.add('active');
+
+            const category = link.dataset.category;
+            filterProductsByCategory(category);
+        });
+    }
 });
