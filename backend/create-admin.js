@@ -1,11 +1,11 @@
 const bcrypt = require('bcryptjs');
-const pool = require('../db'); // FIX: Path disesuaikan untuk naik satu level dari 'scripts'
-require('dotenv').config({ path: require('path').resolve(__dirname, '../../.env') }); // FIX: Path yang lebih robust
+const pool = require('./db'); // FIX: Path disesuaikan ke direktori yang sama
+require('dotenv').config({ path: require('path').resolve(__dirname, '../.env') }); // FIX: Path disesuaikan untuk naik satu level
 
 /**
  * Skrip untuk membuat pengguna admin baru dari baris perintah.
  *
- * Cara Penggunaan (via npm):
+ * Cara Penggunaan:
  * npm run create-admin -- "<nama_lengkap>" <email> <password>
  *
  * Contoh:
