@@ -937,6 +937,14 @@
                             <h3 class="font-semibold text-lg text-gray-800">Kelola Mitra</h3>
                             <p class="text-sm text-gray-500 mt-1 flex-grow">Atur logo mitra yang berjalan di halaman utama.</p>
                         </div>
+                        <!-- Card Aturan Pembagian SHU -->
+                        <div data-target="manage-shu-rules" class="settings-card-link bg-white p-6 rounded-lg shadow-md hover:shadow-lg transition-shadow cursor-pointer flex flex-col">
+                            <div class="w-12 h-12 rounded-full bg-blue-100 flex items-center justify-center mb-4">
+                                <svg class="w-6 h-6 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 7h6m0 10v-3m-3 3h3m-3 0v-3m-3 3h3m-3 0v-3m8-5H7a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2V9a2 2 0 00-2-2z"></path></svg>
+                            </div>
+                            <h3 class="font-semibold text-lg text-gray-800">Aturan Pembagian SHU</h3>
+                            <p class="text-sm text-gray-500 mt-1 flex-grow">Atur persentase alokasi SHU sesuai AD/ART.</p>
+                        </div>
                         <!-- Card Kelola Metode Pembayaran -->
                         <div data-target="manage-payment-methods-main" class="settings-card-link bg-white p-6 rounded-lg shadow-md hover:shadow-lg transition-shadow cursor-pointer flex flex-col">
                             <div class="w-12 h-12 rounded-full bg-cyan-100 flex items-center justify-center mb-4">
@@ -2019,6 +2027,32 @@
                                     <label for="shu-social-fund" class="block text-sm font-medium text-gray-700">Dana Sosial (%)</label>
                                     <input type="number" step="0.01" id="shu-social-fund" required class="shu-percentage-input mt-1 block w-full rounded-md border-gray-300 shadow-sm">
                                 </div>
+                            </div>
+                            <div class="border-t pt-4"><div class="flex justify-between items-center"><p class="text-lg font-semibold">Total Persentase:</p><p id="shu-total-percentage" class="text-lg font-bold">0%</p></div><p id="shu-percentage-error" class="text-red-600 text-sm mt-2 hidden">Total persentase harus 100%.</p></div>
+                            <div class="flex justify-end pt-4"><button type="submit" class="bg-red-600 text-white py-2 px-4 rounded-md hover:bg-red-700">Simpan Aturan</button></div>
+                        </form>
+                    </div>
+                </div>
+
+                <!-- SHU Rules Management Section -->
+                <div id="manage-shu-rules-content" class="content-section">
+                    <div class="flex justify-between items-center mb-6">
+                        <h2 class="text-2xl font-semibold text-gray-800">Kelola Aturan Pembagian SHU</h2>
+                        <button class="back-to-settings-btn text-sm text-red-600 hover:underline">&larr; Kembali ke Pengaturan</button>
+                    </div>
+                    <div class="bg-white p-8 rounded-lg shadow-md max-w-2xl mx-auto">
+                        <form id="shu-rules-form" class="space-y-6">
+                            <div>
+                                <label for="shu-rules-year" class="block text-sm font-medium text-gray-700">Tahun Aturan</label>
+                                <select id="shu-rules-year" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-red-500 focus:ring-red-500"></select>
+                            </div>
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                <div><label for="shu-member-business-service" class="block text-sm font-medium text-gray-700">Jasa Usaha Anggota (%)</label><input type="number" step="0.01" id="shu-member-business-service" required class="shu-percentage-input mt-1 block w-full rounded-md border-gray-300 shadow-sm"></div>
+                                <div><label for="shu-member-capital-service" class="block text-sm font-medium text-gray-700">Jasa Modal Anggota (%)</label><input type="number" step="0.01" id="shu-member-capital-service" required class="shu-percentage-input mt-1 block w-full rounded-md border-gray-300 shadow-sm"></div>
+                                <div><label for="shu-reserve-fund" class="block text-sm font-medium text-gray-700">Dana Cadangan (%)</label><input type="number" step="0.01" id="shu-reserve-fund" required class="shu-percentage-input mt-1 block w-full rounded-md border-gray-300 shadow-sm"></div>
+                                <div><label for="shu-management-fund" class="block text-sm font-medium text-gray-700">Dana Pengurus & Karyawan (%)</label><input type="number" step="0.01" id="shu-management-fund" required class="shu-percentage-input mt-1 block w-full rounded-md border-gray-300 shadow-sm"></div>
+                                <div><label for="shu-education-fund" class="block text-sm font-medium text-gray-700">Dana Pendidikan (%)</label><input type="number" step="0.01" id="shu-education-fund" required class="shu-percentage-input mt-1 block w-full rounded-md border-gray-300 shadow-sm"></div>
+                                <div><label for="shu-social-fund" class="block text-sm font-medium text-gray-700">Dana Sosial (%)</label><input type="number" step="0.01" id="shu-social-fund" required class="shu-percentage-input mt-1 block w-full rounded-md border-gray-300 shadow-sm"></div>
                             </div>
                             <div class="border-t pt-4"><div class="flex justify-between items-center"><p class="text-lg font-semibold">Total Persentase:</p><p id="shu-total-percentage" class="text-lg font-bold">0%</p></div><p id="shu-percentage-error" class="text-red-600 text-sm mt-2 hidden">Total persentase harus 100%.</p></div>
                             <div class="flex justify-end pt-4"><button type="submit" class="bg-red-600 text-white py-2 px-4 rounded-md hover:bg-red-700">Simpan Aturan</button></div>

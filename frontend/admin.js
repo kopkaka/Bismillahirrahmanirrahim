@@ -57,6 +57,7 @@ document.addEventListener('DOMContentLoaded', () => {
         if (!hasPerm('viewSettings')) document.querySelector('.sidebar-link[data-target="settings"]')?.parentElement.remove();
  
         if (!hasPerm('manageTestimonials')) document.querySelector('.settings-card-link[data-target="testimonials"]')?.remove();
+        if (!hasPerm('manageShuRules')) document.querySelector('.settings-card-link[data-target="manage-shu-rules"]')?.remove();
         if (!hasPerm('manageUsers')) document.querySelector('.settings-card-link[data-target="manage-users-roles"]')?.remove();
     };
 
@@ -3022,17 +3023,6 @@ const renderCashFlowChart = (data) => {
                 if (field === 'interest_rate' && !element) {
                     element = form.querySelector('#loan-term-interest-input');
                 }
-                // FIX: Tambahkan kasus khusus untuk modal Perusahaan (Employer)
-                if (field === 'address' && !element) {
-                    element = form.querySelector('#employer-address-input');
-                }
-                if (field === 'phone' && !element) {
-                    element = form.querySelector('#employer-phone-input');
-                }
-                if (field === 'contract_number' && !element) {
-                    element = form.querySelector('#employer-contract-input');
-                }
-
 
                 if (element) {
                     if (element.type === 'checkbox') {
@@ -6388,7 +6378,7 @@ const renderCashFlowChart = (data) => {
                 'manage-saving-account-mapping': loadSavingAccountMapping, 
                 'manage-loan-account-mapping': loadLoanAccountMapping, 
                 'manage-payment-methods-main': () => { document.querySelector('.payment-method-tab-btn[data-target="payment-methods-list-tab"]').click(); },
-                'manage-partners': setupPartnerManagement, 
+                'manage-shu-rules': setupShuRules,'manage-partners': setupPartnerManagement, 
                 'manage-products': () => { document.querySelector('.product-tab-btn[data-target="products-sembako-tab"]').click(); } 
             }[targetId];
             if (loadFunction) loadFunction();
