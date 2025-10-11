@@ -150,7 +150,7 @@ router.get('/company-info', protect, adminController.getCompanyInfo); // Menggun
 router.put('/company-info', protect, authorize(['manageCooperativeProfile']), upload.single('logo'), adminController.updateCompanyInfo);
  
 // Testimonial Management
-const testimonialPermission = ['manageTestimonials'];
+const testimonialPermission = ['manageTestimonials']; // Izin untuk testimoni
 router.get('/testimonials', protect, authorize(testimonialPermission), adminController.getTestimonials);
 router.get('/testimonials/:id', protect, authorize(testimonialPermission), adminController.getTestimonialById);
 router.post('/testimonials', protect, authorize(testimonialPermission), upload.single('testimonialPhoto'), adminController.createTestimonial);
@@ -224,7 +224,8 @@ router.post('/savings/bulk-upload', protect, authorize(['approveSaving']), excel
 
 // --- Sub-routers (MUST be at the end) ---
 // These handle specific CRUD operations for settings pages
-router.use('/announcements', announcementRoutes);
+// FIX: Gunakan izin yang benar untuk pengumuman
+router.use('/announcements', protect, authorize(['manageAnnouncements']), announcementRoutes);
 router.use('/employers', employerRoutes);
 router.use('/partners', partnerRoutes); // Pastikan rute ini ada
 router.use('/positions', positionRoutes);
