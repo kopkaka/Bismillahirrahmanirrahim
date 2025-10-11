@@ -223,16 +223,11 @@ document.addEventListener('DOMContentLoaded', () => {
                 return;
             }
 
-            // Set default category filter to 'all'
-            const defaultCategory = 'all';
-            // FIX: Only interact with categoryNav if it exists
-            if (categoryNav) {
-                const defaultCategoryLink = categoryNav.querySelector(`[data-category="${defaultCategory}"]`);
-                if (defaultCategoryLink) {
-                    defaultCategoryLink.classList.add('active');
-                }
+            // Jangan tampilkan produk apa pun pada awalnya.
+            // Tampilkan pesan untuk meminta pengguna memilih kategori.
+            if (productGrid) {
+                productGrid.innerHTML = `<p class="col-span-full text-center text-gray-500 py-8">Silakan pilih kategori di atas untuk melihat produk.</p>`;
             }
-            filterProductsByCategory(defaultCategory);
 
         } catch (error) {
             console.error('Error:', error);
