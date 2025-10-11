@@ -2901,51 +2901,46 @@ const getBalanceSheetSummary = async (req, res) => {
 
     try {
         // Query for asset, liability, and equity balances (excluding income statement accounts)
+        // FIX: Use conditional aggregation with FILTER to ensure all categories are always returned, even if their total is 0.
+        // This prevents errors when an entire account type (e.g., 'Ekuitas') has no transactions.
         const balanceQuery = `
             SELECT
-                coa.account_type,
-                COALESCE(SUM(
-                    CASE
-                        WHEN coa.account_type = 'Aset' THEN je.debit - je.credit
-                        ELSE je.credit - je.debit
-                    END
-                ), 0) as total
-            FROM chart_of_accounts coa
-            LEFT JOIN journal_entries je ON je.account_id = coa.id
-            LEFT JOIN general_journal gj ON je.journal_id = gj.id AND gj.entry_date <= $1 -- FIX: Date condition moved to the JOIN
-            WHERE coa.account_type IN ('Aset', 'Kewajiban', 'Ekuitas') -- Filter only balance sheet accounts
-            GROUP BY coa.account_type;
+                COALESCE(SUM(je.debit - je.credit) FILTER (WHERE coa.account_type = 'Aset'), 0) as assets,
+                COALESCE(SUM(je.credit - je.debit) FILTER (WHERE coa.account_type = 'Kewajiban'), 0) as liabilities,
+                COALESCE(SUM(je.credit - je.debit) FILTER (WHERE coa.account_type = 'Ekuitas'), 0) as equity
+            FROM journal_entries je
+            JOIN chart_of_accounts coa ON je.account_id = coa.id
+            JOIN general_journal gj ON je.journal_id = gj.id
+            WHERE gj.entry_date <= $1 AND coa.account_type IN ('Aset', 'Kewajiban', 'Ekuitas');
         `;
 
         // Query for net income (retained earnings + current year income)
         const netIncomeQuery = `
             SELECT COALESCE(SUM(
-                CASE
-                    WHEN coa.account_type = 'Pendapatan' THEN je.credit - je.debit -- Incomes increase equity
-                    WHEN coa.account_type IN ('HPP', 'Biaya') THEN je.debit - je.credit -- Expenses decrease equity
-                    ELSE 0 -- Ignore other account types
-                END), 0) as total
+                (je.credit - je.debit) FILTER (WHERE coa.account_type = 'Pendapatan')
+            ), 0) - COALESCE(SUM(
+                (je.debit - je.credit) FILTER (WHERE coa.account_type IN ('HPP', 'Biaya'))
+            ), 0) as total
             FROM journal_entries je
             JOIN chart_of_accounts coa ON je.account_id = coa.id
             JOIN general_journal gj ON je.journal_id = gj.id
-            WHERE gj.entry_date <= $1 AND coa.account_type IN ('Pendapatan', 'HPP', 'Biaya'); -- Filter only income statement accounts
+            WHERE gj.entry_date <= $1 AND coa.account_type IN ('Pendapatan', 'HPP', 'Biaya');
         `;
 
         const [balanceResult, netIncomeResult] = await Promise.all([
             pool.query(balanceQuery, [endDate]),
             pool.query(netIncomeQuery, [endDate])
         ]);
+        
+        const balances = balanceResult.rows[0];
+        const netIncome = parseFloat(netIncomeResult.rows[0].total);
 
-        const summary = { assets: 0, liabilities: 0, equity: 0 };
+        const summary = {
+            assets: parseFloat(balances.assets),
+            liabilities: parseFloat(balances.liabilities),
+            equity: parseFloat(balances.equity) + netIncome
+        };
 
-        balanceResult.rows.forEach(row => {
-            const total = parseFloat(row.total);
-            if (row.account_type === 'Aset') summary.assets += total;
-            else if (row.account_type === 'Kewajiban') summary.liabilities += total;
-            else if (row.account_type === 'Ekuitas') summary.equity += total;
-        });
-
-        summary.equity += parseFloat(netIncomeResult.rows[0].total);
         res.json(summary);
     } catch (err) {
         console.error('Error generating balance sheet summary:', err.message);
