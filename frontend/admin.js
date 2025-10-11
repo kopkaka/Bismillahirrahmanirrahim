@@ -6374,6 +6374,56 @@ const renderCashFlowChart = (data) => {
         });
     };
 
+    // --- FUNGSI UNTUK KELOLA PROFIL KOPERASI ---
+    const loadCooperativeProfile = () => {
+        const form = document.getElementById('cooperative-profile-form');
+        if (!form) return;
+
+        const nameInput = document.getElementById('company-info-name-input');
+        const addressInput = document.getElementById('company-info-address-input');
+        const phoneInput = document.getElementById('company-info-phone-input');
+        const logoInput = document.getElementById('company-info-logo-input');
+        const logoPreview = document.getElementById('company-info-logo-preview');
+
+        // Load current data
+        apiFetch(`${ADMIN_API_URL}/company-info`)
+            .then(data => {
+                nameInput.value = data.name || '';
+                addressInput.value = data.address || '';
+                phoneInput.value = data.phone || '';
+                if (data.logo_url) {
+                    const webPath = data.logo_url.replace(/\\/g, '/');
+                    const baseUrl = API_URL.replace('/api', '');
+                    logoPreview.src = `${baseUrl}${webPath.startsWith('/') ? '' : '/'}${webPath}`;
+                }
+            })
+            .catch(error => alert(`Gagal memuat profil koperasi: ${error.message}`));
+
+        // Preview for new logo
+        logoInput.addEventListener('change', (e) => {
+            const file = e.target.files[0];
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = (event) => { logoPreview.src = event.target.result; };
+                reader.readAsDataURL(file);
+            }
+        });
+
+        // Form submission
+        form.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const formData = new FormData();
+            formData.append('name', nameInput.value);
+            formData.append('address', addressInput.value);
+            formData.append('phone', phoneInput.value);
+            if (logoInput.files[0]) {
+                formData.append('companyLogo', logoInput.files[0]);
+            }
+            try { await apiFetch(`${ADMIN_API_URL}/company-info`, { method: 'PUT', body: formData }); alert('Profil koperasi berhasil diperbarui.'); initializeHeader(); } 
+            catch (error) { alert(`Terjadi kesalahan: ${error.message}`); }
+        });
+    };
+
     // --- FUNGSI UNTUK NAVIGASI KONTEN UTAMA ---
     const switchContent = (targetId, params = {}, clickedLink = null) => {
         contentSections.forEach(section => {
