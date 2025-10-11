@@ -76,4 +76,11 @@
     .category-link.active {
         @apply bg-red-100 text-accent font-bold;
     }
+    /* Animasi untuk toast notifikasi */
+    @keyframes fade-in-right {
+        from { opacity: 0; transform: translateX(100%); }
+        to { opacity: 1; transform: translateX(0); }
+    }
+    .animate-fade-in-right { animation: fade-in-right 0.5s ease-out forwards; }
+
 }

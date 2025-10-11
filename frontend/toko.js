@@ -14,6 +14,12 @@ document.addEventListener('DOMContentLoaded', () => {
     const creditModal = document.getElementById('credit-application-modal');
     const creditForm = document.getElementById('credit-application-form');
     const categoryNav = document.getElementById('category-navigation');
+
+    // --- ELEMEN SIDEBAR KATEGORI MOBILE ---
+    const categorySidebar = document.getElementById('category-sidebar');
+    const openCategorySidebarBtn = document.getElementById('open-category-sidebar-btn');
+    const closeCategorySidebarBtn = document.getElementById('close-category-sidebar-btn');
+    const categorySidebarOverlay = document.getElementById('category-sidebar-overlay');
     let allProducts = []; // To store all fetched products
 
     let productToAdd = null; // Variable to hold the product when modal is shown
@@ -282,4 +288,28 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Tambahkan event listener untuk tombol back/forward browser
     window.addEventListener('popstate', handleCategoryDisplay);
+
+    // --- FUNGSI SIDEBAR KATEGORI MOBILE ---
+    const openCategorySidebar = () => {
+        if (categorySidebar && categorySidebarOverlay) {
+            categorySidebar.classList.remove('-translate-x-full');
+            categorySidebar.classList.add('translate-x-0');
+            categorySidebarOverlay.classList.remove('hidden');
+            document.body.style.overflow = 'hidden'; // Mencegah scroll di background
+        }
+    };
+
+    const closeCategorySidebar = () => {
+        if (categorySidebar && categorySidebarOverlay) {
+            categorySidebar.classList.remove('translate-x-0');
+            categorySidebar.classList.add('-translate-x-full');
+            categorySidebarOverlay.classList.add('hidden');
+            document.body.style.overflow = ''; // Mengizinkan scroll kembali
+        }
+    };
+
+    // Event Listeners untuk Sidebar Kategori
+    openCategorySidebarBtn?.addEventListener('click', openCategorySidebar);
+    closeCategorySidebarBtn?.addEventListener('click', closeCategorySidebar);
+    categorySidebarOverlay?.addEventListener('click', closeCategorySidebar);
 });
