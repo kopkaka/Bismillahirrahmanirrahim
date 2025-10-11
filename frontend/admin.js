@@ -2298,12 +2298,12 @@ const renderCashFlowChart = (data) => {
         const totalEl = document.getElementById('direct-cashier-total');
         const completeBtn = document.getElementById('direct-cashier-complete-btn');
 
-        if (!cartBody || !totalEl || !completeBtn) return;
+        if (!cartBody || !totalEl || !completeBtn) return; // FIX: Add null check for completeBtn
 
         cartBody.innerHTML = '';
         if (directCart.length === 0) {
-            cartBody.innerHTML = `<div class="text-center py-10 text-gray-500"><svg class="mx-auto h-12 w-12 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z" /></svg><p class="mt-2 text-sm">Keranjang kosong</p></div>`;
-            completeBtn.parentElement.classList.add('hidden');
+            cartBody.innerHTML = `<div class="text-center py-10 text-gray-500"><svg class="mx-auto h-12 w-12 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z" /></svg><p class="mt-2 text-sm">Keranjang kosong</p></div>`;
+            completeBtn.disabled = true;
             totalEl.textContent = formatCurrency(0);
             return;
         }
@@ -2324,14 +2324,12 @@ const renderCashFlowChart = (data) => {
             cartBody.appendChild(itemEl);
         });
         totalEl.textContent = formatCurrency(total);
-        completeBtn.parentElement.classList.remove('hidden');
-
-        // FIX: Enable the button if the cart is not empty.
         completeBtn.disabled = directCart.length === 0;
     };
 
     // --- CASHIER FUNCTIONALITY ---
-    const cashierVerifyBtn = document.getElementById('cashier-verify-btn');
+    // These are now handled inside setupCashierVerificationModalListeners
+    // const cashierVerifyBtn = document.getElementById('cashier-verify-btn');
     const cashierBarcodeInp = document.getElementById('cashier-barcode-input');
     const cashierResultContainer = document.getElementById('cashier-result-container');
     const cashierErrorContainer = document.getElementById('cashier-error-container');
@@ -2339,7 +2337,7 @@ const renderCashFlowChart = (data) => {
 
 
     // --- NEW PAYMENT MODAL ELEMENTS ---
-    const paymentModal = document.getElementById('direct-cashier-payment-modal'); // Menggunakan modal yang sudah ada
+    // These are now handled inside showPaymentModal
     const closePaymentModalBtn = document.getElementById('close-payment-modal-btn');
     const cancelPaymentModalBtn = document.getElementById('cancel-payment-modal-btn');
     const confirmPaymentBtn = document.getElementById('confirm-payment-btn');
@@ -2354,7 +2352,7 @@ const renderCashFlowChart = (data) => {
         }
     
         // Simpan data pesanan yang valid untuk diselesaikan nanti
-        // orderToComplete is now global
+        orderToComplete = orderData;
     
         // Tampilkan data ke elemen HTML
         document.getElementById('cashier-order-id').textContent = orderData.orderId;
@@ -2390,7 +2388,6 @@ const renderCashFlowChart = (data) => {
         const modal = document.getElementById('cashier-verification-modal');
         if (!modal) return;
     
-        const cashierProceedToPaymentBtn = document.getElementById('cashier-proceed-to-payment-btn');
         const closeBtn = document.getElementById('close-cashier-verification-modal');
         const barcodeInput = document.getElementById('cashier-barcode-input');
     
@@ -2425,6 +2422,7 @@ const renderCashFlowChart = (data) => {
         });    
 
         // Handle "Lanjutkan ke Pembayaran" button
+        const cashierProceedToPaymentBtn = document.getElementById('cashier-proceed-to-payment-btn');
         cashierProceedToPaymentBtn?.addEventListener('click', async () => {
             if (!orderToComplete || !orderToComplete.orderId) {
                 alert('Tidak ada pesanan yang terverifikasi untuk diselesaikan.');
@@ -2433,7 +2431,9 @@ const renderCashFlowChart = (data) => {
     
             // Close the verification modal
             modal.classList.add('hidden');
-            if (html5QrCode && html5QrCode.isScanning) html5QrCode.stop();
+            if (html5QrCode && html5QrCode.isScanning) {
+                html5QrCode.stop().catch(err => console.log("QR scanner stop failed, likely already stopped."));
+            }
             
             // Panggil fungsi modal pembayaran yang sudah direfaktor
             showPaymentModal(orderToComplete.total, orderToComplete.orderId);
@@ -2442,7 +2442,7 @@ const renderCashFlowChart = (data) => {
         // QR Scanner Logic
         const startScanBtn = document.getElementById('start-scan-btn');
         if (startScanBtn) {
-            startScanBtn.addEventListener('click', () => { // FIX: Use correct function name
+            startScanBtn.addEventListener('click', () => {
                 if (!html5QrCode) {
                     html5QrCode = new Html5Qrcode("qr-reader");
                 }
@@ -2617,7 +2617,7 @@ const renderCashFlowChart = (data) => {
     };
 
     // --- FUNGSI UNTUK KASIR UMUM (NON-ANGGOTA) ---
-    const setupDirectCashier = () => {
+    const setupDirectCashier = async () => {
         const productGrid = document.getElementById('direct-cashier-product-grid'); // FIX: Use correct element ID
         const totalEl = document.getElementById('direct-cashier-total');
         const completeBtn = document.getElementById('direct-cashier-complete-btn');
@@ -2668,10 +2668,15 @@ const renderCashFlowChart = (data) => {
         };
         const addToCart = (productId, quantity = 1) => {
             const selectedProduct = directCashierProducts.find(p => p.id.toString() === productId);
-            if (!selectedProduct) return;
+            if (!selectedProduct || selectedProduct.stock <= 0) return;
 
             const existingItem = directCart.find(item => item.productId === selectedProduct.id);
             if (existingItem) {
+                // Check against available stock
+                if (existingItem.quantity >= selectedProduct.stock) {
+                    alert(`Stok untuk ${selectedProduct.name} tidak mencukupi.`);
+                    return;
+                }
                 existingItem.quantity += quantity;
             } else {
                 directCart.push({ productId: selectedProduct.id, name: selectedProduct.name, price: selectedProduct.price, quantity });
@@ -2684,7 +2689,12 @@ const renderCashFlowChart = (data) => {
             if (!item) return;
 
             if (action === 'increase') {
-                item.quantity++;
+                const productInStock = directCashierProducts.find(p => p.id === item.productId);
+                if (item.quantity < productInStock.stock) {
+                    item.quantity++;
+                } else {
+                    alert(`Stok untuk ${item.name} tidak mencukupi.`);
+                }
             } else if (action === 'decrease') {
                 item.quantity--;
                 if (item.quantity <= 0) {
@@ -2694,12 +2704,10 @@ const renderCashFlowChart = (data) => {
             renderDirectCart();
         };
 
-        // FIX: Cek apakah event listener sudah pernah ditambahkan.
-        // Jika sudah, jangan tambahkan lagi untuk mencegah duplikasi.
         if (productGrid.dataset.listenerAttached === 'true') {
-            return; // Hentikan eksekusi fungsi jika listener sudah ada.
+            return;
         }
-        productGrid.dataset.listenerAttached = 'true'; // Tandai bahwa listener sudah ditambahkan.
+        productGrid.dataset.listenerAttached = 'true';
 
         productGrid.addEventListener('click', (e) => {
             const button = e.target.closest('.add-to-direct-cart-btn');
@@ -2711,7 +2719,7 @@ const renderCashFlowChart = (data) => {
 
         cartBody.addEventListener('click', (e) => {
             if (e.target.closest('.remove-direct-cart-item-btn')) {
-                const index = parseInt(e.target.dataset.index, 10);
+                const index = parseInt(e.target.closest('.remove-direct-cart-item-btn').dataset.index, 10);
                 directCart.splice(index, 1);
                 renderDirectCart();
             }
@@ -2731,10 +2739,15 @@ const renderCashFlowChart = (data) => {
         });
 
         // Initial load
-        apiFetch(`${ADMIN_API_URL}/products?shop=sembako`).then(products => {
+        try {
+            const products = await apiFetch(`${ADMIN_API_URL}/products?shop=sembako`);
             directCashierProducts = products;
             renderProductGrid();
-        });
+        } catch (error) {
+            console.error("Failed to load products for direct cashier:", error);
+            productGrid.innerHTML = `<p class="col-span-full text-center text-red-500">Gagal memuat produk.</p>`;
+        }
+
 
         searchInput.addEventListener('input', renderProductGrid);
     };
@@ -3001,22 +3014,33 @@ const renderCashFlowChart = (data) => {
             const body = {};
             fields.forEach(field => {
                 // The original selector logic was too generic and failed on complex field names.
-                // This new logic is more robust.
                 const dashedField = field.replace(/_/g, '-');
                 
                 // 1. Try a more specific selector first, looking for an ID that ENDS with the field name.
                 // e.g., for 'account_number', it looks for an ID ending in 'account-number-input'.
                 let element = form.querySelector(`[id$="${dashedField}-input"]`) || form.querySelector(`[id$="${dashedField}-select"]`);
 
-                // 2. Add a special case for inconsistent IDs like 'parent-account-select' for the 'parent_id' field.
+                // 2. Add special cases for inconsistent IDs
                 if (field === 'parent_id' && !element) {
                     element = form.querySelector('#parent-account-select');
                 }
-                // FIX: Tambahkan kasus khusus untuk dropdown tipe pinjaman di modal tenor
                 if (field === 'loan_type_id' && !element) {
                     element = form.querySelector('#loan-term-loantype-select');
                 }
-                // FIX: Add specific selectors for loan term modal fields that don't follow the generic pattern
+                if (field === 'name' && endpoint === 'accounttypes' && !element) {
+                    element = form.querySelector('#account-type-name-input');
+                }
+                if (field === 'name' && endpoint === 'suppliers' && !element) {
+                    element = form.querySelector('#name-input');
+                }
+                if (field === 'contact_person' && !element) {
+                    element = form.querySelector('#contact-person-input');
+                }
+                if (field === 'phone' && endpoint === 'suppliers' && !element) {
+                    element = form.querySelector('#phone-input');
+                }
+
+                // Special cases for loan term modal
                 if (field === 'tenor_months' && !element) {
                     element = form.querySelector('#loan-term-tenor-input');
                 }
@@ -3026,12 +3050,9 @@ const renderCashFlowChart = (data) => {
 
                 if (element) {
                     if (element.type === 'checkbox') {
-                        // FIX: Kirim boolean, bukan string. Backend modern biasanya bisa menangani ini.
                         body[field] = element.checked;
                     } else if (element.type === 'number') {
                         // Sanitize number input: replace comma with dot for decimal values
-                        // This handles locales where comma is used as a decimal separator.
-                        // FIX: Ensure value is a string before calling replace to avoid errors on empty inputs.
                         body[field] = String(element.value).replace(',', '.');
                     } else {
                         body[field] = element.value;
@@ -3039,7 +3060,7 @@ const renderCashFlowChart = (data) => {
                 }
             });
 
-        // --- FIX: Check for file inputs and switch to FormData if necessary ---
+        // Check for file inputs and switch to FormData if necessary
         const fileInputs = fields.map(field => {
             const dashedField = field.replace(/_/g, '-');
             return form.querySelector(`[id$="${dashedField}-input"][type="file"]`);
@@ -3053,8 +3074,7 @@ const renderCashFlowChart = (data) => {
 
         if (useFormData) {
             requestBody = new FormData();
-            // FIX: Append all simple fields to FormData directly from the 'body' object
-            // This ensures all text data is included, even when no new file is uploaded.
+            // Append all simple fields to FormData directly from the 'body' object
             for (const key in body) {
                 requestBody.append(key, body[key]);
             }
@@ -3098,15 +3118,17 @@ const renderCashFlowChart = (data) => {
                     const dashedField = field.replace(/_/g, '-');
                     
                     // 1. Coba selector yang lebih spesifik, mencari ID yang BERAKHIR dengan nama field.
-                    let inputElement = form.querySelector(`[id$="${dashedField}-input"]`) || form.querySelector(`[id$="${dashedField}-select"]`);
+                let inputElement = form.querySelector(`[id$="${dashedField}-input"]`) || form.querySelector(`[id$="${dashedField}-select"]`);
 
                     // 2. Tambahkan kasus khusus untuk ID yang tidak konsisten seperti 'parent-account-select'.
-                    if (field === 'parent_id' && !inputElement) {
-                        inputElement = form.querySelector('#parent-account-select');
-                    }
-                // FIX: Tambahkan kasus khusus untuk dropdown tipe pinjaman di modal tenor
+                if (field === 'parent_id' && !inputElement) {
+                    inputElement = form.querySelector('#parent-account-select');
+                }
                 if (field === 'loan_type_id' && !inputElement) {
                     inputElement = form.querySelector('#loan-term-loantype-select');
+                }
+                if (field === 'name' && endpoint === 'accounttypes' && !inputElement) {
+                    inputElement = form.querySelector('#account-type-name-input');
                 }
 
                     if (inputElement) {
@@ -3240,14 +3262,12 @@ const renderCashFlowChart = (data) => {
         endpoint: 'employers',
         title: 'Perusahaan',
         fields: ['name', 'address', 'phone', 'contract_number', 'document_url'],
-        renderRow: (item, role) => `
+        renderRow: (item) => `
             <tr>
-                <!-- FIX: Add missing table cells for address and phone -->
                 <td class="px-6 py-4 text-sm text-gray-900">${item.name}</td>
                 <td class="px-6 py-4 text-sm text-gray-500">${item.address || '-'}</td>
                 <td class="px-6 py-4 text-sm text-gray-500">${item.phone || '-'}</td>
                 <td class="px-6 py-4 text-sm text-gray-500">${item.contract_number || '-'}</td>
-                <!-- FIX: Use the correct base URL for document links -->
                 <td class="px-6 py-4 text-sm text-gray-500">
                     ${item.document_url ? `<a href="${item.document_url}" target="_blank" rel="noopener noreferrer" class="text-blue-600 hover:underline">Lihat Dokumen</a>` : '-'}
                 </td>
@@ -3267,7 +3287,7 @@ const renderCashFlowChart = (data) => {
         endpoint: 'positions',
         title: 'Jabatan',
         fields: ['name'],
-        renderRow: (item, role) => `
+        renderRow: (item) => `
             <tr>
                 <td class="px-6 py-4 text-sm text-gray-900">${item.name}</td>
                 <td class="px-6 py-4 text-sm font-medium space-x-2">
@@ -3286,7 +3306,7 @@ const renderCashFlowChart = (data) => {
         endpoint: 'savingtypes',
         title: 'Tipe Simpanan',
         fields: ['name', 'description'],
-        renderRow: (item, role) => `
+        renderRow: (item) => `
             <tr>
                 <td class="px-6 py-4 text-sm text-gray-900">${item.name}</td>
                 <td class="px-6 py-4 text-sm text-gray-500">${item.description || '-'}</td>
@@ -3306,7 +3326,7 @@ const renderCashFlowChart = (data) => {
         endpoint: 'loantypes',
         title: 'Tipe Pinjaman',
         fields: ['name', 'description'],
-        renderRow: (item, role) => `
+        renderRow: (item) => `
             <tr>
                 <td class="px-6 py-4 text-sm text-gray-900">${item.name}</td>
                 <td class="px-6 py-4 text-sm text-gray-500">${item.description || '-'}</td>
@@ -3336,7 +3356,7 @@ const renderCashFlowChart = (data) => {
                 select.value = item.loan_type_id;
             // Isi nilai untuk tenor dan bunga secara manual
             document.getElementById('loan-term-tenor-input').value = item.tenor_months;
-            document.getElementById('loan-term-interest-input').value = item.interest_rate;
+            document.getElementById('loan-term-interest-input').value = item.interest_rate; // This was missing
         },
         renderRow: (item, role) => `
             <tr>
@@ -3401,13 +3421,11 @@ const renderCashFlowChart = (data) => {
         addBtn: document.getElementById('show-add-account-type-form-btn'),
         endpoint: 'accounttypes',
         title: 'Tipe Akun',
-        fields: ['name'],
-        // FIX: onEdit ditambahkan untuk menangani nama field yang tidak standar di modal
+        fields: ['name'], // Only one field
         onEdit: (item) => {
-            // ID input di modal adalah 'account-type-name-input', bukan 'name-input'
             const nameInput = document.getElementById('account-type-name-input');
             if (nameInput) {
-                nameInput.value = item.name;
+                nameInput.value = item.name; // Correctly set the value
             }
         },
         renderRow: (item, role) => `
@@ -6346,7 +6364,7 @@ const renderCashFlowChart = (data) => {
         // --- FIX: Ambil judul halaman dari elemen yang diklik ---
         let pageTitleText = 'Beranda';
         if (clickedLink) {
-            // Kartu biasanya punya <h3>, link sidebar punya <span>
+            // Kartu punya <h3>, link sidebar punya <span>
             const titleElement = clickedLink.querySelector('h3, span');
             if (titleElement) pageTitleText = titleElement.textContent.trim();
         }

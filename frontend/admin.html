@@ -2042,7 +2042,7 @@
     <div id="payment-method-modal" class="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full hidden z-50 p-4">
         <div class="relative top-20 mx-auto p-5 border w-full max-w-lg shadow-lg rounded-md bg-white">
             <div class="flex justify-between items-center pb-3 border-b">
-                <h3 class="text-lg font-semibold text-gray-900">Pilih Metode Pembayaran</h3>
+                <h3 class="text-lg font-semibold text-gray-900" id="payment-modal-title">Pilih Metode Pembayaran</h3>
                 <button id="close-payment-modal-btn" class="text-gray-400 hover:text-gray-600">&times;</button>
             </div>
             <div class="mt-4 space-y-6">
@@ -2064,7 +2064,7 @@
             </div>
             <div class="flex justify-end space-x-2 pt-6 border-t mt-6">
                 <button type="button" id="cancel-payment-modal-btn" class="bg-gray-200 text-gray-700 py-2 px-4 rounded-md hover:bg-gray-300">Batal</button>
-                <button type="button" id="confirm-payment-btn" class="bg-red-600 text-white py-2 px-4 rounded-md hover:bg-red-700">Konfirmasi Pembayaran</button>
+                <button type="button" id="confirm-payment-btn" class="bg-red-600 text-white py-2 px-4 rounded-md hover:bg-red-700">Konfirmasi</button>
             </div>
         </div>
     </div>
@@ -2533,7 +2533,7 @@
     <div id="logistics-modal" class="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full hidden z-50">
         <div class="relative top-10 mx-auto p-5 border w-full max-w-2xl shadow-lg rounded-md bg-white">
             <div class="flex justify-between items-center pb-3 border-b"><h3 id="logistics-modal-title" class="text-lg font-semibold text-gray-900"></h3><button id="close-logistics-modal" class="text-gray-400 hover:text-gray-600">&times;</button></div>
-            <form id="logistics-form" class="mt-4 space-y-4">
+            <form id="logistics-form" class="mt-4 space-y-4" data-original-ref="">
                 <input type="hidden" id="logistics-id-input">
                 <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
                     <div><label for="logistics-entry_date-input" class="block text-sm font-medium text-gray-700">Tanggal</label><input type="date" id="logistics-entry_date-input" required class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-red-500 focus:ring-red-500"></div>
