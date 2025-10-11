@@ -44,7 +44,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
             // If an element requires a permission, we check if the user has it.
             // The 'admin' role bypasses this check as it has all permissions.
-            if (requiredPermission && userRole !== 'admin') {
+            if (requiredPermission) {
                 if (hasPerm(requiredPermission)) {
                     el.classList.remove('hidden'); // Show element if permission exists
                 } else {
