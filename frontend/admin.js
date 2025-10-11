@@ -89,7 +89,7 @@ document.addEventListener('DOMContentLoaded', () => {
         return "Baru saja";
     };
 
-    const apiFetch = async (endpoint, options = {}, retries = 1, timeout = 30000) => {
+    const apiFetch = async (endpoint, options = {}, retries = 1, timeout = 60000) => {
         const currentToken = localStorage.getItem('token');
         const headers = { 'Authorization': `Bearer ${currentToken}`, ...options.headers };
 
@@ -148,11 +148,15 @@ document.addEventListener('DOMContentLoaded', () => {
 
             return responseData; // Return the parsed JSON data directly.
         } catch (error) {
-            // --- IMPROVEMENT: Better error classification ---
-            if (error.name === 'AbortError') {
-                // This error is thrown when the timeout is reached
-                throw new Error(`Permintaan ke server memakan waktu terlalu lama (timeout).`);
+            // --- IMPROVEMENT: Retry on timeout (AbortError) for cold starts ---
+            if (error.name === 'AbortError' && retries > 0) {
+                console.warn(`Request timed out. Retrying... (${retries} attempts left)`);
+                await new Promise(res => setTimeout(res, 1000));
+                return apiFetch(endpoint, options, retries - 1, timeout);
+            } else if (error.name === 'AbortError') {
+                throw new Error('Permintaan ke server memakan waktu terlalu lama (timeout).');
             }
+
             if (error instanceof TypeError && error.message === 'Failed to fetch') {
                 if (retries > 0) {
                 console.warn(`Network error detected. Retrying... (${retries} attempts left)`);
