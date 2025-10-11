@@ -33,32 +33,6 @@ document.addEventListener('DOMContentLoaded', () => {
     // Helper function to check permissions
     const hasPerm = (key) => userPermissions.has(key);
 
-    const applyUIPermissions = () => {
-        // Sembunyikan menu Beranda khusus untuk Kasir
-        if (userRole === 'kasir') {
-            document.querySelector('.sidebar-link[data-target="dashboard"]')?.remove();
-        } else if (!hasPerm('viewDashboard')) { // Untuk role lain, sembunyikan jika tidak ada izin
-            document.querySelector('.sidebar-link[data-target="dashboard"]')?.remove();
-        }
-        // Sembunyikan menu berdasarkan hak akses yang diperlukan
-        if (!hasPerm('viewApprovals')) document.querySelector('.sidebar-link[data-target="approvals"]')?.remove();
-        if (!hasPerm('viewMembers')) document.querySelector('.sidebar-link[data-target="members"]')?.remove(); // FIX: This line was duplicated and incorrect.
-        if (!hasPerm('viewSavings')) document.querySelector('.sidebar-link[data-target="savings"]')?.remove();
-        if (!hasPerm('viewLoans')) document.querySelector('.sidebar-link[data-target="loans"]')?.remove();
-        // Sembunyikan kartu ringkasan di dasbor jika tidak memiliki hak akses
-        if (!hasPerm('viewMembers')) document.querySelector('#total-members')?.closest('.bg-white')?.remove();
-        if (!hasPerm('viewSavings')) document.querySelector('#total-savings')?.closest('.bg-white')?.remove();
-        if (!hasPerm('viewLoans')) document.querySelector('#total-loans')?.closest('.bg-white')?.remove();
-        if (!hasPerm('viewApprovals')) document.querySelector('#pending-members-count')?.closest('.bg-white')?.remove();
-        // Hide sidebar links based on permissions
-        if (!hasPerm('viewUsahaKoperasi')) document.querySelector('.sidebar-link[data-target="usaha-koperasi"]')?.remove();
-        if (!hasPerm('viewAccounting')) document.querySelector('.sidebar-link[data-target="accounting"]')?.remove();
-        if (!hasPerm('viewReports')) document.querySelector('.sidebar-link[data-target="reports"]')?.remove();
-        if (!hasPerm('viewSettings')) document.querySelector('.sidebar-link[data-target="settings"]')?.parentElement.remove();
-        if (!hasPerm('manageTestimonials')) document.querySelector('.settings-card-link[data-target="testimonials"]')?.remove();
-        if (!hasPerm('manageUsers')) document.querySelector('.settings-card-link[data-target="manage-users-roles"]')?.remove();
-    };
-
     const checkAdminAuth = async () => {
         if (!token || !['admin', 'akunting', 'manager', 'kasir'].includes(userRole)) {
             alert('Akses ditolak. Silakan masuk sebagai staf.');
