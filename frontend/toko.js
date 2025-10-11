@@ -165,6 +165,29 @@ document.addEventListener('DOMContentLoaded', () => {
         `;
     };
 
+    const handleCategoryDisplay = () => {
+        const params = new URLSearchParams(window.location.search);
+        const category = params.get('category');
+
+        // Hapus kelas 'active' dari semua link kategori
+        if (categoryNav) {
+            categoryNav.querySelectorAll('.category-link').forEach(l => l.classList.remove('active'));
+        }
+
+        if (category && categoryNav) {
+            // Jika ada kategori di URL, tampilkan produknya
+            const activeLink = categoryNav.querySelector(`.category-link[data-category="${category}"]`);
+            if (activeLink) {
+                activeLink.classList.add('active');
+            }
+            filterProductsByCategory(category);
+        } else {
+            // Jika tidak ada kategori di URL, tampilkan pesan awal
+            if (productGrid) {
+                productGrid.innerHTML = `<p class="col-span-full text-center text-gray-500 py-8">Silakan pilih kategori di atas untuk melihat produk.</p>`;
+            }
+        }
+    };
     const displayProducts = (productsToDisplay) => {
         if (!productGrid) return;
         productGrid.innerHTML = ''; // Kosongkan grid
@@ -223,12 +246,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 return;
             }
 
-            // Jangan tampilkan produk apa pun pada awalnya.
-            // Tampilkan pesan untuk meminta pengguna memilih kategori.
-            if (productGrid) {
-                productGrid.innerHTML = `<p class="col-span-full text-center text-gray-500 py-8">Silakan pilih kategori di atas untuk melihat produk.</p>`;
-            }
-
+            handleCategoryDisplay(); // Tampilkan konten berdasarkan URL saat halaman dimuat
         } catch (error) {
             console.error('Error:', error);
             productGrid.innerHTML = `<p class="col-span-full text-center text-red-500">Terjadi kesalahan saat memuat produk.</p>`;
@@ -248,14 +266,18 @@ document.addEventListener('DOMContentLoaded', () => {
             const link = e.target.closest('.category-link');
             if (!link) return;
 
-            // Hapus kelas aktif dari semua link
-            categoryNav.querySelectorAll('.category-link').forEach(l => l.classList.remove('active'));
-
-            // Tambahkan kelas aktif ke link yang diklik
-            link.classList.add('active');
-
             const category = link.dataset.category;
-            filterProductsByCategory(category);
+            const url = new URL(window.location);
+            url.searchParams.set('category', category);
+
+            // Gunakan history.pushState untuk mengubah URL tanpa memuat ulang halaman
+            history.pushState({ category: category }, '', url);
+
+            // Tampilkan produk berdasarkan kategori yang baru dipilih
+            handleCategoryDisplay();
         });
     }
+
+    // Tambahkan event listener untuk tombol back/forward browser
+    window.addEventListener('popstate', handleCategoryDisplay);
 });
