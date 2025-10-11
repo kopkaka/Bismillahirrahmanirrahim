@@ -916,12 +916,17 @@ const deleteItem = (tableName) => async (req, res) => {
         // Return 204 No Content on successful deletion for RESTful consistency.
         res.status(204).send();
     } catch (err) {
-        console.error(`Error deleting from ${tableName}:`, err.message);
-        // Check for foreign key violation
+        console.error(`Error deleting from ${tableName} with ID ${id}:`, err);
+
+        // FIX: Improve foreign key violation handling.
+        // This error code ('23503') indicates that the row is still referenced by another table.
+        // This is a more robust way to handle the 500 error you're seeing.
         if (err.code === '23503') {
-            return res.status(400).json({ error: 'Gagal menghapus. Data ini masih digunakan oleh data lain.' });
+            // Provide a more user-friendly message.
+            return res.status(400).json({ error: `Gagal menghapus. Data ini masih digunakan oleh data lain (misalnya, oleh seorang anggota). Ubah atau hapus data terkait terlebih dahulu.` });
         }
-        res.status(500).json({ error: 'Gagal menghapus item.' });
+        // For any other errors, send a generic 500 status.
+        res.status(500).json({ error: 'Terjadi kesalahan pada server saat menghapus item.' });
     }
 };
 
