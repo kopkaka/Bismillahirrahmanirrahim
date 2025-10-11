@@ -147,8 +147,8 @@ router.delete('/logistics-by-ref/:ref', protect, authorize(logisticsPermission),
 // Endpoint ini dibuat lebih permisif agar semua role staf (admin, akunting, manager) bisa memuat info header.
 // Otorisasi spesifik (viewSettings) hanya diperlukan untuk mengubah data (PUT).
 router.get('/company-info', protect, adminController.getCompanyInfo); // Menggunakan adminController yang sudah di-refactor
-router.put('/company-info', protect, authorize(['manageCooperativeProfile']), upload.single('logo'), adminController.updateCompanyInfo);
- 
+router.put('/company-info', protect, authorize(['manageCooperativeProfile']), upload.single('logo'), adminController.updateCompanyInfo); // Izin sudah benar untuk admin
+
 // Testimonial Management
 const testimonialPermission = ['manageTestimonials']; // Izin untuk testimoni
 router.get('/testimonials', protect, authorize(testimonialPermission), adminController.getTestimonials);
