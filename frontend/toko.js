@@ -211,7 +211,9 @@ document.addEventListener('DOMContentLoaded', () => {
             ac: ['ac', 'air conditioner', 'pendingin'],
             mesin_cuci: ['mesin cuci', 'washing machine'],
             handphone: ['handphone', 'smartphone', 'iphone', 'samsung', 'oppo', 'vivo', 'xiaomi'],
-            komputer: ['laptop', 'komputer', 'pc', 'notebook']
+            komputer: ['laptop', 'komputer', 'pc', 'notebook'],
+            produktivitas: ['microsoft', 'office', 'lisensi'],
+            desain: ['adobe', 'creative cloud', 'photoshop', 'illustrator']
         };
 
         if (category === 'all') {

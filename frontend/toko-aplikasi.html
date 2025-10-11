@@ -8,15 +8,15 @@
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="style.css">
 </head>
-<body class="bg-cream flex flex-col min-h-screen">
+<body class="bg-gray-100 flex flex-col min-h-screen">
 
-    <header class="bg-red-900 shadow-md sticky top-0 z-50">
+    <header class="bg-white shadow-md sticky top-0 z-50">
         <nav class="container mx-auto px-6 py-3 flex justify-between items-center">
             <a href="index.html" class="flex items-center space-x-3">
                 <img src="logo/logo.png" alt="Logo KOPKAKA" class="h-8 w-auto">
-                <span class="text-2xl font-bold text-white">KOPKAKA</span>
+                <span class="text-2xl font-bold text-accent">KOPKAKA</span>
             </a>
-            <a href="index.html#hero" class="bg-white text-red-900 hover:bg-gray-200 transition-colors px-4 py-2 rounded-lg font-semibold">
+            <a href="index.html" class="bg-accent text-white hover:bg-red-800 transition-colors px-4 py-2 rounded-lg font-semibold">
                 Kembali ke Beranda
             </a>
         </nav>
@@ -24,40 +24,68 @@
 
     <main class="flex-grow">
         <!-- Hero Section -->
-        <section class="relative bg-cover bg-center" style="background-image: url('https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcQw4iWSc9o6s1xGMv-_3Ba7jmplZZwBVTqH7g&s');">
-            <div class="absolute inset-0 bg-black/60"></div> <!-- Overlay -->
-            <div class="relative container mx-auto px-6 py-20 text-center text-white">
+        <section class="relative bg-cover bg-center h-64 md:h-80" style="background-image: url('https://images.unsplash.com/photo-1555949963-ff9fe0c870eb?q=80&w=2070&auto=format&fit=crop');">
+            <div class="absolute inset-0 bg-black/50"></div> <!-- Overlay -->
+            <div class="relative container mx-auto px-6 h-full flex flex-col justify-center items-center text-center text-white">
                 <h1 class="text-4xl md:text-5xl font-extrabold tracking-tight">Toko Aplikasi & Lisensi</h1>
                 <p class="mt-4 max-w-2xl mx-auto text-lg text-gray-300">Solusi digital dan software original untuk menunjang produktivitas dan kreativitas Anda.</p>
             </div>
         </section>
 
         <div class="container mx-auto px-6 py-12">
+            <div class="flex flex-col lg:flex-row gap-8">
+                <!-- Sidebar untuk Kategori -->
+                <aside id="category-sidebar" class="fixed top-0 left-0 h-full w-72 bg-white shadow-xl z-[60] transform -translate-x-full transition-transform duration-300 ease-in-out lg:relative lg:translate-x-0 lg:w-1/4 xl:w-1/5 lg:h-auto lg:shadow-md lg:rounded-lg">
+                    <div class="p-4 sticky top-0 lg:top-24">
+                        <button id="close-category-sidebar-btn" class="absolute top-3 right-3 lg:hidden text-gray-500 hover:text-gray-800">&times;</button>
+                        <h2 class="text-lg font-bold text-gray-800 mb-4 pb-2 border-b">Kategori Aplikasi</h2>
+                        <nav id="category-navigation" class="flex flex-col space-y-2">
+                            <a href="#" class="category-link flex items-center space-x-3 p-3 rounded-md hover:bg-red-50 text-gray-700" data-category="all">
+                                <img src="https://img.icons8.com/fluency/48/online-store.png" class="h-6 w-6" alt="Toko Icon"/>
+                                <span class="font-semibold">Semua Aplikasi</span>
+                            </a>
+                            <a href="#" class="category-link flex items-center space-x-3 p-3 rounded-md hover:bg-red-50 text-gray-700" data-category="produktivitas">
+                                <img src="https://img.icons8.com/fluency/48/ms-office.png" class="h-6 w-6" alt="Productivity Icon"/>
+                                <span class="font-semibold">Produktifitas</span>
+                            </a>
+                            <a href="#" class="category-link flex items-center space-x-3 p-3 rounded-md hover:bg-red-50 text-gray-700" data-category="desain">
+                                <img src="https://img.icons8.com/fluency/48/adobe-photoshop.png" class="h-6 w-6" alt="Design Icon"/>
+                                <span class="font-semibold">Desain & Kreatif</span>
+                            </a>
+                        </nav>
+                    </div>
+                </aside>
 
-            <!-- Promotional Section -->
-           <div class="relative bg-gradient-to-r from-green-500 to-teal-500 text-white p-8 rounded-xl shadow-2xl mb-16 overflow-hidden">
-                <div class="absolute -right-10 -bottom-10">
-                    <svg class="w-48 h-48 text-white/20" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v.01M12 6v-1m0-1V4m0 2.01M12 14v4m0 0v1m0-1.01M12 16.01V14m0 6a9 9 0 110-18 9 9 0 010 18z"></path></svg>
-                </div>
-                <div class="relative z-10">
-                    <h2 class="text-2xl font-bold">Program Mitra Penjualan: Raih Keuntungan Ekstra!</h2>
-                    <p class="mt-2 text-lg">
-                        Setiap anggota yang berhasil menjual produk aplikasi akan mendapatkan komisi sebesar <strong class="text-4xl font-extrabold">19%</strong> dari harga jual!
-                    </p>
-                    <p class="mt-4 font-semibold">
-                        Keuntungan akan langsung kami tambahkan ke saldo <strong>Simpanan Sukarela</strong> Anda. Ayo, tawarkan ke rekan Anda dan tingkatkan tabungan Anda bersama KOPKAKA!
-                    </p>
+                <!-- Konten Produk -->
+                <div class="w-full lg:w-3/4 xl:w-4/5">
+                    <!-- Promotional Section -->
+                    <div class="relative bg-gradient-to-r from-green-500 to-teal-500 text-white p-8 rounded-xl shadow-2xl mb-12 overflow-hidden">
+                        <div class="absolute -right-10 -bottom-10"><svg class="w-48 h-48 text-white/20" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v.01M12 6v-1m0-1V4m0 2.01M12 14v4m0 0v1m0-1.01M12 16.01V14m0 6a9 9 0 110-18 9 9 0 010 18z"></path></svg></div>
+                        <div class="relative z-10">
+                            <h2 class="text-2xl font-bold">Program Mitra Penjualan: Raih Keuntungan Ekstra!</h2>
+                            <p class="mt-2 text-lg">Setiap anggota yang berhasil menjual produk aplikasi akan mendapatkan komisi sebesar <strong class="text-4xl font-extrabold">19%</strong> dari harga jual!</p>
+                            <p class="mt-4 font-semibold">Keuntungan akan langsung kami tambahkan ke saldo <strong>Simpanan Sukarela</strong> Anda. Ayo, tawarkan ke rekan Anda dan tingkatkan tabungan Anda bersama KOPKAKA!</p>
+                        </div>
+                    </div>
+
+                    <!-- Product Grid Section -->
+                    <section id="katalog">
+                        <div class="flex items-center justify-between mb-6">
+                            <h2 class="text-2xl font-bold text-gray-800">Katalog Produk</h2>
+                            <button id="open-category-sidebar-btn" class="lg:hidden flex items-center space-x-2 px-4 py-2 bg-white border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 hover:bg-gray-50">
+                                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M3 5a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zM3 10a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zM3 15a1 1 0 011-1h6a1 1 0 110 2H4a1 1 0 01-1-1z" clip-rule="evenodd" /></svg>
+                                <span>Kategori</span>
+                            </button>
+                        </div>
+                        <div id="product-grid" class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+                            <!-- Products will be loaded here by toko.js -->
+                        </div>
+                    </section>
                 </div>
             </div>
-
-           <!-- Product Grid Section -->
-            <section id="katalog">
-                <h2 class="text-3xl font-bold text-gray-800 mb-8">Katalog Produk</h2>
-                <div id="product-grid" class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-6">
-                    <!-- Products will be loaded here by toko.js -->
-                </div>
-            </section>
         </div>
+        <!-- Overlay untuk sidebar mobile -->
+        <div id="category-sidebar-overlay" class="fixed inset-0 bg-black bg-opacity-50 z-50 hidden lg:hidden"></div>
     </main>
 
     <!-- Cooperative Number Modal -->
