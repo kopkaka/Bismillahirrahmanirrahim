@@ -150,7 +150,7 @@ router.get('/company-info', protect, adminController.getCompanyInfo); // Menggun
 router.put('/company-info', protect, authorize(['manageCooperativeProfile']), upload.single('logo'), adminController.updateCompanyInfo);
 
 // Testimonial Management
-const testimonialPermission = ['viewSettings'];
+const testimonialPermission = ['manageTestimonials'];
 router.get('/testimonials', protect, authorize(testimonialPermission), adminController.getTestimonials);
 router.get('/testimonials/:id', protect, authorize(testimonialPermission), adminController.getTestimonialById);
 router.post('/testimonials', protect, authorize(testimonialPermission), upload.single('testimonialPhoto'), adminController.createTestimonial);
@@ -193,7 +193,7 @@ router.get('/reports/monthly-closing-status', protect, authorize(['viewReports']
 router.get('/reports/cashier', protect, authorize(['viewUsahaKoperasi', 'viewReports']), adminController.getCashierReport);
 
 // SHU Rules Management
-router.get('/shu-rules/:year', protect, authorize(['manageShuRules', 'postSHU']), adminController.getShuRules);
+router.get('/shu-rules/:year', protect, authorize(['manageShuRules', 'postSHU']), adminController.getShuRules); // Tetap gunakan adminController
 router.post('/shu-rules', protect, authorize(['manageShuRules']), adminController.saveShuRules);
 
 // SHU Posting
