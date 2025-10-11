@@ -3039,11 +3039,38 @@ const renderCashFlowChart = (data) => {
                 }
             });
 
+        // --- FIX: Check for file inputs and switch to FormData if necessary ---
+        const fileInputs = fields.map(field => {
+            const dashedField = field.replace(/_/g, '-');
+            return form.querySelector(`[id$="${dashedField}-input"][type="file"]`);
+        }).filter(Boolean); // Filter out nulls
+
+        let requestBody;
+        let useFormData = fileInputs.some(input => input.files.length > 0);
+
+        if (useFormData) {
+            requestBody = new FormData();
+            // Append all simple fields to FormData
+            for (const key in body) {
+                requestBody.append(key, body[key]);
+            }
+            // Append file(s)
+            fileInputs.forEach(input => {
+                if (input.files[0]) {
+                    // The key should match the field name, e.g., 'document_url' -> 'document_url'
+                    const fieldName = input.id.match(/-(.*?)-input/)[1].replace(/-/g, '_');
+                    requestBody.append(fieldName, input.files[0]);
+                }
+            });
+        } else {
+            requestBody = JSON.stringify(body);
+        }
+
             const url = id ? `${finalEndpoint}/${id}` : `${finalEndpoint}`;
             const method = id ? 'PUT' : 'POST';
 
             try {
-                await apiFetch(url, { method, body: JSON.stringify(body) });
+            await apiFetch(url, { method, body: requestBody });
                 modal.classList.add('hidden');
                 loadData();
             } catch (error) { alert(error.message); }
