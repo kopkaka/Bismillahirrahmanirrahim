@@ -200,10 +200,6 @@ document.addEventListener('DOMContentLoaded', () => {
             return;
         }
         productsToDisplay.forEach(product => {
-            // Jika kategori adalah 'all', jangan tampilkan produk elektronik
-            if (category === 'all' && product.shop_type === 'elektronik') {
-                return;
-            }
             productGrid.innerHTML += createProductCard(product);
         });
     };
