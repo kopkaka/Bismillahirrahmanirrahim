@@ -28,6 +28,8 @@ const supplierRoutes = require('./supplier.routes.js');
 
 // Dashboard
 router.get('/stats', protect, authorize(['viewDashboard']), adminController.getDashboardStats);
+// New endpoint to load all initial dashboard data in one call
+router.get('/initial-data', protect, authorize(['viewDashboard']), adminController.getInitialAdminData);
 router.get('/cashflow-summary', protect, authorize(['viewDashboard']), adminController.getCashFlowSummary);
 router.get('/member-growth', protect, authorize(['viewDashboard']), adminController.getMemberGrowth);
 router.get('/balance-sheet-summary', protect, authorize(['viewDashboard']), adminController.getBalanceSheetSummary);
@@ -100,6 +102,9 @@ router.put('/members/:id',
 // Role & Permission Management
 router.get('/permissions', protect, authorize(['viewSettings']), adminController.getAllPermissions);
 router.get('/roles/:roleName/permissions', protect, authorize(['viewSettings']), adminController.getRolePermissions);
+// FIX: Register the route for admins to get all system permissions.
+// This route is called on admin login to ensure they have full access, bypassing token-based permissions.
+router.get('/all-permissions', protect, authorize(['admin']), adminController.getAllSystemPermissions);
 router.put('/roles/:roleName/permissions', protect, authorize(['viewSettings']), adminController.updateRolePermissions);
 
 // Product Management
