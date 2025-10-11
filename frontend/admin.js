@@ -89,10 +89,29 @@ document.addEventListener('DOMContentLoaded', () => {
         return "Baru saja";
     };
 
-    const apiFetch = async (endpoint, options = {}, retries = 1) => {
+    const apiFetch = async (endpoint, options = {}, retries = 1, timeout = 30000) => {
         const currentToken = localStorage.getItem('token');
         const headers = { 'Authorization': `Bearer ${currentToken}`, ...options.headers };
 
+        // --- IMPROVEMENT: Add AbortController for request timeout ---
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => {
+            controller.abort();
+            console.error(`Request to ${endpoint} timed out after ${timeout / 1000}s.`);
+        }, timeout);
+
+        const fetchOptions = {
+            ...options,
+            headers,
+            signal: controller.signal // Link the abort signal to the fetch request
+        };
+
+        // Do not set Content-Type for FormData, browser will do it with boundary
+        if (!(options.body instanceof FormData)) {
+            headers['Content-Type'] = 'application/json';
+        }
+
+        /*
         // Do not set Content-Type for FormData, browser will do it with boundary
         if (!(options.body instanceof FormData)) {
             headers['Content-Type'] = 'application/json';
@@ -100,7 +119,10 @@ document.addEventListener('DOMContentLoaded', () => {
 
         try {
             const response = await fetch(endpoint, { ...options, headers });
+            */
 
+        try {
+            const response = await fetch(endpoint, fetchOptions);
             // Handle critical auth errors first (session expired, etc.)
             if (response.status === 401 || response.status === 403) { // Unauthorized or Forbidden
                 alert('Sesi Anda telah berakhir atau tidak valid. Silakan masuk kembali.');
@@ -126,14 +148,21 @@ document.addEventListener('DOMContentLoaded', () => {
 
             return responseData; // Return the parsed JSON data directly.
         } catch (error) {
-            // Check if it's a network error and if we have retries left
-            if (error instanceof TypeError && error.message === 'Failed to fetch' && retries > 0) {
+            // --- IMPROVEMENT: Better error classification ---
+            if (error.name === 'AbortError') {
+                // This error is thrown when the timeout is reached
+                throw new Error(`Permintaan ke server memakan waktu terlalu lama (timeout).`);
+            }
+            if (error instanceof TypeError && error.message === 'Failed to fetch') {
+                if (retries > 0) {
                 console.warn(`Network error detected. Retrying... (${retries} attempts left)`);
                 // Wait for a short period before retrying
                 await new Promise(res => setTimeout(res, 1000));
-                return apiFetch(endpoint, options, retries - 1);
+                    return apiFetch(endpoint, options, retries - 1, timeout);
+                }
+                throw new Error('Gagal terhubung ke server. Periksa koneksi internet Anda.');
             }
-            // If it's not a network error or retries are exhausted, throw the error
+            // For all other errors, re-throw them to be caught by the caller.
             throw error;
         }
     };
@@ -6421,7 +6450,8 @@ const renderCashFlowChart = (data) => {
                 'manage-saving-account-mapping': loadSavingAccountMapping, 
                 'manage-loan-account-mapping': loadLoanAccountMapping, 
                 'manage-payment-methods-main': () => { document.querySelector('.payment-method-tab-btn[data-target="payment-methods-list-tab"]').click(); },
-                'manage-shu-rules': setupShuRules,'manage-partners': setupPartnerManagement, 
+                'manage-shu-rules': setupShuRules,
+                'manage-cooperative-profile': loadCooperativeProfile,'manage-partners': setupPartnerManagement, 
                 'manage-products': () => { document.querySelector('.product-tab-btn[data-target="products-sembako-tab"]').click(); } 
             }[targetId];
             if (loadFunction) loadFunction();
