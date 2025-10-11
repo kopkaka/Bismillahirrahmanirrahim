@@ -2912,8 +2912,8 @@ const getBalanceSheetSummary = async (req, res) => {
                 ), 0) as total
             FROM chart_of_accounts coa
             LEFT JOIN journal_entries je ON je.account_id = coa.id
-            LEFT JOIN general_journal gj ON je.journal_id = gj.id AND gj.entry_date <= $1
-            WHERE coa.account_type IN ('Aset', 'Kewajiban', 'Ekuitas')
+            LEFT JOIN general_journal gj ON je.journal_id = gj.id AND gj.entry_date <= $1 -- FIX: Date condition moved to the JOIN
+            WHERE coa.account_type IN ('Aset', 'Kewajiban', 'Ekuitas') -- Filter only balance sheet accounts
             GROUP BY coa.account_type;
         `;
 
@@ -2921,15 +2921,14 @@ const getBalanceSheetSummary = async (req, res) => {
         const netIncomeQuery = `
             SELECT COALESCE(SUM(
                 CASE
-                    WHEN coa.account_type = 'Pendapatan' THEN je.credit - je.debit
-                    WHEN coa.account_type IN ('HPP', 'Biaya') THEN je.debit - je.credit
-                    ELSE 0
-                END
-            ), 0) as total
+                    WHEN coa.account_type = 'Pendapatan' THEN je.credit - je.debit -- Incomes increase equity
+                    WHEN coa.account_type IN ('HPP', 'Biaya') THEN je.debit - je.credit -- Expenses decrease equity
+                    ELSE 0 -- Ignore other account types
+                END), 0) as total
             FROM journal_entries je
             JOIN chart_of_accounts coa ON je.account_id = coa.id
             JOIN general_journal gj ON je.journal_id = gj.id
-            WHERE gj.entry_date <= $1 AND coa.account_type IN ('Pendapatan', 'HPP', 'Biaya');
+            WHERE gj.entry_date <= $1 AND coa.account_type IN ('Pendapatan', 'HPP', 'Biaya'); -- Filter only income statement accounts
         `;
 
         const [balanceResult, netIncomeResult] = await Promise.all([
