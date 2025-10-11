@@ -33,6 +33,26 @@ document.addEventListener('DOMContentLoaded', () => {
     // Helper function to check permissions
     const hasPerm = (key) => userPermissions.has(key);
 
+    const applyUIPermissions = () => {
+        // This function controls the visibility of UI elements based on the user's permissions.
+        // It looks for elements with a `data-permission` attribute.
+
+        const permissionControlledElements = document.querySelectorAll('[data-permission]');
+
+        permissionControlledElements.forEach(el => {
+            const requiredPermission = el.dataset.permission;
+
+            // If an element requires a permission, we check if the user has it.
+            // The 'admin' role bypasses this check as it has all permissions.
+            if (requiredPermission && userRole !== 'admin') {
+                if (hasPerm(requiredPermission)) {
+                    el.classList.remove('hidden'); // Show element if permission exists
+                } else {
+                    el.classList.add('hidden'); // Hide element if permission is missing
+                }
+            }
+        });
+    };
     const checkAdminAuth = async () => {
         if (!token || !['admin', 'akunting', 'manager', 'kasir'].includes(userRole)) {
             alert('Akses ditolak. Silakan masuk sebagai staf.');
