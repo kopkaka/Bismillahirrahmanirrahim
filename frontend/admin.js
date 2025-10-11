@@ -3045,8 +3045,14 @@ const renderCashFlowChart = (data) => {
             return form.querySelector(`[id$="${dashedField}-input"][type="file"]`);
         }).filter(Boolean); // Filter out nulls
 
+        // --- FIX: Always use FormData for endpoints that might handle files ---
+        // This ensures the backend receives 'multipart/form-data' and multer is engaged,
+        // preventing a 500 error when editing without changing the file.
+        const endpointsWithFiles = ['employers', 'partners', 'testimonials'];
+        const alwaysUseFormData = endpointsWithFiles.includes(endpoint);
+
         let requestBody;
-        let useFormData = fileInputs.some(input => input.files.length > 0);
+        let useFormData = alwaysUseFormData || fileInputs.some(input => input.files.length > 0);
 
         if (useFormData) {
             requestBody = new FormData();
