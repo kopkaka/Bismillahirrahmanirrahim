@@ -35,54 +35,6 @@ const getDashboardStats = async (req, res) => {
     }
 };
 
-/**
- * @desc    Get all initial data needed for the admin dashboard in a single request.
- * @route   GET /api/admin/initial-data
- * @access  Private (Admin, etc.)
- */
-const getInitialAdminData = async (req, res) => {
-    try {
-        // Use Promise.all to run all queries in parallel for better performance
-        const [
-            statsResult,
-            cashFlow,
-            memberGrowth,
-            balanceSheet,
-        ] = await Promise.all([
-            pool.query(`
-                SELECT
-                    (SELECT COUNT(*) FROM members WHERE status = 'Active' AND role = 'member') AS total_members,
-                    (SELECT COALESCE(SUM(CASE WHEN st.name = 'Penarikan Simpanan Sukarela' THEN -s.amount ELSE s.amount END), 0) FROM savings s JOIN saving_types st ON s.saving_type_id = st.id WHERE s.status = 'Approved') AS total_savings,
-                    (SELECT COALESCE(SUM(remaining_principal), 0) FROM loans WHERE status = 'Approved') AS total_active_loans,
-                    (SELECT COUNT(*) FROM members WHERE status = 'Pending') AS pending_members
-            `),
-            dashboardService.getCashFlowSummary(),
-            dashboardService.getMemberGrowth(),
-            dashboardService.getBalanceSheetSummary(),
-        ]);
-
-        // FIX: Correctly destructure the results from Promise.all.
-        // The first result is a raw query result, the others are processed data from the service.
-        const stats = statsResult.rows[0];
-
-        res.json({
-            // Ensure stats values are parsed correctly to avoid frontend issues.
-            stats: {
-                totalMembers: parseInt(stats.total_members, 10),
-                totalSavings: parseFloat(stats.total_savings),
-                totalActiveLoans: parseFloat(stats.total_active_loans),
-                pendingMembers: parseInt(stats.pending_members, 10)
-            },
-            cashFlow,
-            memberGrowth,
-            balanceSheet,
-        });
-    } catch (err) {
-        console.error('Error fetching initial admin data:', err.message);
-        res.status(500).json({ error: 'Gagal mengambil data awal dasbor.' });
-    }
-};
-
 const getCashFlowSummary = async (req, res) => {
     try {
         const data = await dashboardService.getCashFlowSummary(req.query.startDate, req.query.endDate);
@@ -899,33 +851,6 @@ const createItem = (tableName, allowedFields) => async (req, res) => {
     }
 };
 
-/**
- * @desc    Generic function to get a single item by ID from a specified table.
- * @param   {string} tableName - The name of the table to query.
- * @returns {function} Express middleware handler.
- */
-const getItemById = (tableName) => async (req, res) => {
-    // Security: Ensure only whitelisted tables can be accessed.
-    if (!ALLOWED_GENERIC_CRUD_TABLES.has(tableName)) {
-        console.error(`Attempt to get from non-whitelisted table: ${tableName}`);
-        return res.status(403).json({ error: 'Operasi tidak diizinkan untuk tabel ini.' });
-    }
-
-    const { id } = req.params;
-    try {
-        const query = `SELECT * FROM "${tableName}" WHERE id = $1`;
-        const result = await pool.query(query, [id]);
-
-        if (result.rows.length === 0) {
-            return res.status(404).json({ error: 'Item tidak ditemukan.' });
-        }
-        res.json(result.rows[0]);
-    } catch (err) {
-        console.error(`Error fetching item by ID from ${tableName}:`, err.message);
-        res.status(500).json({ error: 'Gagal mengambil data item.' });
-    }
-};
-
 const updateItem = (tableName, allowedFields) => async (req, res) => {
     if (!ALLOWED_GENERIC_CRUD_TABLES.has(tableName)) {
         console.error(`Attempt to update in non-whitelisted table: ${tableName}`);
@@ -945,11 +870,9 @@ const updateItem = (tableName, allowedFields) => async (req, res) => {
 
     if (fieldsToUpdate.length === 0) return res.status(400).json({ error: 'Tidak ada data valid untuk diperbarui.' });
 
+    values.push(id);
+    const query = `UPDATE "${tableName}" SET ${fieldsToUpdate.join(', ')} WHERE id = $${paramIndex} RETURNING *`;
     try {
-        // FIX: Add the 'id' to the values array *before* executing the query.
-        values.push(id);
-        // FIX: Construct the query string *after* all values, including the id, have been pushed.
-        const query = `UPDATE "${tableName}" SET ${fieldsToUpdate.join(', ')} WHERE id = $${paramIndex} RETURNING *`;
         const result = await pool.query(query, values);
         if (result.rowCount === 0) return res.status(404).json({ error: 'Item tidak ditemukan.' });
         res.json(result.rows[0]);
@@ -974,8 +897,7 @@ const ALLOWED_GENERIC_CRUD_TABLES = new Set([
     'chart_of_accounts',
     'savings',
     'suppliers',
-    'logistics_entries',
-    'testimonials'
+    'logistics_entries'
 ]);
 
 const deleteItem = (tableName) => async (req, res) => {
@@ -2974,13 +2896,60 @@ const createManualSaving = async (req, res) => {
 };
 
 const getBalanceSheetSummary = async (req, res) => {
+    // For simplicity, we'll calculate as of today.
+    const endDate = new Date().toISOString().split('T')[0];
+
     try {
-        // The logic for getBalanceSheetSummary was missing.
-        // This logic is now correctly placed here and called by the service.
-        const summary = await dashboardService.getBalanceSheetSummary();
+        // Query for asset, liability, and equity balances (excluding income statement accounts)
+        const balanceQuery = `
+            SELECT
+                coa.account_type,
+                COALESCE(SUM(
+                    CASE
+                        WHEN coa.account_type = 'Aset' THEN je.debit - je.credit
+                        ELSE je.credit - je.debit
+                    END
+                ), 0) as total
+            FROM chart_of_accounts coa
+            LEFT JOIN journal_entries je ON je.account_id = coa.id
+            LEFT JOIN general_journal gj ON je.journal_id = gj.id AND gj.entry_date <= $1
+            WHERE coa.account_type IN ('Aset', 'Kewajiban', 'Ekuitas')
+            GROUP BY coa.account_type;
+        `;
+
+        // Query for net income (retained earnings + current year income)
+        const netIncomeQuery = `
+            SELECT COALESCE(SUM(
+                CASE
+                    WHEN coa.account_type = 'Pendapatan' THEN je.credit - je.debit
+                    WHEN coa.account_type IN ('HPP', 'Biaya') THEN je.debit - je.credit
+                    ELSE 0
+                END
+            ), 0) as total
+            FROM journal_entries je
+            JOIN chart_of_accounts coa ON je.account_id = coa.id
+            JOIN general_journal gj ON je.journal_id = gj.id
+            WHERE gj.entry_date <= $1 AND coa.account_type IN ('Pendapatan', 'HPP', 'Biaya');
+        `;
+
+        const [balanceResult, netIncomeResult] = await Promise.all([
+            pool.query(balanceQuery, [endDate]),
+            pool.query(netIncomeQuery, [endDate])
+        ]);
+
+        const summary = { assets: 0, liabilities: 0, equity: 0 };
+
+        balanceResult.rows.forEach(row => {
+            const total = parseFloat(row.total);
+            if (row.account_type === 'Aset') summary.assets += total;
+            else if (row.account_type === 'Kewajiban') summary.liabilities += total;
+            else if (row.account_type === 'Ekuitas') summary.equity += total;
+        });
+
+        summary.equity += parseFloat(netIncomeResult.rows[0].total);
         res.json(summary);
     } catch (err) {
-        console.error('Error in getBalanceSheetSummary controller:', err.message);
+        console.error('Error generating balance sheet summary:', err.message);
         res.status(500).json({ error: 'Gagal membuat ringkasan neraca.' });
     }
 };
@@ -4392,14 +4361,12 @@ const deletePartner = async (req, res) => {
 
 module.exports = {
     getDashboardStats,
-    getInitialAdminData,
     getMemberGrowth,
     getCashFlowSummary,
     getPendingLoansForAdmin,
     getPendingLoans,
     updateLoanStatus,
     recordLoanPayment,
-    getItemById,
     getLoanDetailsForAdmin,    
     getCompanyInfo, // Menggunakan fungsi lokal
     updateCompanyInfo, // Menggunakan fungsi lokal
