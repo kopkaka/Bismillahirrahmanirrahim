@@ -3032,9 +3032,6 @@ const renderCashFlowChart = (data) => {
                 if (field === 'contract_number' && !element) {
                     element = form.querySelector('#employer-contract-input');
                 }
-                if (field === 'document_url' && !element) {
-                    element = form.querySelector('#employer-document-input');
-                }
 
 
                 if (element) {
