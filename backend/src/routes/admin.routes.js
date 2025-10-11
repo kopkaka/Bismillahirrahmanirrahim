@@ -147,7 +147,7 @@ router.delete('/logistics-by-ref/:ref', protect, authorize(logisticsPermission),
 // Endpoint ini dibuat lebih permisif agar semua role staf (admin, akunting, manager) bisa memuat info header.
 // Otorisasi spesifik (viewSettings) hanya diperlukan untuk mengubah data (PUT).
 router.get('/company-info', protect, adminController.getCompanyInfo); // Menggunakan adminController yang sudah di-refactor
-router.put('/company-info', protect, authorize(['viewSettings']), upload.single('logo'), adminController.updateCompanyInfo);
+router.put('/company-info', protect, authorize(['manageCooperativeProfile']), upload.single('logo'), adminController.updateCompanyInfo);
 
 // Testimonial Management
 const testimonialPermission = ['viewSettings'];
@@ -193,8 +193,8 @@ router.get('/reports/monthly-closing-status', protect, authorize(['viewReports']
 router.get('/reports/cashier', protect, authorize(['viewUsahaKoperasi', 'viewReports']), adminController.getCashierReport);
 
 // SHU Rules Management
-router.get('/shu-rules/:year', protect, authorize(['viewSettings', 'postSHU']), getShuRules);
-router.post('/shu-rules', protect, authorize(['viewSettings']), saveShuRules);
+router.get('/shu-rules/:year', protect, authorize(['manageShuRules', 'postSHU']), adminController.getShuRules);
+router.post('/shu-rules', protect, authorize(['manageShuRules']), adminController.saveShuRules);
 
 // SHU Posting
 router.post('/shu/calculate-preview', protect, authorize(['postSHU']), adminController.calculateShuPreview); // Menggunakan controller yang sudah diimpor
@@ -226,7 +226,7 @@ router.post('/savings/bulk-upload', protect, authorize(['approveSaving']), excel
 // These handle specific CRUD operations for settings pages
 router.use('/announcements', announcementRoutes);
 router.use('/employers', employerRoutes);
-router.use('/partners', partnerRoutes);
+router.use('/partners', partnerRoutes); // Pastikan rute ini ada
 router.use('/positions', positionRoutes);
 router.use('/savingtypes', savingTypeRoutes);
 router.use('/loantypes', loanTypeRoutes);
