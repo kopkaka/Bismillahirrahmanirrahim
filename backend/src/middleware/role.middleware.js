@@ -8,11 +8,6 @@ const authorize = (requiredPermissions) => {
 
         const { role, permissions: userPermissions } = req.user;
 
-        // Admin has all permissions, so we can skip the DB check.
-        if (role === 'admin') {
-            return next();
-        }
-
         // --- Improvement: Input validation for the middleware itself ---
         // This helps catch configuration errors during development.
         if (!Array.isArray(requiredPermissions) || requiredPermissions.length === 0) {
