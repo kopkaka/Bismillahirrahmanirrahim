@@ -3454,10 +3454,12 @@ const renderCashFlowChart = (data) => {
                 <td class="px-6 py-4 text-sm font-medium text-gray-900">${item.title}</td>
                 <td class="px-6 py-4 text-sm text-gray-500">${formatDate(item.created_at)}</td>
                 <td class="px-6 py-4 text-sm"><span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${statusClass}">${statusText}</span></td>
-                <td class="px-6 py-4 text-sm font-medium space-x-2">
+                <td class="px-6 py-4 text-sm font-medium space-x-2">${
+                    hasPerm('manageAnnouncements') ? `
                     <button class="edit-pengumuman-btn text-indigo-600 hover:text-indigo-900" data-id="${item.id}">Ubah</button>
                     <button class="delete-pengumuman-btn text-red-600 hover:text-red-900" data-id="${item.id}">Hapus</button>
-                </td>
+                    ` : '-'
+                }</td>
             </tr>`;
         },
     });
