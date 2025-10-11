@@ -870,10 +870,10 @@ const updateItem = (tableName, allowedFields) => async (req, res) => {
 
     if (fieldsToUpdate.length === 0) return res.status(400).json({ error: 'Tidak ada data valid untuk diperbarui.' });
 
-    const query = `UPDATE "${tableName}" SET ${fieldsToUpdate.join(', ')} WHERE id = $${paramIndex} RETURNING *`;
     try {
         // FIX: Add the 'id' to the values array *before* executing the query.
         values.push(id);
+        const query = `UPDATE "${tableName}" SET ${fieldsToUpdate.join(', ')} WHERE id = $${paramIndex} RETURNING *`;
         const result = await pool.query(query, values);
         if (result.rowCount === 0) return res.status(404).json({ error: 'Item tidak ditemukan.' });
         res.json(result.rows[0]);
