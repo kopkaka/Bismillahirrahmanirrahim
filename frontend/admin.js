@@ -57,7 +57,6 @@ document.addEventListener('DOMContentLoaded', () => {
         if (!hasPerm('viewSettings')) document.querySelector('.sidebar-link[data-target="settings"]')?.parentElement.remove();
  
         if (!hasPerm('manageTestimonials')) document.querySelector('.settings-card-link[data-target="testimonials"]')?.remove();
-        if (!hasPerm('manageShuRules')) document.querySelector('.settings-card-link[data-target="manage-shu-rules"]')?.remove();
         if (!hasPerm('manageUsers')) document.querySelector('.settings-card-link[data-target="manage-users-roles"]')?.remove();
     };
 
@@ -6379,7 +6378,6 @@ const renderCashFlowChart = (data) => {
                 'manage-saving-account-mapping': loadSavingAccountMapping, 
                 'manage-loan-account-mapping': loadLoanAccountMapping, 
                 'manage-payment-methods-main': () => { document.querySelector('.payment-method-tab-btn[data-target="payment-methods-list-tab"]').click(); },
-                'manage-shu-rules': setupShuRules,
                 'manage-partners': setupPartnerManagement, 
                 'manage-products': () => { document.querySelector('.product-tab-btn[data-target="products-sembako-tab"]').click(); } 
             }[targetId];
