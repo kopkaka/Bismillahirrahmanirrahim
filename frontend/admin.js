@@ -7184,6 +7184,14 @@ const renderCashFlowChart = (data) => {
     const setupShuRules = () => {
         const form = document.getElementById('shu-rules-form');
         if (!form) return;
+
+        // FIX: Mencegah penambahan event listener berulang kali.
+        // Jika listener sudah ada, cukup muat ulang data untuk tahun yang dipilih.
+        if (form.dataset.listenerAttached) {
+            loadRulesForYear(document.getElementById('shu-rules-year').value);
+            return;
+        }
+        form.dataset.listenerAttached = 'true';
     
         const yearSelect = document.getElementById('shu-rules-year');
         const inputs = form.querySelectorAll('.shu-percentage-input');
@@ -7247,6 +7255,7 @@ const renderCashFlowChart = (data) => {
     
             if (Math.abs(total - 100) > 0.01) { alert('Total persentase harus tepat 100%.'); return; }
     
+            // FIX: Struktur body disederhanakan agar sesuai dengan yang diharapkan backend.
             const body = {
                 year: yearSelect.value,
                 member_business_service_percentage: document.getElementById('shu-member-business-service').value,
@@ -7259,7 +7268,6 @@ const renderCashFlowChart = (data) => {
     
             submitBtn.disabled = true; submitBtn.textContent = 'Menyimpan...';
             try {
-                // FIX: The body structure is simplified to match the backend expectation.
                 await apiFetch(`${ADMIN_API_URL}/shu-rules`, {
                     method: 'POST',
                     body: JSON.stringify(body)
