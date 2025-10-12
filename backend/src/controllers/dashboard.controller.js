@@ -1,35 +1,60 @@
 const pool = require('../../db');
+const dashboardService = require('../services/dashboard.service');
 
 const getDashboardStats = async (req, res) => {
     try {
-        // Performance: Combine multiple queries into a single database round-trip using subqueries.
-        const statsQuery = `
-            SELECT
-                (SELECT COUNT(*) FROM members WHERE status = 'Active' AND role = 'member') AS total_members,
-                (SELECT COALESCE(SUM(CASE 
-                                        WHEN st.name = 'Penarikan Simpanan Sukarela' THEN -s.amount 
-                                        ELSE s.amount 
-                                    END), 0) 
-                 FROM savings s JOIN saving_types st ON s.saving_type_id = st.id WHERE s.status = 'Approved') AS total_savings,
-                (SELECT COALESCE(SUM(remaining_principal), 0) FROM loans WHERE status = 'Approved') AS total_active_loans,
-                (SELECT COUNT(*) FROM members WHERE status = 'Pending') AS pending_members
-        `;
-        const result = await pool.query(statsQuery);
-        const stats = result.rows[0];
-
-        res.json({
-            totalMembers: parseInt(stats.total_members, 10),
-            totalSavings: parseFloat(stats.total_savings),
-            totalActiveLoans: parseFloat(stats.total_active_loans),
-            pendingMembers: parseInt(stats.pending_members, 10)
-        });
-
+        const stats = await dashboardService.getDashboardStats();
+        res.json(stats);
     } catch (err) {
-        console.error(err.message);
-        res.status(500).json({ error: 'Server Error' });
+        console.error('Error fetching dashboard stats:', err.message);
+        res.status(500).json({ error: 'Gagal mengambil statistik dasbor.' });
+    }
+};
+
+const getCashFlowSummary = async (req, res) => {
+    try {
+        const data = await dashboardService.getCashFlowSummary(req.query.startDate, req.query.endDate);
+        res.json(data);
+    } catch (err) {
+        console.error('Error fetching cash flow summary:', err.message);
+        res.status(500).json({ error: 'Gagal mengambil ringkasan arus kas.' });
+    }
+};
+
+const getMemberGrowth = async (req, res) => {
+    try {
+        const data = await dashboardService.getMemberGrowth();
+        res.json(data);
+    } catch (err) {
+        console.error('Error fetching member growth data:', err.message);
+        res.status(500).json({ error: 'Gagal mengambil data pertumbuhan anggota.' });
+    }
+};
+
+const getBalanceSheetSummary = async (req, res) => {
+    try {
+        const summary = await dashboardService.getBalanceSheetSummary();
+        res.json(summary);
+    } catch (err) {
+        console.error('Error generating balance sheet summary:', err.message);
+        res.status(500).json({ error: 'Gagal membuat ringkasan neraca.' });
+    }
+};
+
+const getIncomeStatementSummary = async (req, res) => {
+    try {
+        const processedData = await dashboardService.getIncomeStatementSummary(req.query.year);
+        res.json(processedData);
+    } catch (err) {
+        console.error('Error fetching income statement summary:', err.message);
+        res.status(500).json({ error: 'Gagal mengambil ringkasan laba rugi.' });
     }
 };
 
 module.exports = {
     getDashboardStats,
+    getCashFlowSummary,
+    getMemberGrowth,
+    getBalanceSheetSummary,
+    getIncomeStatementSummary
 };

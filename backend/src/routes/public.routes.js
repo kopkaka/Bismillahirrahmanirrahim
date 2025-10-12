@@ -1,35 +1,28 @@
 const express = require('express');
 const router = express.Router();
-const protect = require('../middleware/auth.middleware');
-const {
-    getPublicTestimonials,
-    getPublicPartners,
-    getPublicProducts,
-    getPublicEmployers,
-    getPublicPositions,
-    getPublicLoanTerms,
-    getPublicAnnouncements,
-    createSaleOrder,
-    getPublicSaleDetailsByOrderId
-} = require('../controllers/public.controller');
-const { validateMemberByCoopNumber } = require('../controllers/auth.controller');
-const { cancelSaleOrder } = require('../controllers/member.controller');
-const { getLoanTerms } = require('../controllers/loanterms.controller');
+const productController = require('../controllers/product.controller');
+const memberController = require('../controllers/member.controller');
+const companyController = require('../controllers/company.controller');
+const positionController = require('../controllers/position.controller');
+const loanTermsController = require('../controllers/loanterms.controller');
+const testimonialController = require('../controllers/testimonial.controller');
 
-// Rute untuk Toko dan Checkout
-router.get('/products', getPublicProducts);
-router.post('/validate-member', validateMemberByCoopNumber);
-router.post('/sales', createSaleOrder);
-router.get('/sales/:orderId', getPublicSaleDetailsByOrderId);
-router.post('/sales/:orderId/cancel', protect, cancelSaleOrder); // Added protect middleware
+// Rute publik untuk mendapatkan produk, digunakan oleh toko-sembako.html dll.
+router.get('/products', productController.getPublicProducts);
 
+// Rute publik untuk data registrasi
+router.get('/testimonials', testimonialController.getPublicTestimonials);
+router.get('/companies', companyController.getCompanies);
+router.get('/positions', positionController.getPositions);
+router.get('/loan-terms', loanTermsController.getPublicLoanTerms);
 
-// Rute untuk Halaman Utama (Landing Page) & Registrasi
-router.get('/testimonials', getPublicTestimonials);
-router.get('/partners', getPublicPartners);
-router.get('/loan-terms', getLoanTerms);
-router.get('/employers', getPublicEmployers);
-router.get('/positions', getPublicPositions);
-router.get('/announcements', getPublicAnnouncements);
+// Rute publik untuk pengumuman
+router.get('/announcements', memberController.getAnnouncements);
+
+// Rute publik untuk validasi anggota dan checkout
+router.post('/validate-member', productController.validateMemberByCoopNumber);
+router.post('/sales', productController.createSaleOrder);
+// Rute publik untuk melihat detail pesanan (misalnya dari email)
+router.get('/sales/:orderId', productController.getSaleDetailsByOrderId);
 
 module.exports = router;

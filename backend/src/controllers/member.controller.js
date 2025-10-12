@@ -3,6 +3,7 @@ const bcrypt = require('bcryptjs');
 const { createNotification } = require('../utils/notification.util');
 const path = require('path');
 const fs = require('fs');
+const { getLoanDetailsService } = require('../services/loan.service');
 
 /**
  * @desc    Mendapatkan statistik dasbor untuk anggota yang sedang login.
@@ -234,6 +235,14 @@ const createLoanApplication = async (req, res) => {
     try {
         await client.query('BEGIN');
 
+        // Performance & Security: Fetch member status and name in a single query.
+        const memberRes = await client.query('SELECT status, name FROM members WHERE id = $1', [memberId]);
+        if (memberRes.rows.length === 0 || memberRes.rows[0].status !== 'Active') {
+            throw new Error('Hanya anggota dengan status aktif yang dapat mengajukan pinjaman.');
+        }
+        const memberName = memberRes.rows[0].name;
+
+
         // 1. Check for existing active or pending loans to prevent duplicate applications.
         const existingLoanCheck = await client.query(
             "SELECT id, status FROM loans WHERE member_id = $1 AND status IN ('Pending', 'Approved by Accounting', 'Approved')",
@@ -278,21 +287,20 @@ const createLoanApplication = async (req, res) => {
         const newLoanResult = await client.query(insertQuery, [memberId, loan_type_id, loan_term_id, amount, amount, bank_name, bank_account_number, signaturePath]);
         const newLoan = newLoanResult.rows[0];
 
-        // 5. Notify admins and accountants about the new application.
-        const memberName = (await client.query('SELECT name FROM members WHERE id = $1', [memberId])).rows[0].name;
+        await client.query('COMMIT');
+
+        // 5. Notify admins and accountants AFTER the transaction is successful.
         const approverRoles = ['admin', 'akunting'];
-        const approversRes = await client.query('SELECT id FROM members WHERE role = ANY($1::varchar[]) AND status = \'Active\'', [approverRoles]);
+        // Use the main pool for notifications as it's a separate concern.
+        const approversRes = await pool.query('SELECT id FROM members WHERE role = ANY($1::varchar[]) AND status = \'Active\'', [approverRoles]);
         
         const notificationMessage = `Pengajuan pinjaman baru dari ${memberName} sebesar ${new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR' }).format(amount)} menunggu persetujuan.`;
         const notificationLink = 'approvals'; // Link to approvals page in admin panel
 
         for (const approver of approversRes.rows) {
-            // Fire-and-forget notification creation.
             createNotification(approver.id, notificationMessage, notificationLink)
                 .catch(err => console.error(`Failed to create notification for user ${approver.id}:`, err));
         }
-
-        await client.query('COMMIT');
         res.status(201).json(newLoan);
 
     } catch (err) {
@@ -343,15 +351,16 @@ const cancelLoanApplication = async (req, res) => {
         // 2. Hapus pengajuan pinjaman
         await client.query('DELETE FROM loans WHERE id = $1', [loanId]);
 
-        // 3. (Opsional) Kirim notifikasi ke admin bahwa pengajuan dibatalkan
+        await client.query('COMMIT');
+
+        // 3. Kirim notifikasi ke admin bahwa pengajuan dibatalkan SETELAH commit berhasil
         const memberName = (await client.query('SELECT name FROM members WHERE id = $1', [memberId])).rows[0].name;
         const notificationMessage = `Pengajuan pinjaman dari ${memberName} telah dibatalkan oleh yang bersangkutan.`;
-        const approversRes = await client.query("SELECT id FROM members WHERE role = ANY($1::varchar[]) AND status = 'Active'", [['admin', 'akunting']]);
+        const approversRes = await pool.query("SELECT id FROM members WHERE role = ANY($1::varchar[]) AND status = 'Active'", [['admin', 'akunting']]);
         for (const approver of approversRes.rows) {
             createNotification(approver.id, notificationMessage, 'approvals').catch(err => console.error(`Gagal membuat notifikasi pembatalan untuk user ${approver.id}:`, err));
         }
 
-        await client.query('COMMIT');
         res.json({ message: 'Pengajuan pinjaman berhasil dibatalkan.' });
     } catch (err) {
         await client.query('ROLLBACK');
@@ -405,8 +414,9 @@ const createWithdrawalApplication = async (req, res) => {
             throw new Error('Jumlah penarikan melebihi saldo simpanan sukarela Anda yang tersedia.');
         }
 
-        // 2. Get saving type ID for withdrawal
-        const typeRes = await client.query("SELECT id FROM saving_types WHERE name = 'Penarikan Simpanan Sukarela'");
+        // 2. Get saving type ID for withdrawal. Using a constant for the magic string.
+        const WITHDRAWAL_TYPE_NAME = 'Penarikan Simpanan Sukarela';
+        const typeRes = await client.query("SELECT id FROM saving_types WHERE name = $1", [WITHDRAWAL_TYPE_NAME]);
         if (typeRes.rows.length === 0) throw new Error('Tipe transaksi penarikan tidak ditemukan di sistem.');
         const withdrawalTypeId = typeRes.rows[0].id;
 
@@ -414,20 +424,19 @@ const createWithdrawalApplication = async (req, res) => {
         const insertQuery = `INSERT INTO savings (member_id, saving_type_id, amount, description, status) VALUES ($1, $2, $3, $4, 'Pending') RETURNING *`;
         const newWithdrawal = await client.query(insertQuery, [memberId, withdrawalTypeId, amount, description]);
 
-        // 4. Notify admins and accountants
-        const memberName = (await client.query('SELECT name FROM members WHERE id = $1', [memberId])).rows[0].name;
+        await client.query('COMMIT');
+
+        // 4. Notify admins and accountants AFTER the transaction is successful.
+        const memberName = (await pool.query('SELECT name FROM members WHERE id = $1', [memberId])).rows[0].name;
         const approverRoles = ['admin', 'akunting'];
-        const approversRes = await client.query('SELECT id FROM members WHERE role = ANY($1::varchar[]) AND status = \'Active\'', [approverRoles]);
+        const approversRes = await pool.query('SELECT id FROM members WHERE role = ANY($1::varchar[]) AND status = \'Active\'', [approverRoles]);
         
         const notificationMessage = `Pengajuan penarikan dari ${memberName} sebesar ${new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR' }).format(amount)} menunggu persetujuan.`;
         const notificationLink = 'approvals';
 
         for (const approver of approversRes.rows) {
-            createNotification(approver.id, notificationMessage, notificationLink)
-                .catch(err => console.error(`Failed to create withdrawal notification for user ${approver.id}:`, err));
+            createNotification(approver.id, notificationMessage, notificationLink).catch(err => console.error(`Failed to create withdrawal notification for user ${approver.id}:`, err));
         }
-
-        await client.query('COMMIT');
         res.status(201).json(newWithdrawal.rows[0]);
     } catch (err) {
         await client.query('ROLLBACK');
@@ -528,8 +537,10 @@ const submitLoanPayment = async (req, res) => {
 
         await client.query(`INSERT INTO loan_payments (loan_id, payment_date, amount_paid, installment_number, status, proof_path, payment_method) VALUES ($1, NOW(), $2, $3, 'Pending', $4, 'Transfer')`, [loanId, amountToPay, installmentNumber, proofPath]);
 
+        await client.query('COMMIT');
+
         // --- Kirim Notifikasi ke Admin & Akunting ---
-        const memberNameRes = await client.query('SELECT name FROM members WHERE id = $1', [memberId]);
+        const memberNameRes = await pool.query('SELECT name FROM members WHERE id = $1', [memberId]);
         const memberName = memberNameRes.rows[0].name;
 
         const approverRoles = ['admin', 'akunting'];
@@ -542,8 +553,6 @@ const submitLoanPayment = async (req, res) => {
             createNotification(approver.id, notificationMessage, notificationLink)
                 .catch(err => console.error(`Gagal membuat notifikasi pembayaran angsuran untuk user ${approver.id}:`, err));
         }
-
-        await client.query('COMMIT');
         res.status(201).json({ message: 'Bukti pembayaran berhasil dikirim.' });
 
     } catch (err) {
@@ -595,20 +604,19 @@ const createSavingApplication = async (req, res) => {
         const newSavingResult = await client.query(insertQuery, [memberId, savingTypeId, amount, description, proofPath]);
         const newSaving = newSavingResult.rows[0];
 
-        // Notify admins and accountants
-        const memberName = (await client.query('SELECT name FROM members WHERE id = $1', [memberId])).rows[0].name;
+        await client.query('COMMIT');
+
+        // Notify admins and accountants AFTER the transaction is successful.
+        const memberName = (await pool.query('SELECT name FROM members WHERE id = $1', [memberId])).rows[0].name;
         const approverRoles = ['admin', 'akunting'];
-        const approversRes = await client.query('SELECT id FROM members WHERE role = ANY($1::varchar[]) AND status = \'Active\'', [approverRoles]);
+        const approversRes = await pool.query('SELECT id FROM members WHERE role = ANY($1::varchar[]) AND status = \'Active\'', [approverRoles]);
         
         const notificationMessage = `Pengajuan simpanan sukarela dari ${memberName} sebesar ${new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR' }).format(amount)} menunggu persetujuan.`;
         const notificationLink = 'approvals'; // Link to approvals page in admin panel
 
         for (const approver of approversRes.rows) {
-            createNotification(approver.id, notificationMessage, notificationLink)
-                .catch(err => console.error(`Failed to create notification for user ${approver.id}:`, err));
+            createNotification(approver.id, notificationMessage, notificationLink).catch(err => console.error(`Failed to create notification for user ${approver.id}:`, err));
         }
-
-        await client.query('COMMIT');
         res.status(201).json(newSaving);
 
     } catch (err) {
@@ -666,15 +674,15 @@ const createMandatorySavingApplication = async (req, res) => {
         const newSavingResult = await client.query(insertQuery, [memberId, savingTypeId, amount, description || 'Pengajuan Simpanan Wajib', proofPath]);
         const newSaving = newSavingResult.rows[0];
 
-        // 4. Notifikasi admin dan akunting
-        const memberName = (await client.query('SELECT name FROM members WHERE id = $1', [memberId])).rows[0].name;
+        await client.query('COMMIT');
+
+        // 4. Notifikasi admin dan akunting SETELAH commit berhasil
+        const memberName = (await pool.query('SELECT name FROM members WHERE id = $1', [memberId])).rows[0].name;
         const approverRoles = ['admin', 'akunting'];
-        const approversRes = await client.query('SELECT id FROM members WHERE role = ANY($1::varchar[]) AND status = \'Active\'', [approverRoles]);
+        const approversRes = await pool.query('SELECT id FROM members WHERE role = ANY($1::varchar[]) AND status = \'Active\'', [approverRoles]);
         const notificationMessage = `Pengajuan simpanan wajib dari ${memberName} sebesar ${new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR' }).format(amount)} menunggu persetujuan.`;
         const notificationLink = 'approvals';
         for (const approver of approversRes.rows) { createNotification(approver.id, notificationMessage, notificationLink).catch(err => console.error(`Failed to create notification for user ${approver.id}:`, err)); }
-
-        await client.query('COMMIT');
         res.status(201).json(newSaving);
     } catch (err) {
         await client.query('ROLLBACK');
@@ -689,126 +697,24 @@ const createMandatorySavingApplication = async (req, res) => {
  * @access  Private
  */
 const getLoanDetails = async (req, res) => {
-    const memberId = req.user.id;
-    const { id: loanId } = req.params;
-
     try {
-        // 1. Ambil data pinjaman utama dan pastikan pinjaman milik anggota yang login
-        const loanQuery = `
-            SELECT 
-                l.id,
-                l.amount, l.commitment_signature_path,
-                l.date AS start_date,
-                l.status, l.loan_term_id,
-                ltp.name as "loanTypeName",
-                m.name as "memberName",
-                m.cooperative_number as "cooperativeNumber",
-                lt.tenor_months,
-                lt.interest_rate
-            FROM loans l
-            JOIN loan_terms lt ON l.loan_term_id = lt.id
-            -- Join untuk mendapatkan nama tipe pinjaman dan nama anggota
-            JOIN loan_types ltp ON l.loan_type_id = ltp.id
-            JOIN members m ON l.member_id = m.id
-            WHERE l.id = $1 AND l.member_id = $2
-        `;
-        const loanResult = await pool.query(loanQuery, [loanId, memberId]);
-
-        if (loanResult.rows.length === 0) {
-            // Security: Crucial check to prevent users from accessing other users' loans.
-            return res.status(404).json({ error: 'Pinjaman tidak ditemukan atau Anda tidak berhak mengaksesnya.' });
-        }
-        const loan = loanResult.rows[0];
-        const principal = parseFloat(loan.amount);
-
-        // 2. Ambil data pembayaran yang sudah dilakukan untuk pinjaman ini
-        const paymentsQuery = 'SELECT installment_number, payment_date, amount_paid FROM loan_payments WHERE loan_id = $1';
-        const paymentsResult = await pool.query(paymentsQuery, [loanId]);
-        const paymentsMap = new Map(paymentsResult.rows.map(p => [p.installment_number, p]));
-
-        // 3. Buat jadwal angsuran (amortisasi)
-        const installments = [];
-        const tenor = parseInt(loan.tenor_months);
-        const monthlyInterestRate = parseFloat(loan.interest_rate) / 1200; // Langsung bagi 1200
-        let remainingPrincipal = principal;
-        const principalPerMonth = principal / tenor;
-
-        for (let i = 1; i <= tenor; i++) {
-            const interestForMonth = remainingPrincipal * monthlyInterestRate;
-            const totalInstallment = principalPerMonth + interestForMonth;
-            
-            const dueDate = new Date(loan.start_date);
-            dueDate.setMonth(dueDate.getMonth() + i);
-
-            const payment = paymentsMap.get(i);
-
-            installments.push({
-                installmentNumber: i,
-                dueDate: dueDate.toISOString(),
-                amount: totalInstallment,
-                paymentDate: payment ? payment.payment_date : null,
-                status: payment ? 'Lunas' : 'Belum Lunas'
-            });
-
-            remainingPrincipal -= principalPerMonth;
-        }
-        
-        const totalPaid = Array.from(paymentsMap.values()).reduce((sum, p) => sum + parseFloat(p.amount_paid), 0);
-        const monthlyInstallmentFirst = principalPerMonth + (principal * monthlyInterestRate);
-
-        // Memastikan semua field yang dibutuhkan frontend ada di sini
-        res.json({
-            summary: {
-                id: loan.id,
-                amount: principal,
-                tenor: tenor,
-                interestRate: parseFloat(loan.interest_rate),
-                loanTypeName: loan.loanTypeName,
-                startDate: loan.start_date,
-                memberName: loan.memberName,
-                cooperativeNumber: loan.cooperativeNumber,
-                commitment_signature_path: loan.commitment_signature_path,
-                status: loan.status,
-                monthlyInstallment: monthlyInstallmentFirst, // Cicilan bulan pertama
-                totalPaid: totalPaid
-            },
-            installments: installments
-        });
-
+        const { id: memberId } = req.user;
+        const { id: loanId } = req.params;
+        // Use the centralized service, passing memberId for authorization check.
+        const loanDetails = await getLoanDetailsService(loanId, memberId);
+        res.json(loanDetails);
     } catch (err) {
         console.error('Error fetching loan details:', err.message);
-        res.status(500).json({ error: 'Gagal mengambil detail pinjaman.' });
+        // If the service throws an error, it's likely a 404 or 500.
+        res.status(err.message.includes('ditemukan') ? 404 : 500).json({ error: err.message });
     }
 };
 
 /**
- * @desc    Mendapatkan riwayat SHU untuk anggota yang sedang login.
- * @route   GET /api/member/shu-history
+ * @desc    Get latest notifications for the logged-in member
+ * @route   GET /api/member/notifications
  * @access  Private
  */
-const getMemberShuHistory = async (req, res) => {
-    const memberId = req.user.id;
-
-    try {
-        const query = `
-            SELECT 
-                year,
-                total_shu_amount,
-                shu_from_capital,
-                shu_from_services,
-                distribution_date
-            FROM shu_distributions
-            WHERE member_id = $1
-            ORDER BY year DESC
-        `;
-        const result = await pool.query(query, [memberId]);
-        res.json(result.rows);
-    } catch (err) {
-        console.error('Error fetching member SHU history:', err.message);
-        res.status(500).json({ error: 'Gagal mengambil riwayat SHU.' });
-    }
-};
-
 const getNotifications = async (req, res) => {
     const memberId = req.user.id;
     try {
@@ -817,7 +723,7 @@ const getNotifications = async (req, res) => {
             FROM notifications
             WHERE member_id = $1
             ORDER BY created_at DESC
-            LIMIT 10
+            LIMIT 15 -- Increased limit slightly
         `;
         const result = await pool.query(query, [memberId]);
         res.json(result.rows);
@@ -827,6 +733,11 @@ const getNotifications = async (req, res) => {
     }
 };
 
+/**
+ * @desc    Get the count of unread notifications for the logged-in member
+ * @route   GET /api/member/notifications/unread-count
+ * @access  Private
+ */
 const getUnreadNotificationCount = async (req, res) => {
     const memberId = req.user.id;
     try {
@@ -839,6 +750,11 @@ const getUnreadNotificationCount = async (req, res) => {
     }
 };
 
+/**
+ * @desc    Mark a specific notification as read
+ * @route   PUT /api/member/notifications/:id/read
+ * @access  Private
+ */
 const markNotificationAsRead = async (req, res) => {
     const memberId = req.user.id;
     const { id: notificationId } = req.params;
@@ -853,7 +769,7 @@ const markNotificationAsRead = async (req, res) => {
         if (result.rowCount === 0) {
             return res.status(404).json({ error: 'Notifikasi tidak ditemukan atau Anda tidak berhak.' });
         }
-        res.status(204).send();
+        res.status(204).send(); // 204 No Content is appropriate for a successful update with no body
     } catch (err) {
         console.error('Error marking notification as read:', err.message);
         res.status(500).json({ error: 'Gagal menandai notifikasi.' });
@@ -892,20 +808,18 @@ const createResignationRequest = async (req, res) => {
             throw new Error('Gagal mengajukan pengunduran diri. Mungkin status Anda sudah tidak aktif.');
         }
 
-        // 3. Buat notifikasi untuk semua admin
+        await client.query('COMMIT');
+
+        // 3. Buat notifikasi untuk semua admin SETELAH commit berhasil
         const memberName = updateResult.rows[0].name;
-        const adminsRes = await client.query("SELECT id FROM members WHERE role = 'admin' AND status = 'Active'");
+        const adminsRes = await pool.query("SELECT id FROM members WHERE role = 'admin' AND status = 'Active'");
         
         const notificationMessage = `Anggota "${memberName}" telah mengajukan pengunduran diri.`;
-        // Arahkan admin ke halaman persetujuan, di mana tab pengunduran diri berada
         const notificationLink = 'approvals'; 
 
         for (const admin of adminsRes.rows) {
-            createNotification(admin.id, notificationMessage, notificationLink)
-                .catch(err => console.error(`Failed to create resignation notification for admin ${admin.id}:`, err));
+            createNotification(admin.id, notificationMessage, notificationLink).catch(err => console.error(`Failed to create resignation notification for admin ${admin.id}:`, err));
         }
-
-        await client.query('COMMIT');
         res.status(200).json({ message: 'Permintaan pengunduran diri Anda telah berhasil diajukan dan akan segera diproses oleh admin.' });
 
     } catch (err) {
@@ -950,14 +864,14 @@ const cancelResignationRequest = async (req, res) => {
             [memberId]
         );
 
-        // 4. Notify admins that the request was cancelled (optional but good practice)
-        const adminsRes = await client.query("SELECT id FROM members WHERE role = 'admin' AND status = 'Active'");
+        await client.query('COMMIT');
+
+        // 4. Notify admins that the request was cancelled AFTER the transaction is successful.
+        const adminsRes = await pool.query("SELECT id FROM members WHERE role = 'admin' AND status = 'Active'");
         const notificationMessage = `Permintaan pengunduran diri dari anggota "${memberName}" telah dibatalkan oleh yang bersangkutan.`;
         for (const admin of adminsRes.rows) {
             createNotification(admin.id, notificationMessage, 'approvals').catch(err => console.error(`Failed to create resignation cancellation notification for admin ${admin.id}:`, err));
         }
-
-        await client.query('COMMIT');
         res.status(200).json({ message: 'Permintaan pengunduran diri Anda telah berhasil dibatalkan.' });
     } catch (err) {
         await client.query('ROLLBACK');
@@ -1343,7 +1257,6 @@ module.exports = {
     createSavingApplication,
     cancelLoanApplication,
     getLoanDetails,
-    getMemberShuHistory,
     getNotifications,
     getUnreadNotificationCount,
     markNotificationAsRead,

@@ -1,83 +1,57 @@
 const express = require('express');
 const router = express.Router();
-const protect = require('../middleware/auth.middleware'); // FIX: Import the middleware directly
-const authorize = require('../middleware/role.middleware');
-const {
-    getMemberStats,
-    getMemberProfile,
-    getMemberSavings,
-    getMemberLoans,
-    getMemberApplications,
-    createLoanApplication,
-    createSavingApplication,
-    getLoanDetails,
-    getMemberShuHistory,
-    getNotifications,
-    getUnreadNotificationCount,
-    markNotificationAsRead,
-    createResignationRequest,
-    cancelResignationRequest,
-    getMyPermissions,
-    changePassword,
-    updateProfilePhoto,
-    getSavingsChartData,
-    getLoansChartData,
-    getTransactionsChartData,
-    getShuChartData,
-    getAnnouncements,
-    getMemberSalesHistory,
-    getSaleDetailsByOrderIdForMember,
-    getVoluntarySavingsBalance,
-    createWithdrawalApplication,
-    getActiveLoanForPayment,
-    submitLoanPayment,
-} = require('../controllers/member.controller');
+const protect = require('../middleware/auth.middleware');
 const upload = require('../middleware/upload.middleware');
+const memberController = require('../controllers/member.controller');
+const shuController = require('../controllers/shu.controller');
 
-// All routes in this file are protected and start with /api/member
+// Middleware 'protect' akan memastikan semua rute di bawah ini hanya bisa diakses oleh pengguna yang sudah login.
+router.use(protect);
 
-// Dashboard & Profile
-router.get('/stats', protect, authorize(['viewDashboard']), getMemberStats);
-router.get('/profile', protect, getMemberProfile);
-router.put('/profile/photo', protect, upload.single('selfie_photo'), updateProfilePhoto);
-router.put('/change-password', protect, changePassword);
+// --- Dashboard & Profile ---
+router.get('/stats', memberController.getMemberStats);
+router.get('/profile', memberController.getMemberProfile);
+router.put('/profile/photo', upload.single('selfie_photo'), memberController.updateProfilePhoto);
+router.put('/change-password', memberController.changePassword);
 
-// Savings
-router.get('/savings', protect, authorize(['viewDashboard']), getMemberSavings);
-router.post('/savings', protect, authorize(['viewDashboard']), upload.single('proof'), createSavingApplication);
-router.get('/savings/voluntary-balance', protect, authorize(['viewDashboard']), getVoluntarySavingsBalance);
-router.post('/savings/withdrawal', protect, authorize(['viewDashboard']), createWithdrawalApplication);
+// --- Permissions ---
+router.get('/permissions', memberController.getMyPermissions);
 
-// Loans
-router.get('/loans', protect, authorize(['viewDashboard']), getMemberLoans);
-router.post('/loans', protect, authorize(['viewDashboard']), upload.single('commitment_signature'), createLoanApplication);
-router.get('/loans/:id/details', protect, authorize(['viewDashboard']), getLoanDetails);
-router.get('/active-loan-for-payment', protect, authorize(['viewDashboard']), getActiveLoanForPayment);
-router.post('/loan-payment', protect, authorize(['viewDashboard']), upload.single('proof'), submitLoanPayment);
+// --- Savings ---
+router.get('/savings', memberController.getMemberSavings);
+router.post('/savings', upload.single('proofPhoto'), memberController.createSavingApplication);
+router.get('/savings/voluntary-balance', memberController.getVoluntarySavingsBalance);
+router.post('/savings/withdrawal', memberController.createWithdrawalApplication);
 
-// Other Features
-router.get('/applications', protect, authorize(['viewDashboard']), getMemberApplications);
-router.get('/shu-history', protect, authorize(['viewDashboard']), getMemberShuHistory);
-router.get('/sales', protect, authorize(['viewDashboard']), getMemberSalesHistory);
-router.get('/sales/:orderId', protect, authorize(['viewDashboard']), getSaleDetailsByOrderIdForMember);
+// --- Mandatory Savings ---
+router.post('/mandatory-saving', upload.single('proofPhoto'), memberController.createMandatorySavingApplication);
 
-// Notifications
-router.get('/notifications', protect, getNotifications);
-router.get('/notifications/unread-count', protect, getUnreadNotificationCount);
-router.put('/notifications/:id/read', protect, markNotificationAsRead);
+// --- Loans ---
+router.get('/loans', memberController.getMemberLoans);
+router.post('/loans', upload.single('commitment_signature'), memberController.createLoanApplication);
+router.get('/loans/:id/details', memberController.getLoanDetails);
+router.get('/active-loan-for-payment', memberController.getActiveLoanForPayment);
+router.post('/loan-payment', upload.single('paymentProof'), memberController.submitLoanPayment);
 
-// Resignation
-router.post('/request-resignation', protect, authorize(['viewDashboard']), createResignationRequest);
-router.post('/cancel-resignation', protect, authorize(['viewDashboard']), cancelResignationRequest);
+// --- Applications (Pending Items) ---
+router.get('/applications', memberController.getMemberApplications);
+router.delete('/applications/:id/cancel', memberController.cancelLoanApplication); // Endpoint untuk membatalkan pinjaman
 
-// Permissions & Announcements
-router.get('/permissions', protect, authorize(['viewDashboard']), getMyPermissions);
-router.get('/announcements', protect, getAnnouncements);
+// --- SHU History ---
+router.get('/shu-history', shuController.getMemberShuHistory);
 
-// Chart Data
-router.get('/chart-data/savings', protect, getSavingsChartData);
-router.get('/chart-data/loans', protect, getLoansChartData);
-router.get('/chart-data/transactions', protect, getTransactionsChartData);
-router.get('/chart-data/shu', protect, getShuChartData);
+// --- Notifications ---
+router.get('/notifications', memberController.getNotifications);
+router.get('/notifications/unread-count', memberController.getUnreadNotificationCount);
+router.put('/notifications/:id/read', memberController.markNotificationAsRead);
+
+// --- Resignation ---
+router.post('/request-resignation', memberController.createResignationRequest);
+router.post('/cancel-resignation', memberController.cancelResignationRequest);
+
+// --- Sales History ---
+router.get('/sales', memberController.getMemberSalesHistory);
+router.get('/sales/:orderId', memberController.getSaleDetailsByOrderIdForMember);
+
 
 module.exports = router;

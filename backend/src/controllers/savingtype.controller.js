@@ -1,9 +1,8 @@
 const pool = require('../../db');
 
-// GET semua tipe simpanan
 const getSavingTypes = async (req, res) => {
     try {
-        const result = await pool.query('SELECT * FROM saving_types ORDER BY name');
+        const result = await pool.query('SELECT * FROM saving_types ORDER BY name ASC');
         res.json(result.rows);
     } catch (err) {
         console.error('Error fetching saving types:', err.message);
@@ -11,68 +10,77 @@ const getSavingTypes = async (req, res) => {
     }
 };
 
-// POST tipe simpanan baru
 const createSavingType = async (req, res) => {
     const { name, description } = req.body;
-    if (!name?.trim()) {
+    if (!name) {
         return res.status(400).json({ error: 'Nama tipe simpanan wajib diisi.' });
     }
     try {
-        const newSavingType = await pool.query(
+        const result = await pool.query(
             'INSERT INTO saving_types (name, description) VALUES ($1, $2) RETURNING *',
-            [name.trim(), description]
+            [name, description]
         );
-        res.status(201).json(newSavingType.rows[0]);
+        res.status(201).json(result.rows[0]);
     } catch (err) {
         console.error('Error creating saving type:', err.message);
-        if (err.code === '23505') {
-            return res.status(400).json({ error: 'Nama tipe simpanan sudah ada.' });
-        }
         res.status(500).json({ error: 'Gagal membuat tipe simpanan baru.' });
     }
 };
 
-// PUT (update) tipe simpanan
 const updateSavingType = async (req, res) => {
     const { id } = req.params;
     const { name, description } = req.body;
-    if (!name?.trim()) {
+    if (!name) {
         return res.status(400).json({ error: 'Nama tipe simpanan wajib diisi.' });
     }
     try {
-        const updatedSavingType = await pool.query(
+        const result = await pool.query(
             'UPDATE saving_types SET name = $1, description = $2 WHERE id = $3 RETURNING *',
-            [name.trim(), description, id]
+            [name, description, id]
         );
-        if (updatedSavingType.rows.length === 0) {
+        if (result.rowCount === 0) {
             return res.status(404).json({ error: 'Tipe simpanan tidak ditemukan.' });
         }
-        res.json(updatedSavingType.rows[0]);
+        res.json(result.rows[0]);
     } catch (err) {
         console.error('Error updating saving type:', err.message);
-        if (err.code === '23505') {
-            return res.status(400).json({ error: 'Nama tipe simpanan sudah ada.' });
-        }
         res.status(500).json({ error: 'Gagal memperbarui tipe simpanan.' });
     }
 };
 
-// DELETE tipe simpanan
 const deleteSavingType = async (req, res) => {
+    const { id } = req.params;
     try {
-        const { id } = req.params;
-        const deleteOp = await pool.query('DELETE FROM saving_types WHERE id = $1', [id]);
-        if (deleteOp.rowCount === 0) {
+        const result = await pool.query('DELETE FROM saving_types WHERE id = $1', [id]);
+        if (result.rowCount === 0) {
             return res.status(404).json({ error: 'Tipe simpanan tidak ditemukan.' });
         }
         res.status(204).send();
     } catch (err) {
         console.error('Error deleting saving type:', err.message);
-        if (err.code === '23503') { // Foreign key violation
-            return res.status(400).json({ error: 'Gagal menghapus. Tipe simpanan ini masih digunakan oleh data simpanan.' });
-        }
         res.status(500).json({ error: 'Gagal menghapus tipe simpanan.' });
     }
 };
 
-module.exports = { getSavingTypes, createSavingType, updateSavingType, deleteSavingType };
+const mapSavingAccount = async (req, res) => {
+    const { id } = req.params;
+    const { accountId } = req.body;
+    try {
+        const result = await pool.query('UPDATE saving_types SET account_id = $1 WHERE id = $2 RETURNING *', [accountId, id]);
+        if (result.rowCount === 0) {
+            return res.status(404).json({ error: 'Tipe simpanan tidak ditemukan.' });
+        }
+        res.json(result.rows[0]);
+    } catch (err) {
+        console.error('Error mapping saving account:', err.message);
+        res.status(500).json({ error: 'Gagal menyimpan maping akun.' });
+    }
+};
+
+module.exports = {
+    getSavingTypes,
+    createSavingType,
+    updateSavingType,
+    deleteSavingType,
+    mapSavingAccount,
+};

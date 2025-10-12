@@ -1,16 +1,19 @@
 const pool = require('../../db');
 
-// Helper function to calculate monthly installment for a flat-principal loan
+/**
+ * Helper function to calculate the first month's installment for a declining balance loan.
+ * This is used for public-facing simulations and displays.
+ * @param {number} principal - The total loan amount.
+ * @param {number} tenor - The loan duration in months.
+ * @param {number} annualInterestRate - The annual interest rate (e.g., 24 for 24%).
+ * @returns {number} The calculated total installment for the first month.
+ */
 const calculateInstallment = (principal, tenor, annualInterestRate) => {
     if (tenor <= 0) return 0;
 
-    // FIX: Annual interest rate must be divided by 12 to get the monthly rate.
+    // CORRECT: This is the declining balance calculation for the first month.
     const monthlyInterestRate = (parseFloat(annualInterestRate) / 100) / 12;
     const principalComponent = parseFloat(principal) / tenor;
-
-    // For a flat principal loan, the first month's interest is the highest,
-    // and it's often used as the representative "Angsuran/Bln" value.
-    // Interest is calculated on the full principal for the first month.
     const interestComponent = parseFloat(principal) * monthlyInterestRate;
 
     return principalComponent + interestComponent;
@@ -28,15 +31,6 @@ const getLoanTerms = async (req, res) => {
             ORDER BY l_types.name, lt.tenor_months
         `;
         const result = await pool.query(query); // This is for the settings page, no calculation needed here.
-        res.json(result.rows);
-    } catch (err) {
-        console.error('Error fetching loan terms:', err.message);
-        res.status(500).json({ error: 'Gagal mengambil data tenor pinjaman.' });
-    }
-};
-
-const getLoanTermsForPublic = async (req, res) => {
-    try {
         res.json(result.rows);
     } catch (err) {
         console.error('Error fetching loan terms:', err.message);
@@ -122,4 +116,29 @@ const deleteLoanTerm = async (req, res) => {
     }
 };
 
-module.exports = { getLoanTerms, createLoanTerm, updateLoanTerm, deleteLoanTerm };
+/**
+ * @desc    Get all loan terms for public display (e.g., registration form).
+ * @route   GET /api/public/loan-terms
+ * @access  Public
+ */
+const getPublicLoanTerms = async (req, res) => {
+    try {
+        const query = `
+            SELECT 
+                lt.id, 
+                lt.tenor_months, 
+                lt.interest_rate, 
+                ltp.name as loan_type_name
+            FROM loan_terms lt
+            JOIN loan_types ltp ON lt.loan_type_id = ltp.id
+            ORDER BY ltp.name, lt.tenor_months;
+        `;
+        const result = await pool.query(query);
+        res.json(result.rows);
+    } catch (err) {
+        console.error('Error fetching public loan terms:', err.message);
+        res.status(500).json({ error: 'Gagal mengambil data produk pinjaman.' });
+    }
+};
+
+module.exports = { getLoanTerms, createLoanTerm, updateLoanTerm, deleteLoanTerm, getPublicLoanTerms };

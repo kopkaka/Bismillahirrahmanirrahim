@@ -1,5 +1,7 @@
 const pool = require('../../db');
 const ExcelJS = require('exceljs');
+const { createNotification } = require('../utils/notification.util');
+const { createSavingJournal } = require('../services/journal.service');
 
 // GET semua simpanan
 const getSavings = async (req, res) => {
@@ -139,6 +141,7 @@ const updateSavingStatus = async (req, res) => {
     const { status } = req.body;
     const client = await pool.connect();
 
+
     try {
         await client.query('BEGIN');
 
@@ -148,7 +151,7 @@ const updateSavingStatus = async (req, res) => {
 
         // Ambil detail simpanan sebelum update
         const savingRes = await client.query(`
-            SELECT s.amount, s.saving_type_id, s.status as current_status, st.name as saving_type_name, st.account_id, m.name as member_name
+            SELECT s.amount, s.saving_type_id, s.status as current_status, st.name as saving_type_name, st.account_id, m.name as member_name, s.member_id
             FROM savings s
             JOIN saving_types st ON s.saving_type_id = st.id
             JOIN members m ON s.member_id = m.id
@@ -170,46 +173,19 @@ const updateSavingStatus = async (req, res) => {
         // --- LOGIKA JURNAL OTOMATIS ---
         // Buat jurnal hanya jika status diubah menjadi "Approved" dari status lain.
         if (status === 'Approved' && saving.current_status !== 'Approved') {
-            if (!saving.account_id) {
-                throw new Error(`Tipe simpanan "${saving.saving_type_name}" belum terhubung ke akun COA. Harap lakukan maping di Pengaturan.`);
-            }
-
-            const isWithdrawal = saving.saving_type_name === 'Penarikan Simpanan Sukarela';
-
-            // Improvement: Fetch cash account ID dynamically instead of hardcoding
-            const cashAccountRes = await client.query("SELECT id FROM chart_of_accounts WHERE account_number = '1-1110'"); // Assuming '1-1110' is Kas
-            if (cashAccountRes.rows.length === 0) throw new Error("Akun 'Kas' (1-1110) tidak ditemukan di COA.");
-            const cashAccountId = cashAccountRes.rows[0].id;
-
-            const description = isWithdrawal
-                ? `Penarikan simpanan sukarela a/n ${saving.member_name}`
-                : `Setoran ${saving.saving_type_name} a/n ${saving.member_name}`;
-
-            // --- Generate Automatic Journal Reference Number ---
-            const entryDate = new Date();
-            const year = entryDate.getFullYear();
-            const month = String(entryDate.getMonth() + 1).padStart(2, '0');
-            const day = String(entryDate.getDate()).padStart(2, '0');
-            const prefix = `JRNL-${year}${month}${day}-`;
-
-            const seqResult = await client.query("SELECT COUNT(*) FROM general_journal WHERE reference_number LIKE $1", [`${prefix}%`]);
-            const nextSeq = parseInt(seqResult.rows[0].count, 10) + 1;
-            const referenceNumber = `${prefix}${String(nextSeq).padStart(4, '0')}`;
-            // --- End of Generation ---
-
-            // 1. Buat header jurnal
-            const journalHeaderRes = await client.query('INSERT INTO general_journal (entry_date, description, reference_number) VALUES (NOW(), $1, $2) RETURNING id', [description, referenceNumber]);
-            const journalId = journalHeaderRes.rows[0].id;
+            const journalId = await createSavingJournal(client, {
+                amount: saving.amount,
+                saving_type_name: saving.saving_type_name,
+                account_id: saving.account_id,
+                member_name: saving.member_name,
+                date: new Date() // Use current date for journal
+            });
 
             // 2. Update simpanan dengan journal_id
-            await client.query('UPDATE savings SET journal_id = $1 WHERE id = $2', [journalId, id]);
-
-            // 3. Buat entri jurnal (Debit dan Kredit)
-            // Jika penarikan, balik logikanya: Debit Akun Simpanan, Kredit Kas
-            const debitAccountId = isWithdrawal ? saving.account_id : cashAccountId;
-            const creditAccountId = isWithdrawal ? cashAccountId : saving.account_id;
-            const journalEntriesQuery = 'INSERT INTO journal_entries (journal_id, account_id, debit, credit) VALUES ($1, $2, $3, 0), ($1, $4, 0, $3)';
-            await client.query(journalEntriesQuery, [journalId, debitAccountId, saving.amount, creditAccountId]);
+            await client.query('UPDATE savings SET journal_id = $1 WHERE id = $2', [journalId, id]); // FIX: Link journal to saving
+            createNotification(saving.member_id, `Pengajuan ${saving.saving_type_name.toLowerCase()} Anda sebesar ${formatCurrency(saving.amount)} telah disetujui.`, 'savings');
+        } else if (status === 'Rejected') {
+            createNotification(saving.member_id, `Pengajuan ${saving.saving_type_name.toLowerCase()} Anda sebesar ${formatCurrency(saving.amount)} ditolak.`, 'savings');
         }
 
         await client.query('COMMIT');
@@ -217,7 +193,7 @@ const updateSavingStatus = async (req, res) => {
 
     } catch (err) {
         await client.query('ROLLBACK');
-        console.error('Error updating saving status:', err.message);
+        console.error('Error updating saving status:', err.message); res.status(400).json({ error: err.message || 'Gagal memperbarui status simpanan.' });
         // Berikan pesan error yang spesifik untuk kesalahan yang diketahui (client error)
         if (err.message.includes('belum terhubung ke akun COA')) {
             return res.status(400).json({ error: err.message });
@@ -225,7 +201,7 @@ const updateSavingStatus = async (req, res) => {
         // Untuk error lain, berikan pesan generik (server error)
         res.status(500).json({ error: 'Terjadi kesalahan internal saat memperbarui status simpanan.' });
     } finally {
-        client.release();
+        client.release(); 
     }
 };
 
@@ -234,9 +210,7 @@ const updateSaving = async (req, res) => {
     try {
         const { id } = req.params;
         const { memberId, savingTypeId, amount, description } = req.body;
-        if (!memberId || !savingTypeId || !amount) {
-            return res.status(400).json({ error: 'Data tidak lengkap: memberId, savingTypeId, dan amount diperlukan.' });
-        }
+        if (!memberId || !savingTypeId || !amount) { return res.status(400).json({ error: 'Data tidak lengkap: memberId, savingTypeId, dan amount diperlukan.' }); }
         const updatedSaving = await pool.query(
             'UPDATE savings SET member_id = $1, saving_type_id = $2, amount = $3, description = $4 WHERE id = $5 RETURNING *',
             [memberId, savingTypeId, amount, description || null, id]
@@ -258,14 +232,14 @@ const deleteSaving = async (req, res) => {
     try {
         await client.query('BEGIN');
 
-        // 1. Ambil journal_id dari simpanan yang akan dihapus
+        // 1. Get journal_id from the saving to be deleted
         const savingRes = await client.query('SELECT journal_id FROM savings WHERE id = $1', [id]);
         if (savingRes.rows.length === 0) {
             return res.status(404).json({ error: 'Simpanan tidak ditemukan.' });
         }
         const { journal_id } = savingRes.rows[0];
 
-        // 2. Hapus data simpanan
+        // 2. Delete the saving record
         await client.query('DELETE FROM savings WHERE id = $1', [id]);
 
         // 3. Jika ada journal_id terkait, hapus juga jurnalnya
@@ -275,7 +249,7 @@ const deleteSaving = async (req, res) => {
         }
 
         await client.query('COMMIT');
-        res.status(204).send();
+        res.status(204).send(); 
     } catch (err) {
         await client.query('ROLLBACK');
         console.error('Error deleting saving:', err.message);
@@ -369,10 +343,7 @@ const uploadBulkSavings = async (req, res) => {
         const workbook = new ExcelJS.Workbook();
         await workbook.xlsx.load(req.file.buffer);
         const worksheet = workbook.getWorksheet(1); // Get the first worksheet
-
-        const savingsToCreate = [];
         const headerRow = worksheet.getRow(1).values;
-        
         // Create a map of header names to column indices.
         // This makes the import robust against column reordering.
         const headerMap = {};
@@ -382,7 +353,6 @@ const uploadBulkSavings = async (req, res) => {
                 headerMap[headerRow[i].toString().trim()] = i;
             }
         }
-
         const colIdx = {
             cooperative_number: headerMap['Nomor Koperasi'] || headerMap['cooperative_number'],
             saving_type_name: headerMap['Tipe Simpanan'] || headerMap['saving_type_name'],
@@ -390,6 +360,8 @@ const uploadBulkSavings = async (req, res) => {
             date: headerMap['Tanggal (YYYY-MM-DD)'] || headerMap['date'],
             description: headerMap['Keterangan'] || headerMap['description'],
         };
+
+        const savingsToCreate = [];
 
         // Iterate over all rows that have values in a worksheet
         worksheet.eachRow({ includeEmpty: false }, (row, rowNumber) => {
@@ -412,97 +384,66 @@ const uploadBulkSavings = async (req, res) => {
             }
         });
 
-        if (!Array.isArray(savingsToCreate) || savingsToCreate.length === 0) {
-            return res.status(400).json({ error: 'File Excel tidak berisi data simpanan yang valid untuk diproses.' });
-        }
+        if (savingsToCreate.length === 0) throw new Error('File Excel tidak berisi data simpanan yang valid untuk diproses.');
 
-        // 1. Ambil semua ID unik dari data yang diunggah
+        // --- Bulk Data Fetching ---
         const cooperativeNumbers = [...new Set(savingsToCreate.map(s => s.cooperative_number).filter(Boolean))];
         const savingTypeNames = [...new Set(savingsToCreate.map(s => s.saving_type_name).filter(Boolean))];
 
-        // 2. Ambil ID yang sesuai dari database dalam satu kali query
-        const membersResult = await client.query('SELECT id, cooperative_number FROM members WHERE cooperative_number = ANY($1::varchar[])', [cooperativeNumbers]);
-        const savingTypesResult = await client.query('SELECT id, name FROM saving_types WHERE name = ANY($1::varchar[])', [savingTypeNames]);
+        const membersResult = await client.query('SELECT id, name, cooperative_number FROM members WHERE cooperative_number = ANY($1::varchar[])', [cooperativeNumbers]);
+        const savingTypesResult = await client.query('SELECT id, name, account_id FROM saving_types WHERE name = ANY($1::varchar[])', [savingTypeNames]);
 
-        // 3. Buat Map untuk pencarian cepat
         const memberIdMap = new Map(membersResult.rows.map(m => [m.cooperative_number, m.id]));
-        const savingTypeIdMap = new Map(savingTypesResult.rows.map(st => [st.name, st.id]));
+        const memberNameMap = new Map(membersResult.rows.map(m => [m.id, m.name]));
+        const savingTypeMap = new Map(savingTypesResult.rows.map(st => [st.name, { id: st.id, account_id: st.account_id }]));
 
-        const values = [];
-        const insertQueryParts = [];
-        let paramIndex = 1;
-
-        // 4. Validasi setiap baris dan siapkan untuk bulk insert
-        for (let i = 0; i < savingsToCreate.length; i++) {
-            const saving = savingsToCreate[i];
-            if (!saving.cooperative_number) continue; // Lewati baris kosong
-            const memberId = memberIdMap.get(saving.cooperative_number);
-            const savingTypeId = savingTypeIdMap.get(saving.saving_type_name);
-
-            // Skip rows that don't have a valid amount
-            if (saving.amount == null || isNaN(parseFloat(saving.amount)) || parseFloat(saving.amount) <= 0) continue;
-
-            // Berikan pesan error yang jelas jika ada data yang tidak ditemukan
-            if (!memberId) throw new Error(`Baris ${i + 2}: Nomor Koperasi "${saving.cooperative_number}" tidak ditemukan.`);
-            if (!savingTypeId) throw new Error(`Baris ${i + 2}: Tipe Simpanan "${saving.saving_type_name}" tidak ditemukan.`);
-            
-            // Use provided date, or default to today if invalid/missing
-            const date = saving.date && (new Date(saving.date) instanceof Date && !isNaN(new Date(saving.date))) ? new Date(saving.date) : new Date();
-            const description = saving.description || null;
-
-            insertQueryParts.push(`($${paramIndex++}, $${paramIndex++}, $${paramIndex++}, $${paramIndex++}, 'Approved', $${paramIndex++})`);
-            values.push(memberId, savingTypeId, parseFloat(saving.amount), date, description);
-        }
-
-        // 5. Lakukan bulk insert jika ada data yang valid
-        if (values.length > 0) {
-            const insertQuery = `INSERT INTO savings (member_id, saving_type_id, amount, date, status, description) VALUES ${insertQueryParts.join(', ')}`;
-            await client.query(insertQuery, values);
-        }
-
-        // --- LOGIKA JURNAL OTOMATIS UNTUK SETIAP SIMPANAN ---
-        // Ambil ID Akun Kas sekali saja untuk efisiensi
-        const cashAccountRes = await client.query("SELECT id FROM chart_of_accounts WHERE account_number = '1-1110'");
-        if (cashAccountRes.rows.length === 0) throw new Error("Akun 'Kas' (1-1110) tidak ditemukan di COA.");
-        const cashAccountId = cashAccountRes.rows[0].id;
-
-        // Ambil ID Akun Simpanan yang relevan
-        const accountMappingRes = await client.query('SELECT st.name, st.account_id FROM saving_types st WHERE st.name = ANY($1::varchar[])', [savingTypeNames]);
-        const accountIdMap = new Map(accountMappingRes.rows.map(row => [row.name, row.account_id]));
-
+        const journalHeadersToInsert = [];
         for (const saving of savingsToCreate) {
             const memberId = memberIdMap.get(saving.cooperative_number);
-            const memberName = (await client.query('SELECT name FROM members WHERE id = $1', [memberId])).rows[0].name;
-            const savingAccountId = accountIdMap.get(saving.saving_type_name);
+            const savingType = savingTypeMap.get(saving.saving_type_name);
+            if (!memberId || !savingType) continue; // Skip invalid rows
 
-            if (!savingAccountId) {
-                throw new Error(`Tipe simpanan "${saving.saving_type_name}" belum terhubung ke akun COA. Harap lakukan maping di Pengaturan.`);
-            }
-
-            const amount = parseFloat(saving.amount);
+            const memberName = memberNameMap.get(memberId);
             const date = saving.date && !isNaN(new Date(saving.date)) ? new Date(saving.date) : new Date();
             const journalDescription = `Setoran ${saving.saving_type_name} a/n ${memberName} via Excel`;
-
-            // --- Generate Automatic Journal Reference Number ---
-            const entryDate = new Date(date);
-            const year = entryDate.getFullYear();
-            const month = String(entryDate.getMonth() + 1).padStart(2, '0');
-            const day = String(entryDate.getDate()).padStart(2, '0');
-            const prefix = `JRNL-${year}${month}${day}-`;
-
-            const seqResult = await client.query("SELECT COUNT(*) FROM general_journal WHERE reference_number LIKE $1", [`${prefix}%`]);
-            const nextSeq = parseInt(seqResult.rows[0].count, 10) + 1;
-            const referenceNumber = `${prefix}${String(nextSeq).padStart(4, '0')}`;
-            // --- End of Generation ---
-
-            // 1. Buat header jurnal untuk setiap transaksi
-            const journalHeaderRes = await client.query('INSERT INTO general_journal (entry_date, description, reference_number) VALUES ($1, $2, $3) RETURNING id', [date, journalDescription, referenceNumber]);
-            const journalId = journalHeaderRes.rows[0].id;
-
-            // 2. Buat entri jurnal (Debit Kas, Kredit Akun Simpanan)
-            const journalEntriesQuery = 'INSERT INTO journal_entries (journal_id, account_id, debit, credit) VALUES ($1, $2, $3, 0), ($1, $4, 0, $3)';
-            await client.query(journalEntriesQuery, [journalId, cashAccountId, amount, savingAccountId]);
+            journalHeadersToInsert.push({ date, description: journalDescription, saving }); // Keep original saving data
         }
+
+        // --- Bulk Insert Journal Headers ---
+        const journalHeaderQueryParts = journalHeadersToInsert.map((_, i) => `($${i*2 + 1}, $${i*2 + 2})`);
+        const journalHeaderValues = journalHeadersToInsert.flatMap(h => [h.date, h.description]);
+        const journalHeaderRes = await client.query(`INSERT INTO general_journal (entry_date, description) VALUES ${journalHeaderQueryParts.join(', ')} RETURNING id`, journalHeaderValues);
+
+        // --- Prepare Savings and Journal Entries for Bulk Insert ---
+        const savingsToInsert = [];
+        const journalEntriesToInsert = [];
+        const cashAccountId = (await client.query("SELECT id FROM chart_of_accounts WHERE account_number = '1-1110'")).rows[0].id;
+
+        for (let i = 0; i < journalHeaderRes.rows.length; i++) {
+            const journalId = journalHeaderRes.rows[i].id;
+            const { saving } = journalHeadersToInsert[i];
+            const memberId = memberIdMap.get(saving.cooperative_number);
+            const savingType = savingTypeMap.get(saving.saving_type_name);
+
+            if (!savingType.account_id) throw new Error(`Tipe simpanan "${saving.saving_type_name}" belum terhubung ke akun COA.`);
+
+            // Prepare saving for bulk insert
+            savingsToInsert.push({ memberId, savingTypeId: savingType.id, amount: saving.amount, date: saving.date, description: saving.description, journalId });
+
+            // Prepare journal entries for bulk insert
+            journalEntriesToInsert.push({ journalId, accountId: cashAccountId, debit: saving.amount, credit: 0 });
+            journalEntriesToInsert.push({ journalId, accountId: savingType.account_id, debit: 0, credit: saving.amount });
+        }
+
+        // --- Bulk Insert Savings ---
+        const savingsQueryParts = savingsToInsert.map((_, i) => `($${i*6+1}, $${i*6+2}, $${i*6+3}, $${i*6+4}, 'Approved', $${i*6+5}, $${i*6+6})`);
+        const savingsValues = savingsToInsert.flatMap(s => [s.memberId, s.savingTypeId, s.amount, s.date, s.description, s.journalId]);
+        await client.query(`INSERT INTO savings (member_id, saving_type_id, amount, date, status, description, journal_id) VALUES ${savingsQueryParts.join(', ')}`, savingsValues);
+
+        // --- Bulk Insert Journal Entries ---
+        const entriesQueryParts = journalEntriesToInsert.map((_, i) => `($${i*4+1}, $${i*4+2}, $${i*4+3}, $${i*4+4})`);
+        const entriesValues = journalEntriesToInsert.flatMap(e => [e.journalId, e.accountId, e.debit, e.credit]);
+        await client.query(`INSERT INTO journal_entries (journal_id, account_id, debit, credit) VALUES ${entriesQueryParts.join(', ')}`, entriesValues);
 
         await client.query('COMMIT');
         res.status(201).json({ message: `${savingsToCreate.length} baris data simpanan berhasil diunggah dan diproses.` });

@@ -1,29 +1,28 @@
 const express = require('express');
 const router = express.Router();
-// This file is being refactored to correctly point to the controller functions,
-// which were previously scattered across different files.
+const upload = require('../middleware/upload.middleware');
 const productController = require('../controllers/product.controller');
-const adminController = require('../controllers/admin.controller');
-const memberController = require('../controllers/member.controller');
-const employerController = require('../controllers/employer.controller');
 
-// Rute publik untuk mendapatkan produk, digunakan oleh toko-sembako.html dll.
-// FIX: Path changed to /public/products and uses the correct controller
-router.get('/public/products', productController.getPublicProducts);
+// Middleware (protect, authorize) sudah diterapkan di admin.routes.js sebelum router ini digunakan.
+// Base path: /api/admin/products
 
-// Rute publik untuk data registrasi
-// FIX: Pointing to the correct controller functions
-router.get('/public/testimonials', adminController.getTestimonials);
-router.get('/public/employers', employerController.getEmployers);
-router.get('/public/positions', adminController.getPositions);
-router.get('/public/loan-terms', adminController.getLoanTerms);
+// --- Product Management ---
+router.route('/')
+    .get(productController.getProducts)
+    .post(upload.single('productImage'), productController.createProduct);
 
-// Rute publik untuk pengumuman
-// FIX: Pointing to the correct controller function
-router.get('/public/announcements', memberController.getAnnouncements);
+router.route('/:id')
+    .get(productController.getProductById)
+    .put(upload.single('productImage'), productController.updateProduct)
+    .delete(productController.deleteProduct);
 
-// Rute publik untuk validasi anggota dan checkout
-router.post('/public/validate-member', productController.validateMemberByCoopNumber);
-router.post('/public/sales', productController.createSaleOrder);
+// --- Sales & Order Management ---
+// Rute untuk mengambil pesanan yang menunggu pengambilan
+router.get('/sales/pending', productController.getPendingSales);
+// Rute untuk verifikasi pesanan oleh kasir
+router.get('/sales/order/:orderId', productController.getSaleDetailsByOrderId);
+// Rute untuk menyelesaikan pesanan
+router.post('/sales/:orderId/complete', productController.completeOrder);
+router.get('/sales/:orderId/items', productController.getSaleItemsByOrderId);
 
 module.exports = router;

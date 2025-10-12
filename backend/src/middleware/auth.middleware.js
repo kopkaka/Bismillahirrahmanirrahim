@@ -12,14 +12,12 @@ const authMiddleware = async (req, res, next) => {
         return res.status(401).json({ error: 'Akses ditolak. Token autentikasi tidak diberikan.' });
     }
 
-    // Memeriksa format "Bearer <token>" dengan lebih robust
-    const parts = authHeader.split(' ');
-
-    if (parts.length !== 2 || parts[0] !== 'Bearer') {
+    // Memeriksa format "Bearer <token>"
+    if (!authHeader.startsWith('Bearer ')) {
         return res.status(401).json({ error: 'Format token tidak valid. Harap gunakan format "Bearer <token>".' });
     }
 
-    const token = parts[1];
+    const token = authHeader.substring(7);
 
     try {
         // Verifikasi token
