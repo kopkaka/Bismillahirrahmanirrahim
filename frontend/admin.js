@@ -61,21 +61,16 @@ document.addEventListener('DOMContentLoaded', () => {
 
     const checkAdminAuth = async () => {
         if (!token || !['admin', 'akunting', 'manager', 'kasir'].includes(userRole)) {
-            alert('Akses ditolak. Silakan masuk sebagai staf.');
+            alert('Akses ditolak. Silakan masuk sebagai staf yang berwenang.');
             localStorage.clear();
             window.location.href = 'login.html';
         }
         document.getElementById('user-name-header').textContent = userName || 'Pengguna';
 
         try {
-            let permissionsArray;
-            // FIX: If user is admin, fetch all permissions directly to ensure full access.
-            // For other roles, fetch their specific permissions from the token.
-            if (userRole === 'admin') {
-                permissionsArray = await apiFetch(`${ADMIN_API_URL}/all-permissions`);
-            } else {
-                permissionsArray = await apiFetch(`${API_URL}/member/permissions`);
-            }
+            // Cukup ambil hak akses dari token untuk semua role, termasuk admin.
+            // Backend sudah memastikan admin memiliki semua hak akses di dalam token saat login.
+            const permissionsArray = await apiFetch(`${API_URL}/member/permissions`);
             userPermissions = new Set(permissionsArray);
             applyUIPermissions();
         } catch (error) {
