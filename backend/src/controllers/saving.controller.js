@@ -6,7 +6,7 @@ const { createSavingJournal } = require('../services/journal.service');
 // GET semua simpanan
 const getSavings = async (req, res) => {
     try {
-        const { startDate, endDate, search, savingTypeId, status, page = 1, limit = 10 } = req.query;
+        const { startDate, endDate, search, savingTypeId, status, page, limit, report } = req.query;
 
         let baseQuery = `
             FROM savings s
@@ -62,58 +62,35 @@ const getSavings = async (req, res) => {
             dataQuery += whereString;
         }
 
-        // Get total items for pagination
-        const countResult = await pool.query(countQuery, params);
-        const totalItems = parseInt(countResult.rows[0].count, 10);
-        const totalPages = Math.ceil(totalItems / limit);
-        const offset = (page - 1) * limit;
+        dataQuery += ` ORDER BY s.date DESC`;
 
-        // Add ordering and pagination to the main query
-        dataQuery += ` ORDER BY s.date DESC LIMIT $${paramIndex++} OFFSET $${paramIndex++}`;
-        const queryParams = [...params, limit, offset];
+        // Jika bukan untuk laporan, terapkan paginasi
+        if (report !== 'true') {
+            const currentPage = parseInt(page, 10) || 1;
+            const currentLimit = parseInt(limit, 10) || 10;
+            const offset = (currentPage - 1) * currentLimit;
 
-        const result = await pool.query(dataQuery, queryParams);
+            const countResult = await pool.query(countQuery, params);
+            const totalItems = parseInt(countResult.rows[0].count, 10);
+            const totalPages = Math.ceil(totalItems / currentLimit);
 
-        res.json({
-            data: result.rows,
-            pagination: {
-                totalItems,
-                totalPages,
-                currentPage: parseInt(page, 10),
-                limit: parseInt(limit, 10)
-            }
-        });
+            dataQuery += ` LIMIT $${paramIndex++} OFFSET $${paramIndex++}`;
+            const queryParams = [...params, currentLimit, offset];
+            const result = await pool.query(dataQuery, queryParams);
+
+            res.json({
+                data: result.rows,
+                pagination: { totalItems, totalPages, currentPage, limit: currentLimit }
+            });
+        } else {
+            // Jika untuk laporan, ambil semua data yang cocok dengan filter
+            const result = await pool.query(dataQuery, params);
+            res.json(result.rows);
+        }
 
     } catch (err) {
         console.error('Error fetching savings:', err.message);
         res.status(500).json({ error: 'Gagal mengambil data simpanan.' });
-    }
-};
-
-// GET simpanan by member ID
-const getSavingsByMember = async (req, res) => {
-    try {
-        const { memberId } = req.params;
-        const query = `
-            SELECT 
-                s.id, 
-                s.member_id AS "memberId", 
-                s.saving_type_id AS "savingTypeId",
-                st.name AS "savingTypeName",
-                s.amount, 
-                s.date, 
-                s.status,
-                s.description
-            FROM savings s
-            LEFT JOIN saving_types st ON s.saving_type_id = st.id
-            WHERE s.member_id = $1
-            ORDER BY s.date DESC
-        `;
-        const result = await pool.query(query, [memberId]);
-        res.json(result.rows);
-    } catch (err) {
-        console.error('Error fetching savings by member:', err.message);
-        res.status(500).json({ error: 'Gagal mengambil data simpanan anggota.' });
     }
 };
 
@@ -174,7 +151,7 @@ const updateSavingStatus = async (req, res) => {
         // Buat jurnal hanya jika status diubah menjadi "Approved" dari status lain.
         if (status === 'Approved' && saving.current_status !== 'Approved') {
             const journalId = await createSavingJournal(client, {
-                amount: saving.amount,
+                amount: parseFloat(saving.amount),
                 saving_type_name: saving.saving_type_name,
                 account_id: saving.account_id,
                 member_name: saving.member_name,
@@ -183,9 +160,11 @@ const updateSavingStatus = async (req, res) => {
 
             // 2. Update simpanan dengan journal_id
             await client.query('UPDATE savings SET journal_id = $1 WHERE id = $2', [journalId, id]); // FIX: Link journal to saving
-            createNotification(saving.member_id, `Pengajuan ${saving.saving_type_name.toLowerCase()} Anda sebesar ${formatCurrency(saving.amount)} telah disetujui.`, 'savings');
+            const formattedAmount = new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0 }).format(saving.amount);
+            createNotification(saving.member_id, `Pengajuan ${saving.saving_type_name.toLowerCase()} Anda sebesar ${formattedAmount} telah disetujui.`, 'savings');
         } else if (status === 'Rejected') {
-            createNotification(saving.member_id, `Pengajuan ${saving.saving_type_name.toLowerCase()} Anda sebesar ${formatCurrency(saving.amount)} ditolak.`, 'savings');
+            const formattedAmount = new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0 }).format(saving.amount);
+            createNotification(saving.member_id, `Pengajuan ${saving.saving_type_name.toLowerCase()} Anda sebesar ${formattedAmount} ditolak.`, 'savings');
         }
 
         await client.query('COMMIT');
@@ -456,4 +435,4 @@ const uploadBulkSavings = async (req, res) => {
     }
 };
 
-module.exports = { getSavings, getSavingsByMember, createSaving, updateSavingStatus, uploadBulkSavings, updateSaving, deleteSaving, exportSavingsTemplate };
+module.exports = { getSavings, createSaving, updateSavingStatus, uploadBulkSavings, updateSaving, deleteSaving, exportSavingsTemplate };

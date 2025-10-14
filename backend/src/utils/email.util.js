@@ -165,7 +165,8 @@ const sendPasswordResetEmail = async (to, name, resetUrl) => {
         console.log(`Password reset email sent to ${to}`);
     } catch (error) {
         console.error(`Failed to send password reset email to ${to}:`, error);
-        // Di produksi, Anda mungkin ingin melempar error ini agar bisa ditangani lebih lanjut
+        // Throw the error so the calling function (e.g., the controller) can handle it.
+        throw error;
     }
 };
 

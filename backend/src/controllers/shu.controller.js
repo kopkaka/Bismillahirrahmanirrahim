@@ -1,6 +1,5 @@
 const pool = require('../../db');
 const { createNotification } = require('../utils/notification.util');
-const { getAccountId } = require('../utils/getAccountId.util'); // Keep for single use cases
 const { getAccountIds } = require('../utils/getAccountIds.util.js'); // Import the new efficient function
 
 /**
@@ -227,13 +226,14 @@ const postDistribution = async (req, res) => {
         const shuSavingTypeId = (await client.query("SELECT id FROM saving_types WHERE name = 'Simpanan SHU'")).rows[0]?.id;
         if (!shuSavingTypeId) throw new Error("Tipe simpanan 'Simpanan SHU' tidak ditemukan.");
 
-        const shuAccountId = await getAccountId('SHU Tahun Berjalan', client);
-        const reserveFundAccountId = await getAccountId('Dana Cadangan', client);
-        const managementFundAccountId = await getAccountId('Dana Pengurus & Karyawan', client);
-        const educationFundAccountId = await getAccountId('Dana Pendidikan', client);
-        const socialFundAccountId = await getAccountId('Dana Sosial', client);
+        const accountNamesToFetch = ['SHU Tahun Berjalan', 'Dana Cadangan', 'Dana Pengurus & Karyawan', 'Dana Pendidikan', 'Dana Sosial'];
+        const accountIds = await getAccountIds(accountNamesToFetch, client);
+
         const shuSavingAccountId = (await client.query("SELECT account_id FROM saving_types WHERE id = $1", [shuSavingTypeId])).rows[0]?.account_id;
         if (!shuSavingAccountId) throw new Error("Akun untuk 'Simpanan SHU' belum di-mapping.");
+
+        // Validate all accounts were found
+        if (Object.keys(accountIds).length !== accountNamesToFetch.length) throw new Error(`Satu atau lebih akun untuk distribusi SHU tidak ditemukan: ${accountNamesToFetch.join(', ')}`);
 
         // 3. Get SHU rules for the year
         const rulesRes = await client.query('SELECT * FROM shu_rules WHERE year = $1', [year]);

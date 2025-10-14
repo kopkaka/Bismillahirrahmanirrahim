@@ -127,11 +127,12 @@ const getPublicLoanTerms = async (req, res) => {
             SELECT 
                 lt.id, 
                 lt.tenor_months, 
-                lt.interest_rate, 
-                ltp.name as loan_type_name
+                lt.interest_rate,
+                l_types.name as loan_type_name
             FROM loan_terms lt
-            JOIN loan_types ltp ON lt.loan_type_id = ltp.id
-            ORDER BY ltp.name, lt.tenor_months;
+            JOIN loan_types l_types ON lt.loan_type_id = l_types.id
+            WHERE l_types.is_active = TRUE
+            ORDER BY l_types.name, lt.tenor_months;
         `;
         const result = await pool.query(query);
         res.json(result.rows);

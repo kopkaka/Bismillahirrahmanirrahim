@@ -1,13 +1,34 @@
 const pool = require('../../db');
 
 /**
+ * @desc    Get ALL announcements for admin management (including drafts)
+ * @route   GET /api/admin/announcements/all
+ * @access  Private (Admin)
+ */
+const getAllAnnouncements = async (req, res) => {
+    try {
+        const result = await pool.query('SELECT * FROM announcements ORDER BY created_at DESC');
+        res.json(result.rows);
+    } catch (err) {
+        console.error('Error fetching all announcements for admin:', err.message);
+        res.status(500).json({ error: 'Gagal mengambil data pengumuman.' });
+    }
+};
+
+/**
  * @desc    Get all announcements
  * @route   GET /api/admin/announcements
  * @access  Private (Admin)
  */
 const getAnnouncements = async (req, res) => {
     try {
-        const result = await pool.query('SELECT * FROM announcements ORDER BY created_at DESC');
+        // FIX: Only fetch published announcements for general view (both admin and member)
+        // Admin can see drafts on the specific "Manage Announcements" page.
+        const query = `
+            SELECT * FROM announcements 
+            WHERE is_published = TRUE 
+            ORDER BY created_at DESC LIMIT 5`;
+        const result = await pool.query(query);
         res.json(result.rows);
     } catch (err) {
         console.error('Error fetching announcements:', err.message);
@@ -31,31 +52,6 @@ const getAnnouncementById = async (req, res) => {
     } catch (err) {
         console.error(`Error fetching announcement by id [${id}]:`, err.message);
         res.status(500).json({ error: 'Gagal mengambil data pengumuman.' });
-    }
-};
-
-/**
- * @desc    Create a new announcement
- * @route   POST /api/admin/announcements
- * @access  Private (Admin)
- */
-const createAnnouncement = async (req, res) => {
-    const { title, content, is_published } = req.body;
-    if (!title || !content) {
-        return res.status(400).json({ error: 'Judul dan isi pengumuman wajib diisi.' });
-    }
-    try {
-        // Validasi tambahan
-        if (typeof title !== 'string' || typeof content !== 'string') {
-            return res.status(400).json({ error: 'Format data tidak valid.' });
-        }
-
-        const query = `INSERT INTO announcements (title, content, is_published) VALUES ($1, $2, $3) RETURNING *;`;
-        const result = await pool.query(query, [title, content, is_published === 'true' || is_published === true]);
-        res.status(201).json(result.rows[0]);
-    } catch (err) {
-        console.error('Error creating announcement:', err.message);
-        res.status(500).json({ error: 'Gagal membuat pengumuman baru.' });
     }
 };
 
@@ -98,7 +94,32 @@ const deleteAnnouncement = async (req, res) => {
     }
 };
 
+/**
+ * @desc    Create a new announcement
+ * @route   POST /api/admin/announcements
+ * @access  Private (Admin)
+ */
+const createAnnouncement = async (req, res) => {
+    const { title, content, is_published } = req.body;
+    if (!title || !content) {
+        return res.status(400).json({ error: 'Judul dan isi pengumuman wajib diisi.' });
+    }
+    try {
+        const query = `
+            INSERT INTO announcements (title, content, is_published) 
+            VALUES ($1, $2, $3) 
+            RETURNING *;
+        `;
+        const result = await pool.query(query, [title, content, is_published === 'true' || is_published === true]);
+        res.status(201).json(result.rows[0]);
+    } catch (err) {
+        console.error('Error creating announcement:', err.message);
+        res.status(500).json({ error: 'Gagal membuat pengumuman baru.' });
+    }
+};
+
 module.exports = {
+    getAllAnnouncements, // For admin management page
     getAnnouncements,
     getAnnouncementById,
     createAnnouncement,

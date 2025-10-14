@@ -76,6 +76,22 @@ const getCompanies = async (req, res) => {
     }
 };
 
+/**
+ * @desc    Get all companies for public dropdowns
+ * @route   GET /api/public/companies
+ * @access  Public
+ */
+const getPublicCompanies = async (req, res) => {
+    try {
+        // Query sederhana untuk mengambil semua perusahaan, diurutkan berdasarkan nama
+        const result = await pool.query('SELECT id, name FROM companies ORDER BY name ASC');
+        res.json(result.rows);
+    } catch (err) {
+        console.error('Error fetching public companies:', err.message);
+        res.status(500).json({ error: 'Gagal mengambil data perusahaan.' });
+    }
+};
+
 const getCompanyById = async (req, res) => {
     const { id } = req.params;
     try {
@@ -135,4 +151,4 @@ const deleteCompany = async (req, res) => {
     }
 };
 
-module.exports = { getCompanyInfo, updateCompanyInfo, getCompanies, getCompanyById, createCompany, updateCompany, deleteCompany };
+module.exports = { getCompanyInfo, updateCompanyInfo, getCompanies, getPublicCompanies, getCompanyById, createCompany, updateCompany, deleteCompany };

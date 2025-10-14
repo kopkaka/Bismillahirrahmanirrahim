@@ -138,8 +138,9 @@ const login = async (req, res) => {
         }
 
         // 4. Security: After confirming credentials, check if the account is active. This applies to ALL roles.
-        if (user.status !== 'Active') {
-            return res.status(403).json({ error: 'Akun Anda belum aktif atau sedang ditangguhkan. Silakan hubungi administrator.' });
+        // FIX: Allow 'Pending Resignation' status to log in, but deny others.
+        if (!['Active', 'Pending Resignation'].includes(user.status)) {
+            return res.status(403).json({ error: `Akun Anda tidak dapat masuk karena statusnya "${user.status}". Silakan hubungi administrator.` });
         }
 
         // --- Improvement: Fetch permissions and embed them in the JWT ---

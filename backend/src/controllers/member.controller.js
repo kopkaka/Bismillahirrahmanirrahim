@@ -4,7 +4,12 @@ const { createNotification } = require('../utils/notification.util');
 const path = require('path');
 const fs = require('fs');
 const { getLoanDetailsService } = require('../services/loan.service');
-
+const {
+    getCashFlowSummary,
+    getBalanceSheetSummary,
+    getIncomeStatementSummary,
+} = require('../services/dashboard.service');
+ 
 /**
  * @desc    Mendapatkan statistik dasbor untuk anggota yang sedang login.
  * @route   GET /api/member/stats
@@ -201,7 +206,7 @@ const getMemberApplications = async (req, res) => {
                 date,
                 status
             FROM loans
-            WHERE member_id = $1 AND status = 'Pending'
+            WHERE member_id = $1 AND status IN ('Pending', 'Approved by Accounting')
             
             ORDER BY date DESC
         `;
@@ -258,8 +263,16 @@ const createLoanApplication = async (req, res) => {
         }
 
         // 2. Check loan ceiling based on total savings.
+        // FIX: The original query only summed 'amount' without considering withdrawals.
+        // This new query correctly calculates the total savings by subtracting withdrawals.
         const savingsResult = await client.query(
-            "SELECT COALESCE(SUM(amount), 0) AS total_savings FROM savings WHERE member_id = $1 AND status = 'Approved'",
+            `SELECT COALESCE(SUM(CASE 
+                                WHEN st.name = 'Penarikan Simpanan Sukarela' THEN -s.amount 
+                                ELSE s.amount 
+                              END), 0) AS total_savings
+             FROM savings s
+             JOIN saving_types st ON s.saving_type_id = st.id
+             WHERE s.member_id = $1 AND s.status = 'Approved'`,
             [memberId]
         );
         const totalSavings = parseFloat(savingsResult.rows[0].total_savings);
@@ -322,7 +335,7 @@ const createLoanApplication = async (req, res) => {
 
 /**
  * @desc    Membatalkan pengajuan pinjaman oleh anggota.
- * @route   DELETE /api/member/loans/:id/cancel
+ * @route   POST /api/member/loans/:id/cancel
  * @access  Private
  */
 const cancelLoanApplication = async (req, res) => {
@@ -404,10 +417,14 @@ const createWithdrawalApplication = async (req, res) => {
     const client = await pool.connect();
     try {
         await client.query('BEGIN');
+        
+        // Maintainability: Use constants for magic strings
+        const VOLUNTARY_SAVING_TYPE_NAME = 'Simpanan Sukarela';
+        const WITHDRAWAL_TYPE_NAME = 'Penarikan Simpanan Sukarela';
 
-        // 1. Get available balance
-        const balanceQuery = `SELECT COALESCE(SUM(CASE WHEN st.name = 'Simpanan Sukarela' THEN s.amount ELSE -s.amount END), 0) as "balance" FROM savings s JOIN saving_types st ON s.saving_type_id = st.id WHERE s.member_id = $1 AND s.status = 'Approved' AND st.name IN ('Simpanan Sukarela', 'Penarikan Simpanan Sukarela')`;
-        const balanceRes = await client.query(balanceQuery, [memberId]);
+        // 1. Get available balance for voluntary savings
+        const balanceQuery = `SELECT COALESCE(SUM(CASE WHEN st.name = $2 THEN s.amount ELSE -s.amount END), 0) as "balance" FROM savings s JOIN saving_types st ON s.saving_type_id = st.id WHERE s.member_id = $1 AND s.status = 'Approved' AND st.name IN ($2, $3)`;
+        const balanceRes = await client.query(balanceQuery, [memberId, VOLUNTARY_SAVING_TYPE_NAME, WITHDRAWAL_TYPE_NAME]);
         const availableBalance = parseFloat(balanceRes.rows[0].balance);
 
         if (parseFloat(amount) > availableBalance) {
@@ -415,7 +432,6 @@ const createWithdrawalApplication = async (req, res) => {
         }
 
         // 2. Get saving type ID for withdrawal. Using a constant for the magic string.
-        const WITHDRAWAL_TYPE_NAME = 'Penarikan Simpanan Sukarela';
         const typeRes = await client.query("SELECT id FROM saving_types WHERE name = $1", [WITHDRAWAL_TYPE_NAME]);
         if (typeRes.rows.length === 0) throw new Error('Tipe transaksi penarikan tidak ditemukan di sistem.');
         const withdrawalTypeId = typeRes.rows[0].id;
@@ -585,13 +601,12 @@ const createSavingApplication = async (req, res) => {
     try {
         await client.query('BEGIN');
 
-        // Maintainability Improvement: Avoid using "magic strings" like 'Simpanan Sukarela'.
-        // If the name changes in the database, this code would break. It's better to use a
-        // more stable identifier, like an ID stored in an environment variable.
+        // Maintainability: Use a constant for the magic string.
         const VOLUNTARY_SAVING_TYPE_NAME = 'Simpanan Sukarela';
         const savingTypeResult = await client.query("SELECT id FROM saving_types WHERE name = $1 LIMIT 1", [VOLUNTARY_SAVING_TYPE_NAME]);
         if (savingTypeResult.rows.length === 0) {
             // This is a server configuration issue, not a client error.
+            await client.query('ROLLBACK'); // Rollback before throwing
             throw new Error(`Konfigurasi sistem: Tipe simpanan "${VOLUNTARY_SAVING_TYPE_NAME}" tidak ditemukan.`);
         }
         const savingTypeId = savingTypeResult.rows[0].id;
@@ -1119,28 +1134,6 @@ const getShuChartData = async (req, res) => {
 };
 
 /**
- * @desc    Get latest published announcements for members.
- * @route   GET /api/member/announcements
- * @access  Private
- */
-const getAnnouncements = async (req, res) => {
-    try {
-        const query = `
-            SELECT id, title, content, created_at
-            FROM announcements
-            WHERE is_published = TRUE
-            ORDER BY created_at DESC
-            LIMIT 5;
-        `;
-        const result = await pool.query(query);
-        res.json(result.rows);
-    } catch (err) {
-        console.error('Error fetching announcements:', err.message);
-        res.status(500).json({ error: 'Gagal mengambil data pengumuman.' });
-    }
-};
-
-/**
  * @desc    Get sales history for the logged-in member
  * @route   GET /api/member/sales
  * @access  Private
@@ -1199,8 +1192,8 @@ const getSaleDetailsByOrderIdForMember = async (req, res) => {
 
 /**
  * @desc    Membatalkan pesanan penjualan (sale order) oleh admin atau anggota pemilik.
- * @route   POST /api/public/sales/:orderId/cancel
- * @access  Private (Admin, Akunting, atau pemilik pesanan)
+ * @route   POST /api/sales/:orderId/cancel
+ * @access  Private (Pemilik pesanan, atau role dengan izin 'manageSales')
  */
 const cancelSaleOrder = async (req, res) => {
     const { orderId } = req.params;
@@ -1223,7 +1216,8 @@ const cancelSaleOrder = async (req, res) => {
         const sale = saleRes.rows[0];
 
         // 2. Otorisasi: Hanya admin/akunting atau pemilik pesanan yang bisa membatalkan
-        if (userRole !== 'admin' && userRole !== 'akunting' && sale.member_id !== userId) {
+        const hasManageSalesPermission = req.user.permissions.includes('manageSales');
+        if (!hasManageSalesPermission && sale.member_id !== userId) {
             throw new Error('Anda tidak memiliki izin untuk membatalkan pesanan ini.');
         }
 
@@ -1239,7 +1233,7 @@ const cancelSaleOrder = async (req, res) => {
         }
         await client.query("UPDATE sales SET status = 'Dibatalkan' WHERE id = $1", [sale.id]);
         if (sale.member_id) {
-            const cancelledBy = (userRole === 'admin' || userRole === 'akunting') ? 'oleh Admin' : 'oleh Anda';
+            const cancelledBy = hasManageSalesPermission ? 'oleh Admin' : 'oleh Anda';
             await createNotification(sale.member_id, `Pesanan Anda #${orderId} telah dibatalkan ${cancelledBy}.`, 'transactions');
         }
         await client.query('COMMIT');
@@ -1247,35 +1241,110 @@ const cancelSaleOrder = async (req, res) => {
     } catch (err) { await client.query('ROLLBACK'); console.error('Error cancelling sale order:', err.message); res.status(400).json({ error: err.message || 'Gagal membatalkan pesanan.' }); } finally { client.release(); }
 };
 
+/**
+ * @desc    Get cash flow summary for member dashboard.
+ * @route   GET /api/member/dashboard/cashflow-summary
+ * @access  Private (Member)
+ */
+const getMemberCashFlowSummary = async (req, res) => {
+    try {
+        const { startDate, endDate } = req.query;
+        // Memanggil service yang sudah ada
+        const summary = await getCashFlowSummary(startDate, endDate);
+        res.json(summary);
+    } catch (err) {
+        console.error('Error fetching cash flow summary for member:', err.message);
+        res.status(500).json({ error: 'Gagal mengambil ringkasan arus kas.' });
+    }
+};
+
+/**
+ * @desc    Get balance sheet summary for member dashboard.
+ * @route   GET /api/member/dashboard/balance-sheet-summary
+ * @access  Private (Member)
+ */
+const getMemberBalanceSheetSummary = async (req, res) => {
+    try {
+        const { asOfDate } = req.query;
+        // Memanggil service yang sudah ada
+        const summary = await getBalanceSheetSummary(asOfDate);
+        res.json(summary);
+    } catch (err) {
+        console.error('Error fetching balance sheet summary for member:', err.message);
+        res.status(500).json({ error: 'Gagal mengambil ringkasan neraca.' });
+    }
+};
+
+/**
+ * @desc    Get income statement summary for member dashboard.
+ * @route   GET /api/member/dashboard/income-statement-summary
+ * @access  Private (Member)
+ */
+const getMemberIncomeStatementSummary = async (req, res) => {
+    try {
+        // FIX: The frontend sends a 'year' parameter for this chart, not startDate/endDate.
+        // The service function `getIncomeStatementSummary` also expects a 'year'.
+        const { year } = req.query;
+        const summary = await getIncomeStatementSummary(year);
+        res.json(summary);
+    } catch (err) {
+        console.error('Error fetching income statement summary for member:', err.message);
+        res.status(500).json({ error: 'Gagal mengambil ringkasan laba rugi.' });
+    }
+};
+
+/**
+ * @desc    Get all published announcements for member view
+ * @route   GET /api/member/announcements
+ * @access  Private (Member)
+ */
+const getAnnouncements = async (req, res) => {
+    try {
+        const query = `
+            SELECT * FROM announcements 
+            WHERE is_published = TRUE 
+            ORDER BY created_at DESC LIMIT 5`;
+        const result = await pool.query(query);
+        res.json(result.rows);
+    } catch (err) {
+        console.error('Error fetching announcements for member:', err.message);
+        res.status(500).json({ error: 'Gagal mengambil data pengumuman.' });
+    }
+};
+
+
 module.exports = {
-    getMemberStats,
-    getMemberProfile,
-    getMemberSavings,
-    getMemberLoans,
-    getMemberApplications,
-    createLoanApplication,
-    createSavingApplication,
-    cancelLoanApplication,
-    getLoanDetails,
-    getNotifications,
-    getUnreadNotificationCount,
-    markNotificationAsRead,
-    createResignationRequest,
-    cancelResignationRequest,
-    getMyPermissions,
-    changePassword,
-    updateProfilePhoto,
-    getSavingsChartData,
-    getLoansChartData,
-    getTransactionsChartData,
-    getShuChartData,
-    getAnnouncements,
-    getMemberSalesHistory,
-    getSaleDetailsByOrderIdForMember,
-    getVoluntarySavingsBalance,
-    createWithdrawalApplication,
-    getActiveLoanForPayment,
-    submitLoanPayment,
-    cancelSaleOrder,
-    createMandatorySavingApplication,
+  getMemberStats,
+  getMemberProfile,
+  getMemberSavings,
+  getMemberLoans,
+  getMemberApplications,
+  createLoanApplication,
+  createSavingApplication,
+  cancelLoanApplication,
+  getLoanDetails,
+  getNotifications,
+  getUnreadNotificationCount,
+  markNotificationAsRead,
+  createResignationRequest,
+  cancelResignationRequest,
+  getMyPermissions,
+  changePassword,
+  updateProfilePhoto,
+  getSavingsChartData,
+  getLoansChartData,
+  getTransactionsChartData,
+  getShuChartData,
+  getMemberSalesHistory,
+  getSaleDetailsByOrderIdForMember,
+  getVoluntarySavingsBalance,
+  createWithdrawalApplication,
+  getActiveLoanForPayment,
+  submitLoanPayment,
+  cancelSaleOrder,
+  createMandatorySavingApplication,
+  getMemberCashFlowSummary,
+  getMemberBalanceSheetSummary,
+  getMemberIncomeStatementSummary,
+  getAnnouncements,
 };

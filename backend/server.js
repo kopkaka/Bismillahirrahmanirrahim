@@ -25,13 +25,14 @@ const allowedOrigins = [
 
 const corsOptions = {
     origin: function (origin, callback) {
-        // Izinkan request tanpa origin (seperti dari Postman) atau dari origin yang ada di whitelist
-        if (!origin || allowedOrigins.indexOf(origin) !== -1) {
+        // Izinkan request tanpa origin (seperti dari Postman, atau file://) atau dari origin yang ada di whitelist
+        if (!origin || allowedOrigins.indexOf(origin) !== -1 || origin === 'null') {
             callback(null, true);
         } else {
-            callback(new Error('Not allowed by CORS'));
+            callback(new Error(`Origin '${origin}' tidak diizinkan oleh kebijakan CORS.`));
         }
     },
+    methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'], // Explicitly allow OPTIONS
     credentials: true,
 };
 
@@ -39,7 +40,9 @@ app.use(cors(corsOptions));
 
 app.use(express.json()); // Parses incoming JSON requests
 
-// Serves uploaded files (e.g., KTP photos, logos) statically
+// Menyajikan file yang diunggah (misalnya, foto profil, logo) secara statis.
+// Rute '/uploads' akan memetakan ke direktori 'backend/uploads'.
+// Contoh: file di 'backend/uploads/profiles/foto.jpg' dapat diakses melalui 'http://localhost:3000/uploads/profiles/foto.jpg'
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 
 // --- API Routes ---

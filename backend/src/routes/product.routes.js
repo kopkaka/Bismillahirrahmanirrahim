@@ -1,28 +1,29 @@
 const express = require('express');
 const router = express.Router();
-const upload = require('../middleware/upload.middleware');
 const productController = require('../controllers/product.controller');
+const upload = require('../middleware/upload.middleware'); // Keep upload for product creation
+const protect = require('../middleware/auth.middleware');
+const authorize = require('../middleware/role.middleware');
 
-// Middleware (protect, authorize) sudah diterapkan di admin.routes.js sebelum router ini digunakan.
-// Base path: /api/admin/products
-
-// --- Product Management ---
+// These routes are mounted under /api/admin/products, so the base path is '/'
 router.route('/')
-    .get(productController.getProducts)
-    .post(upload.single('productImage'), productController.createProduct);
+    .get(productController.getProducts) // Matches GET /api/admin/products
+    .post(upload.single('productImage'), productController.createProduct); // Matches POST /api/admin/products
 
 router.route('/:id')
-    .get(productController.getProductById)
-    .put(upload.single('productImage'), productController.updateProduct)
-    .delete(productController.deleteProduct);
+    .get(productController.getProductById) // Matches GET /api/admin/products/:id
+    .put(upload.single('productImage'), productController.updateProduct) // Matches PUT /api/admin/products/:id
+    .delete(productController.deleteProduct); // Matches DELETE /api/admin/products/:id
 
-// --- Sales & Order Management ---
-// Rute untuk mengambil pesanan yang menunggu pengambilan
-router.get('/sales/pending', productController.getPendingSales);
-// Rute untuk verifikasi pesanan oleh kasir
-router.get('/sales/order/:orderId', productController.getSaleDetailsByOrderId);
-// Rute untuk menyelesaikan pesanan
-router.post('/sales/:orderId/complete', productController.completeOrder);
-router.get('/sales/:orderId/items', productController.getSaleItemsByOrderId);
+// Rute yang terkait dengan pesanan online (pending sales) telah dihapus karena tidak digunakan lagi.
+router.post('/sales/:id/cancel', protect, authorize(['admin', 'akunting']), productController.cancelSale);
+
+// --- RUTE BARU UNTUK VALIDASI ANGGOTA DI KASIR ---
+router.get(
+    '/validate-member/:cooperativeNumber', 
+    protect, 
+    authorize(['admin', 'kasir', 'akunting']), 
+    productController.validateMemberForCashier
+);
 
 module.exports = router;

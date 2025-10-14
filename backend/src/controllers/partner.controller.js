@@ -120,4 +120,24 @@ const deletePartner = async (req, res) => {
     }
 };
 
-module.exports = { getPartners, createPartner, updatePartner, deletePartner, getPartnerById };
+/**
+ * @desc    Get all active partners for public view
+ * @route   GET /api/public/partners
+ * @access  Public
+ */
+const getPublicPartners = async (req, res) => {
+    try {
+        const result = await pool.query("SELECT id, name, logo_url, website_url FROM partners WHERE is_active = TRUE ORDER BY name ASC");
+        res.json(result.rows);
+    } catch (err) {
+        console.error('Error fetching public partners:', err.message);
+        res.status(500).json({ error: 'Gagal mengambil data mitra.' });
+    }
+};
+
+module.exports = { getPartners,
+ createPartner,
+ updatePartner,
+ deletePartner,
+ getPartnerById,
+ getPublicPartners };

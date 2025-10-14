@@ -1,24 +1,27 @@
-const { Pool } = require('pg');
 require('dotenv').config();
+const { Pool } = require('pg');
 
 // Konfigurasi yang fleksibel untuk development dan production (Render)
 const isProduction = process.env.NODE_ENV === 'production';
 
-const connectionConfig = {
-  // Gunakan DATABASE_URL di produksi (Render)
-  connectionString: process.env.DATABASE_URL,
-  // Di produksi, koneksi ke Render memerlukan SSL
-  // Di development, kita tidak perlu SSL
-  ...(isProduction && {
-    ssl: {
-      rejectUnauthorized: false,
-    },
-  }),
-};
+const connectionConfig = isProduction
+  ? {
+      // Konfigurasi untuk produksi (Render)
+      connectionString: process.env.DATABASE_URL,
+      ssl: {
+        rejectUnauthorized: false,
+      },
+    }
+  : {
+      // Konfigurasi untuk development (lokal)
+      host: process.env.PGHOST,
+      user: process.env.PGUSER,
+      password: process.env.PGPASSWORD,
+      database: process.env.PGDATABASE,
+      port: process.env.PGPORT,
+    };
 
-// Jika tidak di produksi, gunakan konfigurasi lokal dari .env
-const pool = isProduction
-  ? new Pool(connectionConfig)
-  : new Pool(); // Pool() tanpa argumen akan otomatis membaca variabel PG* dari .env
+// Buat pool dengan konfigurasi yang sesuai
+const pool = new Pool(connectionConfig);
 
 module.exports = pool;

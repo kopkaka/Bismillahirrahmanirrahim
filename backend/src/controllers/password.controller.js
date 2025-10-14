@@ -1,119 +1,120 @@
-const pool = require('../../db');
+const db = require('../../db.js');
 const crypto = require('crypto');
+const { sendPasswordResetEmail, sendPasswordResetConfirmationEmail } = require('../utils/email.util.js');
 const bcrypt = require('bcryptjs');
-const { sendPasswordResetEmail, sendPasswordResetConfirmationEmail } = require('../utils/email.util');
 
-const forgotPassword = async (req, res) => {
-    const { email } = req.body;
-
+/**
+ * Handles the "forgot password" request.
+ * Generates a reset token, saves it to the database, and sends a reset email.
+ */
+exports.forgotPassword = async (req, res) => {
+    // Use a try...catch block to handle any potential errors gracefully.
     try {
-        // 1. Cari pengguna berdasarkan email
-        const userResult = await pool.query('SELECT * FROM members WHERE email = $1', [email]);
-        if (userResult.rows.length === 0) {
-            // Untuk keamanan, jangan beri tahu jika email tidak ada.
-            // Cukup kirim respons sukses generik.
-            console.log(`Password reset attempt for non-existent email: ${email}`);
-            return res.status(200).json({ message: 'Jika email terdaftar, tautan reset password telah dikirim.' });
-        }
-        const user = userResult.rows[0];
+        const { email } = req.body;
 
-        // 2. Buat token reset
+        // 1. Find the user by email
+        const { rows: users } = await db.query('SELECT id, name FROM members WHERE email = $1', [email]);
+
+        if (users.length === 0) {
+            // SECURITY: Send a generic success message even if the email is not found.
+            // This prevents attackers from guessing which emails are registered.
+            return res.status(200).json({ message: 'Permintaan terkirim. Silakan periksa email Anda untuk tautan penggantian password.' });
+        }
+        const user = users[0];
+
+        // 2. Generate a secure random token
         const resetToken = crypto.randomBytes(32).toString('hex');
         const hashedToken = crypto.createHash('sha256').update(resetToken).digest('hex');
 
-        // 3. Set masa berlaku token (misal: 10 menit)
-        const passwordResetExpires = new Date(Date.now() + 10 * 60 * 1000);
+        // 3. Set token expiration (e.g., 10 minutes from now)
+        const tokenExpiry = new Date(Date.now() + 10 * 60 * 1000);
 
-        // 4. Simpan token dan masa berlakunya ke database
-        await pool.query(
-            'UPDATE members SET reset_password_token = $1, reset_password_expires = $2 WHERE id = $3',
-            [hashedToken, passwordResetExpires, user.id]
-        );
+        // 4. Save the hashed token and expiry date to the database
+        await db.query('UPDATE members SET reset_password_token = $1, reset_password_expires = $2 WHERE id = $3', [hashedToken, tokenExpiry, user.id]);
 
-        // 5. Kirim email ke pengguna
-        // URL harus sesuai dengan struktur frontend Anda
-        // Gunakan Environment Variable yang sudah kita atur sebelumnya
-        const frontendBaseUrl = process.env.FRONTEND_URL || 'http://127.0.0.1:5500';
-        const resetUrl = `${frontendBaseUrl}/reset-password.html?token=${resetToken}`;
-        
-        await sendPasswordResetEmail(user.email, user.name, resetUrl);
+        // 5. Create the reset URL for the email
+        // IMPORTANT: Use your actual frontend URL here.
+        const resetUrl = `${process.env.FRONTEND_URL}/reset-password.html?token=${resetToken}`;
 
-        res.status(200).json({ message: 'Jika email terdaftar, tautan reset password telah dikirim.' });
+        // 6. Send the styled password reset email using the dedicated utility
+        await sendPasswordResetEmail(email, user.name, resetUrl);
+
+        // 8. Send the final success response
+        res.status(200).json({ message: 'Permintaan terkirim. Silakan periksa email Anda untuk tautan penggantian password.' });
 
     } catch (error) {
-        console.error('Error in forgotPassword controller:', error);
-        res.status(500).json({ error: 'Terjadi kesalahan pada server.' });
+        console.error('FORGOT PASSWORD ERROR:', error);
+
+        // If an error occurs (e.g., database or email server issue),
+        // send a generic 500 Internal Server Error response.
+        res.status(500).json({ message: 'Terjadi kesalahan di server. Gagal mengirim email reset.' });
     }
 };
 
-const resetPassword = async (req, res) => {
-    const { token } = req.params;
-    const { password } = req.body;
+// --- Placeholder functions for other routes ---
 
+/**
+ * Validates the reset token from the URL.
+ */
+exports.validateResetToken = async (req, res) => {
     try {
-        // 1. Hash token dari URL untuk dicocokkan dengan yang di DB
+        // 1. Get the token from the URL params and hash it
+        const { token } = req.params;
         const hashedToken = crypto.createHash('sha256').update(token).digest('hex');
 
-        // 2. Cari pengguna dengan token yang valid dan belum kedaluwarsa
-        const userResult = await pool.query(
-            'SELECT * FROM members WHERE reset_password_token = $1 AND reset_password_expires > NOW()',
-            [hashedToken]
+        // 2. Find a user with this token and ensure it has not expired
+        const { rows: users } = await db.query(
+            'SELECT id FROM members WHERE reset_password_token = $1 AND reset_password_expires > $2',
+            [hashedToken, new Date()]
         );
 
-        if (userResult.rows.length === 0) {
+        if (users.length === 0) {
             return res.status(400).json({ error: 'Token tidak valid atau telah kedaluwarsa.' });
         }
-        const user = userResult.rows[0];
 
-        // 3. Validasi password baru
-        if (!password || password.length < 8) {
-            return res.status(400).json({ error: 'Password harus minimal 8 karakter.' });
+        // 3. If token is valid, send a success response
+        res.status(200).json({ message: 'Token valid.' });
+    } catch (error) {
+        console.error('VALIDATE TOKEN ERROR:', error);
+        res.status(500).json({ error: 'Terjadi kesalahan di server.' });
+    }
+};
+
+/**
+ * Resets the user's password.
+ */
+exports.resetPassword = async (req, res) => {
+    try {
+        // 1. Get token from params and new password from body
+        const { token } = req.params;
+        const { password } = req.body;
+
+        // 2. Find the user with a valid, non-expired token
+        const hashedToken = crypto.createHash('sha256').update(token).digest('hex');
+        const { rows: users } = await db.query(
+            'SELECT id, name, email FROM members WHERE reset_password_token = $1 AND reset_password_expires > $2',
+            [hashedToken, new Date()]
+        );
+
+        if (users.length === 0) {
+            return res.status(400).json({ message: 'Token tidak valid atau telah kedaluwarsa. Silakan minta tautan baru.' });
         }
+        const user = users[0];
 
-        // 4. Hash password baru
+        // 3. Hash the new password and update the user's record
         const salt = await bcrypt.genSalt(10);
         const hashedPassword = await bcrypt.hash(password, salt);
 
-        // 5. Update password pengguna dan hapus token reset
-        await pool.query(
-            'UPDATE members SET password = $1, reset_password_token = NULL, reset_password_expires = NULL, updated_at = NOW() WHERE id = $2',
-            [hashedPassword, user.id]
-        );
+        await db.query('UPDATE members SET password = $1, reset_password_token = NULL, reset_password_expires = NULL WHERE id = $2', [hashedPassword, user.id]);
 
-        // 6. Kirim email konfirmasi bahwa password telah diubah
-        await sendPasswordResetConfirmationEmail(user.email, user.name);
+        // 4. Send a confirmation email (fire and forget, don't need to await if not critical)
+        sendPasswordResetConfirmationEmail(user.email, user.name).catch(err => {
+            console.error('Failed to send password reset confirmation email:', err);
+        });
 
-        res.status(200).json({ message: 'Password berhasil diubah. Silakan masuk dengan password baru Anda.' });
-
+        res.status(200).json({ message: 'Password Anda telah berhasil diatur ulang. Anda sekarang dapat masuk dengan password baru.' });
     } catch (error) {
-        console.error('Error in resetPassword controller:', error);
-        res.status(500).json({ error: 'Terjadi kesalahan pada server.' });
+        console.error('RESET PASSWORD ERROR:', error);
+        res.status(500).json({ message: 'Gagal mengatur ulang password. Terjadi kesalahan di server.' });
     }
-};
-
-const validateResetToken = async (req, res) => {
-    const { token } = req.params;
-    try {
-        const hashedToken = crypto.createHash('sha256').update(token).digest('hex');
-        const result = await pool.query(
-            'SELECT id FROM members WHERE reset_password_token = $1 AND reset_password_expires > NOW()',
-            [hashedToken]
-        );
-
-        if (result.rows.length === 0) {
-            return res.status(400).json({ valid: false, message: 'Token tidak valid atau telah kedaluwarsa.' });
-        }
-
-        res.status(200).json({ valid: true });
-    } catch (error) {
-        console.error('Error validating token:', error);
-        res.status(500).json({ error: 'Terjadi kesalahan pada server.' });
-    }
-};
-
-
-module.exports = {
-    forgotPassword,
-    resetPassword,
-    validateResetToken,
 };

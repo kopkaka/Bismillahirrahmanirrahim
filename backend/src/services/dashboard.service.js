@@ -5,7 +5,7 @@ const getDashboardStats = async () => {
     try {
         // Optimization: Run all statistic queries concurrently using Promise.all
         const statsQueries = [
-            client.query("SELECT COUNT(*) FROM members WHERE status = 'Active' AND role = 'member'"),
+            client.query("SELECT COUNT(*) FROM members WHERE status = 'Active' AND role = 'member'"), // Already correct here, but good to confirm
             client.query(`
                 SELECT COALESCE(SUM(CASE 
                                     WHEN st.name = 'Penarikan Simpanan Sukarela' THEN -s.amount 

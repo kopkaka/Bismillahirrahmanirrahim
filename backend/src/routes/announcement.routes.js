@@ -1,20 +1,24 @@
 const express = require('express');
 const router = express.Router();
-// Middleware tidak perlu diimpor lagi di sini karena sudah diterapkan di admin.routes.js
-// FIX: Import dari controller yang benar
 const {
-    getAnnouncements,
+    getAllAnnouncements,
     getAnnouncementById,
     createAnnouncement,
     updateAnnouncement,
     deleteAnnouncement,
-} = require('../controllers/announcement.controller');
+} = require('../controllers/announcement.controller'); // FIX: Import directly from the correct controller
 
-// Middleware (protect, authorize) sudah diterapkan di admin.routes.js sebelum router ini digunakan.
-router.get('/', getAnnouncements);
-router.get('/:id', getAnnouncementById);
-router.post('/', createAnnouncement);
-router.put('/:id', updateAnnouncement);
-router.delete('/:id', deleteAnnouncement);
+// Middleware `protect` dan `authorize` sudah diterapkan di `admin.routes.js`
+// untuk semua rute di dalam file ini.
+
+// Rute untuk admin mengelola SEMUA pengumuman (termasuk draft)
+router.route('/all').get(getAllAnnouncements);
+
+// Rute untuk membuat pengumuman baru
+router.route('/').post(createAnnouncement);
+
+router.route('/:id')
+    .put(updateAnnouncement)
+    .delete(deleteAnnouncement);
 
 module.exports = router;

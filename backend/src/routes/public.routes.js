@@ -1,28 +1,40 @@
 const express = require('express');
 const router = express.Router();
-const productController = require('../controllers/product.controller');
-const memberController = require('../controllers/member.controller');
-const companyController = require('../controllers/company.controller');
-const positionController = require('../controllers/position.controller');
-const loanTermsController = require('../controllers/loanterms.controller');
-const testimonialController = require('../controllers/testimonial.controller');
+const { getPublicTestimonials } = require('../controllers/testimonial.controller');
+const { getPublicPartners } = require('../controllers/partner.controller');
+const { getPublicLoanTerms } = require('../controllers/loanterms.controller');
+const { getPublicCompanies } = require('../controllers/company.controller'); // Impor controller perusahaan
+const { getPositions } = require('../controllers/position.controller'); // Impor controller jabatan
+const { getProducts } = require('../controllers/product.controller'); // Impor controller produk
 
-// Rute publik untuk mendapatkan produk, digunakan oleh toko-sembako.html dll.
-router.get('/products', productController.getPublicProducts);
+// @route   GET /api/public/companies
+// @desc    Get all companies for registration dropdown
+// @access  Public
+router.get('/companies', getPublicCompanies);
 
-// Rute publik untuk data registrasi
-router.get('/testimonials', testimonialController.getPublicTestimonials);
-router.get('/companies', companyController.getCompanies);
-router.get('/positions', positionController.getPositions);
-router.get('/loan-terms', loanTermsController.getPublicLoanTerms);
+// @route   GET /api/public/positions
+// @desc    Get all positions for registration dropdown
+// @access  Public
+router.get('/positions', getPositions);
 
-// Rute publik untuk pengumuman
-router.get('/announcements', memberController.getAnnouncements);
+// @route   GET /api/public/loan-terms
+// @desc    Get all active loan terms for dropdowns
+// @access  Public
+router.get('/loan-terms', getPublicLoanTerms);
 
-// Rute publik untuk validasi anggota dan checkout
-router.post('/validate-member', productController.validateMemberByCoopNumber);
-router.post('/sales', productController.createSaleOrder);
-// Rute publik untuk melihat detail pesanan (misalnya dari email)
-router.get('/sales/:orderId', productController.getSaleDetailsByOrderId);
+// @route   GET /api/public/testimonials
+// @desc    Get all testimonials for the public landing page
+// @access  Public
+router.get('/testimonials', getPublicTestimonials);
+
+// @route   GET /api/public/partners
+// @desc    Get all active partners for public view
+// @access  Public
+router.get('/partners', getPublicPartners);
+
+// @route   GET /api/public/products
+// @desc    Get all products for public shop pages (only shows items with stock > 0)
+// @access  Public
+router.get('/products', getProducts);
 
 module.exports = router;

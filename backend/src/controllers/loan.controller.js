@@ -2,14 +2,14 @@ const pool = require('../../db');
 const fs = require('fs');
 const path = require('path');
 const { createNotification } = require('../utils/notification.util');
-const { getAccountId } = require('../utils/getAccountId.util');
+const { getAccountIds } = require('../utils/getAccountIds.util'); // FIX: Ensure correct import
 const { getLoanDetailsService, _getInstallmentDetails } = require('../services/loan.service');
 
 // GET all loans with joined data
 const getLoans = async (req, res) => {
     try {
         const { status, startDate, endDate, search, page = 1, limit = 10 } = req.query;
-        // This query joins multiple tables to get comprehensive loan data
+        // This query joins multiple tables to get comprehensive loan data.
         let baseQuery = `
             FROM loans l 
             JOIN members m ON l.member_id = m.id 
@@ -21,7 +21,7 @@ const getLoans = async (req, res) => {
                     SUM(CASE WHEN status = 'Approved' THEN amount_paid ELSE 0 END) as total_payment
                 FROM loan_payments 
                 GROUP BY loan_id
-            ) lp ON l.id = lp.loan_id
+            ) lp ON l.id = lp.loan_id 
         `;
  
         const params = [];
@@ -53,7 +53,7 @@ const getLoans = async (req, res) => {
                 m.name AS "memberName",
                 m.cooperative_number AS "cooperativeNumber",
                 l.loan_type_id AS "loanTypeId",
-                lt.name AS "loanTypeName",
+                lt.name AS "loanTypeName", 
                 l.loan_term_id AS "loanTermId",
                 l.amount,
                 l.date,
@@ -61,7 +61,7 @@ const getLoans = async (req, res) => {
                 ltm.tenor_months,
                 ltm.interest_rate,
                 COALESCE(lp.total_payment, 0) as "totalPayment",
-                l.remaining_principal
+                l.remaining_principal 
             ${baseQuery}
         `;
 
@@ -122,11 +122,11 @@ const getPendingLoans = async (req, res) => {
                 m.name as "memberName",
                 m.cooperative_number as "cooperativeNumber",
                 lt.tenor_months,
-                ltp.name as "loanTypeName"
+                l_types.name as "loanTypeName"
             FROM loans l
             JOIN members m ON l.member_id = m.id
             JOIN loan_terms lt ON l.loan_term_id = lt.id
-            JOIN loan_types ltp ON lt.loan_type_id = ltp.id
+            JOIN loan_types l_types ON lt.loan_type_id = l_types.id
             WHERE l.status IN ('Pending', 'Approved by Accounting')
             ORDER BY l.date ASC
         `;
@@ -222,8 +222,9 @@ const updateLoanPaymentStatus = async (req, res) => { // NOSONAR
             if (!payment.loan_account_id) throw new Error(`Tipe pinjaman "${payment.loan_type_name}" belum terhubung ke akun COA Piutang.`);
             
             // Maintainability: Fetch account IDs dynamically instead of using hardcoded values.
-            const cashAccountId = await getAccountId('Kas', client);
-            const interestIncomeAccountId = await getAccountId('Pendapatan Jasa Pinjaman', client);
+            const accountIds = await getAccountIds(['Kas', 'Pendapatan Jasa Pinjaman'], client); // FIX: Use the plural function
+            const cashAccountId = accountIds['Kas'];
+            const interestIncomeAccountId = accountIds['Pendapatan Jasa Pinjaman'];
             const description = `Penerimaan angsuran ke-${payment.installment_number} pinjaman ${payment.loan_type_name} a/n ${payment.member_name}`;
             
             const journalHeaderRes = await client.query('INSERT INTO general_journal (entry_date, description) VALUES (NOW(), $1) RETURNING id', [description]);
@@ -267,7 +268,8 @@ const handleFinalLoanApproval = async (client, loanDetails) => {
     }
 
     // Maintainability: Fetch account ID dynamically instead of using a hardcoded value.
-    const cashAccountId = await getAccountId('Kas', client);
+    const accountIds = await getAccountIds(['Kas'], client); // FIX: Use the plural function
+    const cashAccountId = accountIds['Kas'];
     const description = `Pencairan pinjaman ${loan_type_name} a/n ${member_name}`;
 
     // --- Generate Automatic Journal Reference Number ---
@@ -487,8 +489,9 @@ const recordLoanPayment = async (req, res) => {
         if (!loan.loan_account_id) throw new Error(`Tipe pinjaman "${loan.loan_type_name}" belum terhubung ke akun COA Piutang. Harap lakukan maping di Pengaturan.`);
 
         // Maintainability: Fetch account IDs dynamically.
-        const cashAccountId = await getAccountId('Kas', client);
-        const interestIncomeAccountId = await getAccountId('Pendapatan Jasa Pinjaman', client);
+        const accountIds = await getAccountIds(['Kas', 'Pendapatan Jasa Pinjaman'], client); // FIX: Use the plural function
+        const cashAccountId = accountIds['Kas'];
+        const interestIncomeAccountId = accountIds['Pendapatan Jasa Pinjaman'];
         const description = `Pembayaran angsuran ke-${requestedInstallmentNumber} pinjaman ${loan.loan_type_name} a/n ${loan.member_name}`;
 
         const entryDate = new Date();
@@ -702,5 +705,5 @@ module.exports = {
     deleteLoan,
     mapLoanAccount,
     getLoanTypeIdByName,
-    getLoanInterestReport,
+    getLoanInterestReport
 };

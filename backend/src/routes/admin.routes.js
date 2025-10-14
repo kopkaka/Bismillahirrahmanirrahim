@@ -17,19 +17,17 @@ const logisticsController = require('../controllers/logistics.controller');
 const shuController = require('../controllers/shu.controller');
 const testimonialController = require('../controllers/testimonial.controller');
 const savingTypeController = require('../controllers/savingtype.controller');
-
 const journalController = require('../controllers/journal.controller.js');
-const reportController = require('../controllers/report.controller.js');
 const reportRoutes = require('./report.routes.js'); // Impor rute laporan yang baru
-
-const { getApprovalCounts } = require('../controllers/approval.controller');
 // --- Sub-routers for specific admin resources ---
+const { getAnnouncementById } = require('../controllers/announcement.controller');
 const announcementRoutes = require('./announcement.routes.js');
 const companyRoutes = require('./company.routes.js');
 const partnerRoutes = require('./partner.routes');
 const positionRoutes = require('./position.routes.js');
 const savingTypeRoutes = require('./savingtype.routes.js');
 const loanTypeRoutes = require('./loantype.routes.js');
+const accountTypeRoutes = require('./accounttype.routes.js'); // Impor rute baru
 const loanTermRoutes = require('./loanterms.routes.js');
 const userRoutes = require('./user.routes.js');
 const accountRoutes = require('./account.routes.js');
@@ -41,12 +39,9 @@ router.get('/stats', protect, authorize(['viewDashboard']), dashboardController.
 router.get('/cashflow-summary', protect, authorize(['viewDashboard']), dashboardController.getCashFlowSummary);
 router.get('/member-growth', protect, authorize(['viewDashboard']), dashboardController.getMemberGrowth);
 router.get('/balance-sheet-summary', protect, authorize(['viewDashboard']), dashboardController.getBalanceSheetSummary);
+router.get('/approval-counts', protect, authorize(['viewApprovals']), dashboardController.getApprovalCounts);
 router.get('/income-statement-summary', protect, authorize(['viewDashboard']), dashboardController.getIncomeStatementSummary);
 
-// Approvals
-router.get('/pending-loans', protect, authorize(['viewApprovals']), loanController.getPendingLoans);
-router.get('/pending-loan-payments', protect, authorize(['approveLoanAccounting']), loanController.getPendingLoanPayments);
-router.get('/approval-counts', protect, authorize(['viewApprovals']), getApprovalCounts);
 // This route can be accessed by accounting (for first approval) or manager (for final approval)
 router.put('/loans/:id/status', protect, authorize(['approveLoanAccounting', 'approveLoanManager']), loanController.updateLoanStatus);
 
@@ -173,8 +168,12 @@ router.post('/savings/manual', protect, authorize(['approveSaving']), adminContr
 
 // --- Sub-routers (MUST be at the end) ---
 // These handle specific CRUD operations for settings pages
-// FIX: Gunakan izin yang benar untuk pengumuman
+// FIX: Urutan diubah. Rute yang lebih umum '/announcements' harus didefinisikan sebelum rute dinamis '/announcements/:id'
+// untuk menghindari konflik di mana 'all' dianggap sebagai ':id'.
+// Rute untuk admin mengelola pengumuman (Create, Update, Delete, Get All)
 router.use('/announcements', protect, authorize(['manageAnnouncements']), announcementRoutes);
+// Rute untuk anggota melihat detail pengumuman (hanya perlu login)
+router.get('/announcements/:id', protect, getAnnouncementById);
 router.use('/companies', protect, authorize(['viewSettings']), companyRoutes);
 router.use('/partners', protect, authorize(['viewSettings']), partnerRoutes);
 router.use('/positions', positionRoutes);
@@ -182,11 +181,11 @@ router.use('/savingtypes', savingTypeRoutes);
 router.use('/users', protect, authorize(['manageUsers']), userRoutes);
 router.use('/loantypes', loanTypeRoutes);
 router.use('/loanterms', loanTermRoutes);
+router.use('/accounttypes', protect, authorize(['manageChartOfAccounts']), accountTypeRoutes); // Gunakan rute baru
 router.use('/accounts', accountRoutes);
 // --- Product & Sales Management ---
 const productManagementPermission = ['viewDashboard', 'viewUsahaKoperasi']; // Kasir perlu akses ini
 router.use('/products', protect, authorize(productManagementPermission), productRoutes);
-router.post('/cash-sale', protect, authorize(['viewUsahaKoperasi', 'approveLoanAccounting']), accountingController.createCashSale);
 router.get('/logistics-products/:shopType', protect, authorize(productManagementPermission), logisticsController.getAvailableLogisticsProducts);
 
 // --- Payment Method Management ---
